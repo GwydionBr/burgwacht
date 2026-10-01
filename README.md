@@ -1,0 +1,26 @@
+# Burgwacht
+
+Ein Burgenbau-Spiel im Stil von Stronghold: Rohstoffe sammeln, eine Burg aufbauen und Angriffswellen abwehren.
+
+## Starten
+
+Voraussetzung: Godot 4.7 (`brew install --cask godot`).
+
+```sh
+tools/run.sh
+```
+
+Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
+
+## Steuerung
+
+| Aktion | Tasten |
+|---|---|
+| Kamera bewegen | WASD / Pfeiltasten, zwei Finger auf dem Trackpad, rechte Maustaste ziehen |
+| Zoomen | Pinch auf dem Trackpad, Mausrad |
+| Neue Karte | N |
+| Vollbild | F (im Vollbild auch Scrollen am Bildschirmrand) |
+
+## Entwicklung
+
+Tests: `tools/test.sh` · Aufbau und Fahrplan: siehe `CLAUDE.md`.

@@ -1,0 +1,5 @@
+{
+  "tree":  { "name": "Baum",           "yields": "wood",  "amount": 40 },
+  "stone": { "name": "Felsen",         "yields": "stone", "amount": 120 },
+  "iron":  { "name": "Eisenvorkommen", "yields": "iron",  "amount": 80 }
+}

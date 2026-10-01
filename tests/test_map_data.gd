@@ -1,0 +1,28 @@
+extends TestCase
+
+
+func test_buildable_depends_on_terrain_and_resources() -> void:
+	var map := MapData.new(4, 4)
+	var rng := RandomNumberGenerator.new()
+	assert_true(map.is_buildable(Vector2i(1, 1)), "Wiese sollte bebaubar sein")
+	map.set_terrain(Vector2i(2, 2), "water")
+	assert_true(not map.is_buildable(Vector2i(2, 2)), "Wasser sollte nicht bebaubar sein")
+	map.add_resource(Vector2i(1, 1), ResourceNode.create("tree", rng))
+	assert_true(not map.is_buildable(Vector2i(1, 1)), "Kachel mit Baum sollte nicht bebaubar sein")
+	assert_true(not map.is_buildable(Vector2i(4, 0)), "Außerhalb der Karte")
+
+
+func test_remove_resource_emits_signal() -> void:
+	var map := MapData.new(4, 4)
+	var removed: Array[Vector2i] = []
+	map.resource_removed.connect(func(tile: Vector2i) -> void: removed.append(tile))
+	map.add_resource(Vector2i(1, 2), ResourceNode.create("stone", RandomNumberGenerator.new()))
+	map.remove_resource(Vector2i(1, 2))
+	map.remove_resource(Vector2i(1, 2))
+	assert_eq(removed, [Vector2i(1, 2)] as Array[Vector2i], "Signal:")
+	assert_eq(map.get_resource(Vector2i(1, 2)), null, "Rohstoff:")
+
+
+func test_resource_amount_comes_from_data() -> void:
+	var node := ResourceNode.create("tree", RandomNumberGenerator.new())
+	assert_eq(node.amount, int(GameDefs.get_instance().resource_nodes["tree"]["amount"]), "Menge:")

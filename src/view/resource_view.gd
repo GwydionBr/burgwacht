@@ -1,0 +1,86 @@
+class_name ResourceView
+extends Node2D
+## Zeichnet ein Rohstoffvorkommen (Baum, Felsen, Eisen). Liegt in einem
+## y-sortierten Container, damit weiter vorne stehende Objekte davor erscheinen.
+
+const SHADOW_COLOR := Color(0, 0, 0, 0.22)
+const TRUNK_COLOR := Color("#5b3d24")
+const STONE_COLOR := Color("#8d8a82")
+const IRON_STONE_COLOR := Color("#6f6660")
+const ORE_COLOR := Color("#b0562e")
+
+var resource: ResourceNode
+
+
+func setup(tile: Vector2i, node: ResourceNode) -> void:
+	resource = node
+	position = Iso.tile_to_world(tile)
+	queue_redraw()
+
+
+func _draw() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = resource.variant
+	match resource.type:
+		"tree":
+			_draw_tree(rng)
+		"stone":
+			_draw_rocks(rng, STONE_COLOR, false)
+		"iron":
+			_draw_rocks(rng, IRON_STONE_COLOR, true)
+
+
+func _draw_tree(rng: RandomNumberGenerator) -> void:
+	var s := rng.randf_range(0.85, 1.2)
+	var base := Vector2(rng.randf_range(-8, 8), rng.randf_range(-3, 3))
+	var green := Color.from_hsv(rng.randf_range(0.26, 0.33), rng.randf_range(0.55, 0.75), rng.randf_range(0.32, 0.45))
+	_draw_shadow(base + Vector2(4, 0), 13 * s)
+	draw_rect(Rect2(base + Vector2(-2.5, -12) * s, Vector2(5, 13) * s), TRUNK_COLOR)
+
+	if rng.randf() < 0.55:
+		# Nadelbaum: drei gestapelte Dreiecke
+		for i in 3:
+			var w := (15.0 - i * 3.5) * s
+			var bottom := (-8.0 - i * 9.0) * s
+			var tip := bottom - 17.0 * s
+			var color := green.darkened(0.15).lightened(i * 0.07)
+			draw_colored_polygon(PackedVector2Array([
+				base + Vector2(-w, bottom), base + Vector2(w, bottom), base + Vector2(0, tip),
+			]), color)
+	else:
+		# Laubbaum: mehrere Kreise als Krone
+		draw_circle(base + Vector2(-7, -19) * s, 9 * s, green.darkened(0.1))
+		draw_circle(base + Vector2(7, -20) * s, 9 * s, green.darkened(0.1))
+		draw_circle(base + Vector2(0, -27) * s, 12 * s, green)
+		draw_circle(base + Vector2(-4, -31) * s, 6 * s, green.lightened(0.15))
+
+
+func _draw_rocks(rng: RandomNumberGenerator, color: Color, with_ore: bool) -> void:
+	var rocks: Array[Vector3] = []  # x, y = Position, z = Radius
+	for i in rng.randi_range(2, 3):
+		rocks.append(Vector3(rng.randf_range(-12, 12), rng.randf_range(-5, 5), rng.randf_range(9, 15)))
+	rocks.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.y < b.y)
+
+	for rock in rocks:
+		var c := Vector2(rock.x, rock.y)
+		var r := rock.z
+		_draw_shadow(c + Vector2(3, 1), r)
+		var points := PackedVector2Array()
+		var corners := 7
+		for k in corners:
+			var angle := TAU * k / corners + rng.randf_range(-0.25, 0.25)
+			var radius := r * rng.randf_range(0.8, 1.1)
+			points.append(c + Vector2(cos(angle) * radius, sin(angle) * radius * 0.75 - r * 0.55))
+		var shade := rng.randf_range(-0.08, 0.08)
+		draw_colored_polygon(points, color.lightened(shade) if shade > 0 else color.darkened(-shade))
+		draw_circle(c + Vector2(-r * 0.3, -r * 0.95), r * 0.35, color.lightened(0.25))
+		if with_ore:
+			for k in 3:
+				var spot := c + Vector2(rng.randf_range(-r, r) * 0.55, -r * 0.55 + rng.randf_range(-r, r) * 0.35)
+				draw_circle(spot, rng.randf_range(1.5, 2.8), ORE_COLOR)
+
+
+func _draw_shadow(center: Vector2, radius: float) -> void:
+	draw_set_transform(center, 0.0, Vector2(1.0, 0.5))
+	draw_circle(Vector2.ZERO, radius, SHADOW_COLOR)
+	draw_set_transform(Vector2.ZERO)

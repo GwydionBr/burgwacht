@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://src/view/terrain_renderer.gd" id="2_terrain"]
+[ext_resource type="Script" path="res://src/view/tile_highlight.gd" id="3_highlight"]
+[ext_resource type="Script" path="res://src/view/camera_controller.gd" id="4_camera"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="5_hud"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Terrain" type="Node2D" parent="."]
+script = ExtResource("2_terrain")
+
+[node name="Objects" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Highlight" type="Node2D" parent="."]
+visible = false
+z_index = 10
+script = ExtResource("3_highlight")
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("4_camera")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("5_hud")
