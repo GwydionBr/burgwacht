@@ -41,3 +41,17 @@ Spielmodus: freies Spiel mit Angriffswellen, mittlere Wirtschaft (Holz, Stein, E
 6. Verteidigung: Mauern, Türme, Tore, Kaserne, Bogenschützen, Soldaten
 7. Angriffswellen: Feinde laufen zur Burg, greifen Mauern an, werden stärker
 8. Feinschliff: Speichern/Laden, Menüs, Sound, bessere Grafik, macOS-Export (.app)
+
+## Agent skills
+
+### Issue tracker
+
+Issues liegen in GitHub Issues (`GwydionBr/burgwacht`), Zugriff über die `gh`-CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Standard-Labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: ein `CONTEXT.md` und `docs/adr/` im Repo-Root. See `docs/agents/domain.md`.
