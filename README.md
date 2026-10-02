@@ -23,4 +23,4 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 
 ## Entwicklung
 
-Tests: `tools/test.sh` · Aufbau und Fahrplan: siehe `CLAUDE.md`.
+Tests: `tools/test.sh` · Aufbau: `docs/architecture.md` · Fahrplan: `docs/roadmap.md`.
