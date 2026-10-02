@@ -1,13 +1,13 @@
 class_name MapData
 extends RefCounted
-## Der Spielzustand der Karte: Gelände pro Kachel und Rohstoffvorkommen.
+## Der Spielzustand der Karte: Gelände pro Kachel und Vorkommen.
 ## Enthält bewusst keine Darstellung – die Views lesen nur daraus.
 
-signal resource_removed(tile: Vector2i)
+signal deposit_removed(tile: Vector2i)
 
 var width: int
 var height: int
-var resources: Dictionary[Vector2i, ResourceNode] = {}
+var deposits: Dictionary[Vector2i, Deposit] = {}
 
 var _terrain := PackedStringArray()
 
@@ -36,17 +36,17 @@ func set_terrain(tile: Vector2i, terrain_id: String) -> void:
 	_terrain[tile.y * width + tile.x] = terrain_id
 
 
-func get_resource(tile: Vector2i) -> ResourceNode:
-	return resources.get(tile)
+func get_deposit(tile: Vector2i) -> Deposit:
+	return deposits.get(tile)
 
 
-func add_resource(tile: Vector2i, node: ResourceNode) -> void:
-	resources[tile] = node
+func add_deposit(tile: Vector2i, deposit: Deposit) -> void:
+	deposits[tile] = deposit
 
 
-func remove_resource(tile: Vector2i) -> void:
-	if resources.erase(tile):
-		resource_removed.emit(tile)
+func remove_deposit(tile: Vector2i) -> void:
+	if deposits.erase(tile):
+		deposit_removed.emit(tile)
 
 
 func is_walkable(tile: Vector2i) -> bool:
@@ -54,7 +54,7 @@ func is_walkable(tile: Vector2i) -> bool:
 
 
 func is_buildable(tile: Vector2i) -> bool:
-	return in_bounds(tile) and _terrain_def(tile)["buildable"] and not resources.has(tile)
+	return in_bounds(tile) and _terrain_def(tile)["buildable"] and not deposits.has(tile)
 
 
 func _terrain_def(tile: Vector2i) -> Dictionary:
