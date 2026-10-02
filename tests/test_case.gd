@@ -56,6 +56,16 @@ func found_castle(world: GameWorld) -> GameWorld:
 	return world
 
 
+## Ursprung des Gebäudes dieses Typs, das bei einer Gründung mit dem Bergfried bei
+## keep_origin entsteht (aus GameWorld.founding_buildings()).
+func founding_origin(world: GameWorld, type_id: String, keep_origin: Vector2i) -> Vector2i:
+	for part in world.founding_buildings(keep_origin):
+		if part[0] == type_id:
+			return part[1]
+	assert(false, "„%s“ entsteht nicht bei der Gründung" % type_id)
+	return GameWorld.NO_SITE
+
+
 ## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf –
 ## bzw. an dem build_error() genau reason liefert; sonst GameWorld.NO_SITE.
 func find_site(world: GameWorld, type_id: String, reason := "") -> Vector2i:
@@ -104,12 +114,15 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	var buildings: Array[Array] = []
 	for building in world.get_buildings():
 		buildings.append([building.id, building.type, building.origin, building.contents])
+	var residents: Array[Dictionary] = []
+	for resident in world.get_residents():
+		residents.append(resident.to_data())
 	var stock: Dictionary[String, int] = {}
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
 	return {
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
-		"founding": world.is_founding(), "buildings": buildings, "stock": stock,
+		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
 	}
 
 
