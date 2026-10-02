@@ -145,8 +145,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F9:
 			_quick_load()
 		KEY_ESCAPE:
-			_hud.close_administration()
-			_select_build("")
+			# Ist die Verwaltung offen, schließt Esc nur sie.
+			if _hud.is_administration_open():
+				_hud.close_administration()
+			else:
+				_select_build("")
 		KEY_V:
 			_hud.toggle_administration()
 		KEY_MINUS, KEY_KP_SUBTRACT:
@@ -445,14 +448,8 @@ func _step_ration(delta: int) -> void:
 func _update_popularity() -> void:
 	var total := world.get_factor_sum()
 	_hud.show_popularity(world.get_popularity(), total)
-	var rations := Population.ration_ids()
-	var eaten := world.get_eaten_ration()
-	var lowered := rations.find(eaten) < rations.find(world.get_ration())
-	var factors: Array[Array] = []
-	for factor in world.get_factors():
-		factors.append([factor.name(), factor.value])
-	_hud.show_administration(Population.ration_name(world.get_ration()),
-			Population.ration_name(eaten) if lowered else "", factors, total)
+	var eaten := Population.ration_name(world.get_eaten_ration()) if world.is_short_of_food() else ""
+	_hud.show_administration(Population.ration_name(world.get_ration()), eaten, world.get_factors(), total)
 
 
 func _update_hover() -> void:

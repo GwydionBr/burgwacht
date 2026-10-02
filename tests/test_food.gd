@@ -273,3 +273,35 @@ func test_save_and_load_keeps_popularity_ration_and_factors() -> void:
 		_next_day(world)
 		_next_day(loaded)
 	assert_eq(loaded.to_data(), world.to_data(), "Daten nach weiteren 3 Tagen:")
+
+
+func test_shortage_is_reported_for_last_day() -> void:
+	var world := _founded()
+	_set_food(world, 3, 0)
+	_next_day(world)
+	assert_true(world.is_short_of_food(), "Mangel am letzten Tag")
+	world.execute(Command.set_ration("half"))
+	assert_true(world.is_short_of_food(), "Mangel bleibt bis zum nächsten Tag")
+
+
+func test_raising_ration_after_full_day_is_no_shortage() -> void:
+	var world := _founded()
+	_set_food(world, 20, 0)
+	_next_day(world)
+	world.execute(Command.set_ration("double"))
+	assert_true(not world.is_short_of_food(), "Kein Mangel, nur höher eingestellt")
+
+
+func test_shortage_preview_before_first_day() -> void:
+	var world := _founded()
+	assert_true(world.is_short_of_food(), "Ohne Nahrung droht Mangel")
+	_set_food(world, 20, 0)
+	assert_true(not world.is_short_of_food(), "Genug Nahrung")
+
+
+func test_save_and_load_keeps_shortage() -> void:
+	var world := _founded()
+	_set_food(world, 3, 0)
+	_next_day(world)
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	assert_true(loaded.is_short_of_food(), "Mangel nach dem Laden")

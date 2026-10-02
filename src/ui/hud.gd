@@ -20,6 +20,7 @@ const BLOCKED_COLOR := Color("#ff8a70")
 const MESSAGE_SECONDS := 3.0
 ## Abstand des Bauhinweises und der Meldungen vom oberen Rand, unterhalb der Titelleiste.
 const BUILD_HINT_TOP := 64
+## Steigende Beliebtheit (fallende in BLOCKED_COLOR).
 const UP_COLOR := Color("#9fd88a")
 
 var _info_label: Label
@@ -190,14 +191,14 @@ func is_administration_open() -> bool:
 
 
 ## Inhalt der Verwaltung: eingestellte Ration, die tatsächlich gegessene (leer = dieselbe)
-## und die Faktoren als Paare [Name, Wert] samt Summe.
-func show_administration(ration: String, eaten_ration: String, factors: Array[Array], total: int) -> void:
+## und die Faktoren samt Summe.
+func show_administration(ration: String, eaten_ration: String, factors: Array[Factor], total: int) -> void:
 	_ration_label.text = ration
 	_eaten_label.text = "Zu wenig Nahrung – gegessen wird: %s" % eaten_ration
 	_eaten_label.visible = eaten_ration != ""
 	var lines: PackedStringArray = []
 	for factor in factors:
-		lines.append("%s\t%s" % [factor[0], _signed(int(factor[1]))])
+		lines.append("%s\t%s" % [factor.name(), _signed(factor.value)])
 	_factors_label.text = "\n".join(lines)
 	_factor_sum_label.text = "→ %s pro Tag" % _signed(total)
 	_admin_panel.reset_size()

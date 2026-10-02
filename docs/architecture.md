@@ -10,7 +10,7 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `map_data.gd` – Karte: Gelände pro Kachel, Vorkommen; meldet Änderungen per Signal
   - `map_generator.gd` – erzeugt Karten deterministisch aus einem Seed
   - `scenario.gd` – lädt und prüft ein Szenario aus `data/scenarios/<id>.json` (Fehler als deutscher Text in `error`)
-  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator, Gebäude, Lager und Bewohner; entsteht nur aus einem Szenario. Befehle über `execute()`, rein lesende Abfragen `placement_error()`/`founding_error()`/`build_error()`/`demolish_error()` (gemeinsam für Vorschau und Befehl), `founding_buildings()` für die Gründungsvorschau, `buildable_types()` für die Bauleiste, `is_walkable()` für Bewohner, `get_housing()` für den Wohnraum, `get_popularity()`/`get_ration()`/`get_eaten_ration()`/`get_factors()`/`get_factor_sum()` für Beliebtheit und Verwaltung. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus, nicht aber in Grundflächen und vor Eingänge. `to_data()`/`from_data()` für den Spielstand
+  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator, Gebäude, Lager und Bewohner; entsteht nur aus einem Szenario. Befehle über `execute()`, rein lesende Abfragen `placement_error()`/`founding_error()`/`build_error()`/`demolish_error()` (gemeinsam für Vorschau und Befehl), `founding_buildings()` für die Gründungsvorschau, `buildable_types()` für die Bauleiste, `is_walkable()` für Bewohner, `get_housing()` für den Wohnraum, `get_popularity()`/`get_ration()`/`get_eaten_ration()`/`get_factors()`/`get_factor_sum()`/`is_short_of_food()` für Beliebtheit und Verwaltung. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus, nicht aber in Grundflächen und vor Eingänge. `to_data()`/`from_data()` für den Spielstand
   - `command.gd` – ein Befehl (Gründen, Bauen, Abreißen, Ration setzen) für `GameWorld.execute()`
   - `population.gd` – Regelwerte der Bevölkerung aus `population.json` (Rationsstufen mit Verbrauch und Faktor, Vielfalt, Namen der Faktoren, Voreinstellung)
   - `factor.gd` – ein Faktor der Beliebtheit (ID und Wert, Name aus den Daten)
@@ -48,7 +48,7 @@ Siehe `docs/adr/0001` bis `0004`. Kurz:
 
 ## Spielstand
 
-`GameWorld.to_data()` liefert den ganzen Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte, Formatversion `SAVE_VERSION`), `GameWorld.from_data()` stellt daraus eine Spielwelt her; `GameWorld.data_error()` nennt auf Deutsch, warum Daten nicht passen (z. B. unbekannte Version). Jede Zustandsklasse hat ein eigenes `to_data()`/`from_data()` (`MapData`, `Deposit`, `Building`, `Resident`), die Spielwelt setzt sie zusammen. Gespeichert wird mit `FileAccess.store_var` (verlustfrei für 64-Bit-Zahlen wie den Zustand des Zufallsgenerators; JSON wäre es nicht).
+`GameWorld.to_data()` liefert den ganzen Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte, Formatversion `SAVE_VERSION`), `GameWorld.from_data()` stellt daraus eine Spielwelt her; `GameWorld.data_error()` nennt auf Deutsch, warum Daten nicht passen (z. B. unbekannte Version). Jede Zustandsklasse hat ein eigenes `to_data()`/`from_data()` (`MapData`, `Deposit`, `Building`, `Resident`, `Factor`), die Spielwelt setzt sie zusammen. Gespeichert wird mit `FileAccess.store_var` (verlustfrei für 64-Bit-Zahlen wie den Zustand des Zufallsgenerators; JSON wäre es nicht).
 
 Neues Zustandsstück:
 

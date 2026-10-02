@@ -80,6 +80,8 @@ var _popularity := Scenario.DEFAULT_POPULARITY
 var _ration := ""
 ## Die am letzten Tag tatsächlich gegessene Ration; leer vor dem ersten Tag.
 var _eaten_ration := ""
+## War sie am letzten Tag wegen Mangels kleiner als die damals eingestellte?
+var _short_of_food := false
 ## Die Faktoren des letzten Tags; leer vor dem ersten Tag.
 var _factors: Array[Factor] = []
 
@@ -128,6 +130,7 @@ func to_data() -> Dictionary:
 		"popularity": _popularity,
 		"ration": _ration,
 		"eaten_ration": _eaten_ration,
+		"short_of_food": _short_of_food,
 		"factors": _factors.map(func(factor: Factor) -> Dictionary: return factor.to_data()),
 	}
 
@@ -171,6 +174,7 @@ static func from_data(data: Dictionary) -> GameWorld:
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._eaten_ration = str(data["eaten_ration"])
+	world._short_of_food = bool(data["short_of_food"])
 	for entry: Dictionary in data["factors"]:
 		world._factors.append(Factor.from_data(entry))
 	world._rebuild_index()
@@ -478,6 +482,14 @@ func get_eaten_ration() -> String:
 	return _eaten_ration if _eaten_ration != "" else _plan_meal().ration
 
 
+## Wurde am letzten Tag wegen Mangels weniger gegessen als eingestellt? Vor dem ersten Tag
+## die Vorschau: Reicht der Vorrat nicht für die eingestellte Ration?
+func is_short_of_food() -> bool:
+	if _eaten_ration != "":
+		return _short_of_food
+	return _is_lower_ration(_plan_meal().ration, _ration)
+
+
 ## Die Faktoren der Beliebtheit (Ration, Vielfalt) des letzten Tags; vor dem ersten Tag eine
 ## Vorschau aus Einstellung und Vorrat.
 func get_factors() -> Array[Factor]:
@@ -528,8 +540,8 @@ func _start_day() -> void:
 		_take_goods(good, meal.amounts[good], changed)
 	_emit_stock_changed(changed)
 	_eaten_ration = meal.ration
-	var rations := Population.ration_ids()
-	if rations.find(meal.ration) < rations.find(_ration):
+	_short_of_food = _is_lower_ration(meal.ration, _ration)
+	if _short_of_food:
 		notice.emit("Nicht genug Nahrung – Ration: %s" % Population.ration_name(meal.ration))
 	_factors = _factors_of(meal)
 	factors_changed.emit()
@@ -567,6 +579,11 @@ func _plan_meal() -> Meal:
 				meal.amounts[good] = meal.amounts.get(good, 0) + 1
 				need -= 1
 	return meal
+
+
+static func _is_lower_ration(ration_id: String, than: String) -> bool:
+	var rations := Population.ration_ids()
+	return rations.find(ration_id) < rations.find(than)
 
 
 ## Die Faktoren, die aus einer Mahlzeit folgen: Ration (tatsächliche) und Vielfalt (Zahl der

@@ -135,6 +135,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
 		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
+		"short_of_food": world.is_short_of_food(),
 		"factors": factors,
 	}
 
