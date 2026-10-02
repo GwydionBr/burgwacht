@@ -12,6 +12,8 @@ extends RefCounted
 ## In jedem Takt bekommen Arbeitsstätten mit freien Stellen Untätige zugeteilt, dann laufen
 ## und arbeiten die Bewohner in ID-Reihenfolge einen Takt weiter: Arbeiter eines Sammlers
 ## bauen Vorkommen ab, verarbeiten die Ware in der Arbeitsstätte und tragen sie ins Lager.
+## Ändert sich die Burg unter ihnen (Bau, Abriss, neue oder verschwundene Vorkommen),
+## weichen sie aus bzw. planen neu.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -342,6 +344,8 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 	var deposit_name := Deposit.name_of(workplace.deposit_type()) if workplace.deposit_type() != "" else ""
 	var carried := "%d %s" % [resident.carried_amount, _good_name(resident.carried_good)] \
 			if resident.carried_amount > 0 else ""
+	if resident.is_blocked():
+		return "wartet: Weg versperrt"
 	match resident.task:
 		Resident.Task.TO_DEPOSIT:
 			return "geht zum %s" % deposit_name
@@ -522,8 +526,15 @@ func _assign_workers() -> void:
 func _update_residents() -> void:
 	for resident: Resident in _residents.values():
 		var before := _visible_state(resident)
+		if resident.is_targeting_deposit(resident.deposit_tile) \
+				and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
+			# Das angesteuerte Vorkommen ist weg (erschöpft, ersetzt): gleich ein neues suchen.
+			_seek_deposit(resident, get_building(resident.workplace_id))
+		if resident.is_moving() and not _is_walkable_position(resident.path[0]):
+			_reroute(resident)
 		if resident.is_moving():
-			if resident.advance():
+			# Wer nach versperrtem Weg auf einen neuen Versuch wartet, kommt nirgends an.
+			if resident.advance() and resident.timer == 0:
 				_arrive(resident)
 		else:
 			_work(resident)
@@ -567,16 +578,42 @@ func _work(resident: Resident) -> void:
 	var workplace := get_building(resident.workplace_id)
 	match resident.task:
 		Resident.Task.MINING:
-			if not _has_deposit_for(resident.deposit_tile, workplace):
-				_seek_deposit(resident, workplace)
-				return
+			# Ist das Vorkommen weg, hat _update_residents() schon ein neues gesucht.
 			resident.carried_good = map.get_deposit(resident.deposit_tile).good()
 			resident.carried_amount = map.take_from_deposit(resident.deposit_tile, workplace.carry_load())
 			_go(resident, workplace.entrance(), Resident.Task.RETURNING)
-		Resident.Task.PROCESSING, Resident.Task.WAITING_FOR_STORAGE:
+		Resident.Task.PROCESSING:
 			_seek_storage(resident, workplace)
-		Resident.Task.WAITING_FOR_DEPOSIT:
+		_:
+			_resume(resident)
+
+
+## Nimmt den Arbeitsschritt wieder auf – nach der Wartezeit oder wenn der Weg versperrt und
+## das Ziel nicht mehr erreichbar ist: Untätige gehen zum Lagerfeuer, Arbeiter suchen ihr
+## Vorkommen bzw. Lager neu oder gehen (wieder) zur Arbeitsstätte. Ist auch das nicht
+## erreichbar, greift die jeweilige Warteregel.
+func _resume(resident: Resident) -> void:
+	var workplace := get_building(resident.workplace_id)
+	if workplace == null:
+		_send_to_campfire(resident)
+		return
+	match resident.task:
+		Resident.Task.TO_DEPOSIT, Resident.Task.WAITING_FOR_DEPOSIT:
 			_seek_deposit(resident, workplace)
+		Resident.Task.TO_STORAGE, Resident.Task.WAITING_FOR_STORAGE:
+			_seek_storage(resident, workplace)
+		_:
+			_go(resident, workplace.entrance(), resident.task)
+
+
+## Der Weg ist versperrt (Gebäude, Vorkommen): neuer Weg zum selben Ziel; gibt es keinen,
+## nimmt er den Arbeitsschritt neu auf (_resume()). Ist schon die Kachel versperrt, auf die
+## er gerade tritt, kehrt er auf seine zurück.
+func _reroute(resident: Resident) -> void:
+	if not _is_walkable_position(resident.path[0]):
+		resident.step_progress = 0
+	if not _route_to(resident, resident.path.back()):
+		_resume(resident)
 
 
 ## Liegt auf der Kachel (noch) ein Vorkommen, das die Arbeitsstätte abbaut? Ein geteilter
@@ -587,11 +624,15 @@ func _has_deposit_for(tile: Vector2i, workplace: Building) -> bool:
 
 
 ## Schickt einen Arbeiter mit diesem Auftrag zu tile. Steht er schon dort, kommt er sofort
-## an; gibt es keinen Weg, bleibt er stehen (versperrte Wege: Issue #30).
+## an; gibt es keinen Weg, bleibt er stehen und versucht es nach der Wartezeit erneut
+## (_work() → _resume()).
 func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
 	resident.task = task
 	resident.timer = 0
-	if _route_to(resident, Resident.ground(tile)) and not resident.is_moving():
+	if not _route_to(resident, Resident.ground(tile)):
+		resident.stop()
+		resident.timer = Resident.retry_ticks()
+	elif not resident.is_moving():
 		_arrive(resident)
 
 
@@ -757,8 +798,48 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	for good: String in cost:
 		_take_goods(good, int(cost[good]), changed)
 	_emit_stock_changed(changed)
-	_add_building(type_id, origin)
+	_make_way(_add_building(type_id, origin))
 	return ""
+
+
+## Bewohner auf der Grundfläche eines neuen Gebäudes weichen auf die nächste begehbare
+## Kachel aus; wer unterwegs ist und nun über die Grundfläche müsste, plant neu. Wer dort
+## abgebaut hat, sucht sein Vorkommen neu.
+func _make_way(building: Building) -> void:
+	for resident: Resident in _residents.values():
+		var before := _visible_state(resident)
+		if not is_walkable(resident.tile, resident.level):
+			resident.tile = _nearest_walkable(resident.tile)
+			resident.step_progress = 0
+			if resident.is_moving():
+				_reroute(resident)
+			elif resident.task == Resident.Task.MINING:
+				_seek_deposit(resident, get_building(resident.workplace_id))
+		elif resident.is_moving() and _crosses(resident, building):
+			_reroute(resident)
+		if _visible_state(resident) != before:
+			resident_changed.emit(resident.id)
+
+
+## Führt der restliche Weg des Bewohners über die Grundfläche des Gebäudes (außer dem Eingang)?
+func _crosses(resident: Resident, building: Building) -> bool:
+	for position in resident.path:
+		var tile := Vector2i(position.x, position.y)
+		if get_building_at(tile) == building and not is_walkable(tile, position.z as Resident.Level):
+			return true
+	return false
+
+
+## Die nächste begehbare Kachel am Boden: Suche nach außen, Reihenfolge wie am Lagerfeuer
+## (_offsets_within()); gibt es keine, die Kachel selbst.
+func _nearest_walkable(tile: Vector2i) -> Vector2i:
+	var radius := 2
+	while radius <= 2 * maxi(map.width, map.height):
+		for offset in _offsets_within(radius):
+			if is_walkable(tile + offset, Resident.Level.GROUND):
+				return tile + offset
+		radius *= 2
+	return tile
 
 
 func _demolish(id: int) -> String:
@@ -770,6 +851,13 @@ func _demolish(id: int) -> String:
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
+	# Wer Ware zu diesem Lager trägt, sucht gleich ein anderes.
+	for resident: Resident in _residents.values():
+		if resident.task == Resident.Task.TO_STORAGE and resident.storage_id == id:
+			var before := _visible_state(resident)
+			_seek_storage(resident, get_building(resident.workplace_id))
+			if _visible_state(resident) != before:
+				resident_changed.emit(resident.id)
 	# Die Arbeiter werden wieder Untätige und gehen zum Lagerfeuer.
 	for worker in get_workers(id):
 		worker.workplace_id = 0
@@ -950,7 +1038,8 @@ func _set_map(new_map: MapData) -> void:
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume) breiten sich in ihrem Rhythmus aus:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
-## angegebenen Chance ein neues. Grundflächen und Kacheln vor Eingängen bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
+## angegebenen Chance ein neues. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
+## ein Bewohner steht, bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
 	var types: Array[String] = []
@@ -967,6 +1056,9 @@ func _spread_deposits() -> void:
 
 @warning_ignore("integer_division")
 func _spread_type(type: String, chance: float) -> void:
+	var standing: Dictionary[Vector2i, bool] = {}
+	for resident: Resident in _residents.values():
+		standing[resident.tile] = true
 	# Kacheln neben einem Vorkommen dieses Typs markieren, dann zeilenweise würfeln.
 	var near_mask := PackedByteArray()
 	near_mask.resize(map.width * map.height)
@@ -981,5 +1073,5 @@ func _spread_type(type: String, chance: float) -> void:
 			continue
 		var tile := Vector2i(i % map.width, i / map.width)
 		if map.is_buildable(tile) and not _occupied.has(tile) and not _entrance_fronts.has(tile) \
-				and _rng.randf() < chance:
+				and _rng.randf() < chance and not standing.has(tile):
 			map.add_deposit(tile, Deposit.create(type, _rng))
