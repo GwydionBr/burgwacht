@@ -14,3 +14,17 @@ static func create(type_id: String, rng: RandomNumberGenerator) -> Deposit:
 	deposit.amount = int(GameDefs.get_instance().deposits[type_id]["amount"])
 	deposit.variant = rng.randi()
 	return deposit
+
+
+## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
+func to_data() -> Dictionary:
+	return {"type": type, "amount": amount, "variant": variant}
+
+
+## Gegenstück zu to_data().
+static func from_data(data: Dictionary) -> Deposit:
+	var deposit := Deposit.new()
+	deposit.type = str(data["type"])
+	deposit.amount = int(data["amount"])
+	deposit.variant = int(data["variant"])
+	return deposit

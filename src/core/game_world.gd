@@ -10,6 +10,8 @@ signal day_started(day: int)
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
+## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
+const SAVE_VERSION := 1
 
 var map: MapData
 
@@ -26,11 +28,48 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	var world := GameWorld.new()
 	world._scenario_id = scenario.id
 	world._seed = world_seed
-	world.map = MapGenerator.generate(world_seed, scenario.map_size.x, scenario.map_size.y)
-	world.map.deposit_added.connect(world.deposit_added.emit)
-	world.map.deposit_removed.connect(world.deposit_removed.emit)
+	world._set_map(MapGenerator.generate(world_seed, scenario.map_size.x, scenario.map_size.y))
 	# Eigener Zufall, getrennt von dem der Kartenerzeugung.
 	world._rng.seed = hash([world_seed, "world"])
+	return world
+
+
+## Der gesamte Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte) – ohne
+## Darstellung. from_data() stellt daraus eine Spielwelt her, die genauso weiterläuft.
+func to_data() -> Dictionary:
+	return {
+		"version": SAVE_VERSION,
+		"scenario": _scenario_id,
+		"seed": _seed,
+		"tick": _tick,
+		"rng": {"seed": _rng.seed, "state": _rng.state},
+		"map": map.to_data(),
+	}
+
+
+## Leer, wenn die Formatversion passt, sonst der Grund auf Deutsch.
+## Prüft nur die Version – die Daten selbst stammen aus to_data().
+static func data_error(data: Dictionary) -> String:
+	if not data.has("version"):
+		return "Das ist kein Spielstand (Formatversion fehlt)."
+	if data["version"] != SAVE_VERSION:
+		return "Spielstand hat Formatversion %s, unterstützt wird nur %d." % [str(data["version"]), SAVE_VERSION]
+	return ""
+
+
+## Spielwelt aus den Daten von to_data(); null, wenn data_error() etwas meldet.
+static func from_data(data: Dictionary) -> GameWorld:
+	if data_error(data) != "":
+		return null
+	var world := GameWorld.new()
+	world._scenario_id = str(data["scenario"])
+	world._seed = int(data["seed"])
+	world._tick = int(data["tick"])
+	var rng_data: Dictionary = data["rng"]
+	# Erst der Seed (setzt den Zustand zurück), dann der gespeicherte Zustand.
+	world._rng.seed = int(rng_data["seed"])
+	world._rng.state = int(rng_data["state"])
+	world._set_map(MapData.from_data(data["map"]))
 	return world
 
 
@@ -58,6 +97,12 @@ func get_tick() -> int:
 @warning_ignore("integer_division")
 func get_day() -> int:
 	return _tick / TICKS_PER_DAY + 1
+
+
+func _set_map(new_map: MapData) -> void:
+	map = new_map
+	map.deposit_added.connect(deposit_added.emit)
+	map.deposit_removed.connect(deposit_removed.emit)
 
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume) breiten sich in ihrem Rhythmus aus:

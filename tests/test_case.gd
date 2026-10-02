@@ -32,6 +32,23 @@ func run_scenario_with_seed(scenario_id: String, ticks: int, world_seed: int) ->
 	return _run_world(GameWorld.create(_load_test_scenario(scenario_id), world_seed), ticks)
 
 
+## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten
+## (Vorkommen nach Kachel sortiert).
+func world_snapshot(world: GameWorld) -> Dictionary:
+	var map := world.map
+	var terrain: Array[String] = []
+	for y in map.height:
+		for x in map.width:
+			terrain.append(map.get_terrain(Vector2i(x, y)))
+	var deposits: Array[Array] = []
+	var tiles: Array[Vector2i] = map.deposits.keys()
+	tiles.sort()
+	for tile: Vector2i in tiles:
+		var deposit := map.deposits[tile]
+		deposits.append([tile, deposit.type, deposit.amount, deposit.variant])
+	return {"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits}
+
+
 func _load_test_scenario(scenario_id: String) -> Scenario:
 	var scenario := Scenario.load_named(scenario_id, TEST_SCENARIO_DIR)
 	assert(scenario.error == "", scenario.error)

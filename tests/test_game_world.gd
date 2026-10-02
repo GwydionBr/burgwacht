@@ -14,22 +14,6 @@ func _run(world: GameWorld, ticks: int) -> void:
 		world.step()
 
 
-## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten.
-func _snapshot(world: GameWorld) -> Dictionary:
-	var map := world.map
-	var terrain: Array[String] = []
-	for y in map.height:
-		for x in map.width:
-			terrain.append(map.get_terrain(Vector2i(x, y)))
-	var deposits: Array[Array] = []
-	var tiles := map.deposits.keys()
-	tiles.sort()
-	for tile: Vector2i in tiles:
-		var deposit := map.deposits[tile]
-		deposits.append([tile, deposit.type, deposit.amount, deposit.variant])
-	return {"tick": world.get_tick(), "terrain": terrain, "deposits": deposits}
-
-
 func test_new_world_starts_at_tick_zero_on_day_one() -> void:
 	var world := _make_world()
 	assert_eq(world.get_tick(), 0, "Takt:")
@@ -92,11 +76,11 @@ func test_same_scenario_and_seed_give_same_world_after_ticks() -> void:
 	var ticks := GameWorld.TICKS_PER_DAY * 3 + 17
 	var first := run_scenario_with_seed("tiny", ticks, 99)
 	var second := run_scenario_with_seed("tiny", ticks, 99)
-	assert_eq(_snapshot(first), _snapshot(second), "Spielwelt nach %d Takten:" % ticks)
+	assert_eq(world_snapshot(first), world_snapshot(second), "Spielwelt nach %d Takten:" % ticks)
 
 
 func test_different_seeds_give_different_worlds() -> void:
-	assert_true(_snapshot(_make_world_with_seed(1)) != _snapshot(_make_world_with_seed(2)), "Seeds 1 und 2 sollten verschiedene Karten ergeben")
+	assert_true(world_snapshot(_make_world_with_seed(1)) != world_snapshot(_make_world_with_seed(2)), "Seeds 1 und 2 sollten verschiedene Karten ergeben")
 
 
 func test_deposit_removed_is_reported_by_world() -> void:

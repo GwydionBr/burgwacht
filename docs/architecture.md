@@ -10,11 +10,11 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `map_data.gd` – Karte: Gelände pro Kachel, Vorkommen; meldet Änderungen per Signal
   - `map_generator.gd` – erzeugt Karten deterministisch aus einem Seed
   - `scenario.gd` – lädt und prüft ein Szenario aus `data/scenarios/<id>.json` (Fehler als deutscher Text in `error`)
-  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator; entsteht nur aus einem Szenario. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus
+  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator; entsteht nur aus einem Szenario. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus. `to_data()`/`from_data()` für den Spielstand
 - `src/view/` – zeichnet den Zustand (alles prozedural mit `_draw`, noch keine Bilddateien). Objekte liegen im y-sortierten `Objects`-Node.
 - `src/ui/` – Oberfläche (HUD), im Code aufgebaut.
 - `src/game_clock.gd` – treibt die Spielwelt an (Pause, 1×/2×/4×, begrenzte Takte pro Frame).
-- `src/main.gd` – erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe, Startparameter (`--scenario=`, `--seed=`, `--days=`). Keine Spiellogik.
+- `src/main.gd` – erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe, Startparameter (`--scenario=`, `--seed=`, `--days=`), Schnellspeichern F5 / Laden F9 (`user://quicksave.sav`). Keine Spiellogik.
 - `data/` – Spielinhalte als JSON; `data/scenarios/` die Szenarien (Standard: `free_play`).
 - `tests/` – eigener kleiner Testrunner; jede `test_*.gd` erweitert `TestCase`, Methoden mit `test_`-Präfix laufen automatisch.
 
@@ -28,6 +28,16 @@ Siehe `docs/adr/0001` bis `0004`. Kurz:
 - Spielereingaben gehen als **Befehle** hinein, Änderungen als Signale hinaus. `view/` und `ui/` ändern den Zustand nie direkt.
 - Der Zustand ist serialisierbar (Verweise über IDs). Jedes neue Zustandsstück bekommt einen Test „speichern → laden → gleicher Verlauf“.
 - Gebäude: Werte in `data/buildings.json`, Ablauf über ein Verhalten aus einer festen Menge im Code.
+
+## Spielstand
+
+`GameWorld.to_data()` liefert den ganzen Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte, Formatversion `SAVE_VERSION`), `GameWorld.from_data()` stellt daraus eine Spielwelt her; `GameWorld.data_error()` nennt auf Deutsch, warum Daten nicht passen (z. B. unbekannte Version). Jede Zustandsklasse hat ein eigenes `to_data()`/`from_data()` (`MapData`, `Deposit`), die Spielwelt setzt sie zusammen. Gespeichert wird mit `FileAccess.store_var` (verlustfrei für 64-Bit-Zahlen wie den Zustand des Zufallsgenerators; JSON wäre es nicht).
+
+Neues Zustandsstück:
+
+1. Feld in `to_data()` und `from_data()` der zuständigen Klasse aufnehmen; Verweise als IDs, keine Darstellung.
+2. Ist alter Spielstand damit nicht mehr ladbar, `SAVE_VERSION` erhöhen.
+3. In `tests/test_save_load.gd` prüfen: speichern → laden → gleicher Zustand und nach N weiteren Takten derselbe Verlauf; dafür das Stück in `world_snapshot()` (`tests/test_case.gd`) aufnehmen.
 
 ## Tests
 

@@ -59,5 +59,23 @@ func is_buildable(tile: Vector2i) -> bool:
 	return in_bounds(tile) and _terrain_def(tile)["buildable"] and not deposits.has(tile)
 
 
+## Als reine Daten für den Spielstand. Vorkommen als Liste in ihrer Reihenfolge,
+## damit nach dem Laden alles in derselben Reihenfolge durchlaufen wird.
+func to_data() -> Dictionary:
+	var deposit_list: Array[Dictionary] = []
+	for tile: Vector2i in deposits:
+		deposit_list.append({"x": tile.x, "y": tile.y, "deposit": deposits[tile].to_data()})
+	return {"width": width, "height": height, "terrain": _terrain.duplicate(), "deposits": deposit_list}
+
+
+## Gegenstück zu to_data(); meldet dabei keine Signale.
+static func from_data(data: Dictionary) -> MapData:
+	var map := MapData.new(int(data["width"]), int(data["height"]))
+	map._terrain = PackedStringArray(data["terrain"])
+	for entry: Dictionary in data["deposits"]:
+		map.deposits[Vector2i(int(entry["x"]), int(entry["y"]))] = Deposit.from_data(entry["deposit"])
+	return map
+
+
 func _terrain_def(tile: Vector2i) -> Dictionary:
 	return GameDefs.get_instance().terrain[get_terrain(tile)]
