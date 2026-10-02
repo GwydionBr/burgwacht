@@ -1,6 +1,7 @@
 extends TestCase
 ## Simulationstests: Gebäude abreißen, die Hälfte der Baukosten kommt zurück.
 ## Leere Karte (nur Wiese); Bergfried (ID 1) bei (2, 2), das erste Warenlager (ID 2) daneben,
+## davor das Lagerfeuer (ID 3),
 ## darin die Startwaren des Testszenarios (100 Holz, 50 Stein).
 
 const KEEP_ORIGIN := Vector2i(2, 2)
@@ -63,8 +64,8 @@ func test_refund_goes_to_storages_in_ascending_id() -> void:
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
 	assert_eq(world.execute(Command.demolish(quarry)), "", "Grund:")
 	assert_eq(world.get_building(2).contents["wood"], 150, "Ältestes Lager zuerst aufgefüllt:")
-	assert_eq(world.get_building(3).contents, {"wood": 6} as Dictionary[String, int], "Rest ins nächste Lager:")
-	assert_eq(changed, [2, 3] as Array[int], "Gemeldete Lager:")
+	assert_eq(world.get_building(4).contents, {"wood": 6} as Dictionary[String, int], "Rest ins nächste Lager:")
+	assert_eq(changed, [2, 4] as Array[int], "Gemeldete Lager:")
 
 
 func test_refund_that_does_not_fit_is_lost() -> void:
@@ -104,6 +105,15 @@ func test_keep_cannot_be_demolished() -> void:
 	var before := world.to_data()
 	assert_eq(world.demolish_error(1), "Der Bergfried kann nicht abgerissen werden.", "Abfrage:")
 	assert_eq(world.execute(Command.demolish(1)), "Der Bergfried kann nicht abgerissen werden.", "Befehl:")
+	assert_eq(world.to_data(), before, "Spielwelt unverändert:")
+
+
+func test_campfire_cannot_be_demolished() -> void:
+	var world := _founded_world()
+	var before := world.to_data()
+	assert_eq(world.get_building(3).type, "campfire", "Hilfsprüfung: ID 3 ist das Lagerfeuer")
+	assert_eq(world.demolish_error(3), "Das Lagerfeuer kann nicht abgerissen werden.", "Abfrage:")
+	assert_eq(world.execute(Command.demolish(3)), "Das Lagerfeuer kann nicht abgerissen werden.", "Befehl:")
 	assert_eq(world.to_data(), before, "Spielwelt unverändert:")
 
 

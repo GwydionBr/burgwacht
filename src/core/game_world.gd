@@ -1,12 +1,13 @@
 class_name GameWorld
 extends RefCounted
 ## Die Spielwelt: Wurzel des gesamten Spielzustands einer Partie.
-## Besitzt Karte, Gebäude, Lager, Taktzähler und den einzigen Zufallsgenerator der Simulation.
+## Besitzt Karte, Gebäude, Lager, Bewohner, Taktzähler und den einzigen Zufallsgenerator der Simulation.
 ## Schreitet nur über step() voran – wer wie oft step() aufruft, liegt außerhalb des Kerns.
 ## Spielereingaben kommen als Befehl über execute() hinein und wirken sofort, auch ohne Takt.
 ##
 ## Eine neue Spielwelt ist in Gründung: Es vergehen keine Takte und nur der Gründungsbefehl
-## ist erlaubt. Er setzt den Bergfried und das erste Warenlager mit den Startwaren.
+## ist erlaubt. Er setzt den Bergfried mit seinen Begleitgebäuden (erstes Warenlager mit den
+## Startwaren, Lagerfeuer mit den Startbewohnern als Untätige drumherum).
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -15,12 +16,13 @@ signal building_added(id: int)
 signal building_removed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
+signal resident_added(id: int)
 signal founded()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -37,6 +39,8 @@ var _rng := RandomNumberGenerator.new()
 var _founding := true
 ## Ware → Menge; kommt bei der Gründung ins erste Warenlager.
 var _start_goods: Dictionary[String, int] = {}
+## So viele Untätige entstehen bei der Gründung am Lagerfeuer.
+var _start_residents := 0
 ## Nach ID aufsteigend eingefügt, damit Durchläufe in fester Reihenfolge gehen (ADR 0001).
 var _buildings: Dictionary[int, Building] = {}
 var _next_building_id := 1
@@ -44,6 +48,9 @@ var _next_building_id := 1
 var _occupied: Dictionary[Vector2i, int] = {}
 ## Abgeleitet: Kacheln vor einem Eingang → Gebäude-ID.
 var _entrance_fronts: Dictionary[Vector2i, int] = {}
+## Nach ID aufsteigend eingefügt, wie die Gebäude.
+var _residents: Dictionary[int, Resident] = {}
+var _next_resident_id := 1
 
 
 ## Neue Partie aus einem gültigen Szenario. Der Seed kommt vom Aufrufer
@@ -54,6 +61,7 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._scenario_id = scenario.id
 	world._seed = world_seed
 	world._start_goods = scenario.start_goods.duplicate()
+	world._start_residents = scenario.start_residents
 	world._set_map(MapGenerator.generate(world_seed, scenario.map_size.x, scenario.map_size.y))
 	# Eigener Zufall, getrennt von dem der Kartenerzeugung.
 	world._rng.seed = hash([world_seed, "world"])
@@ -72,8 +80,11 @@ func to_data() -> Dictionary:
 		"map": map.to_data(),
 		"founding": _founding,
 		"start_goods": _start_goods.duplicate(),
+		"start_residents": _start_residents,
 		"next_building_id": _next_building_id,
 		"buildings": _buildings.values().map(func(building: Building) -> Dictionary: return building.to_data()),
+		"next_resident_id": _next_resident_id,
+		"residents": _residents.values().map(func(resident: Resident) -> Dictionary: return resident.to_data()),
 	}
 
 
@@ -104,10 +115,15 @@ static func from_data(data: Dictionary) -> GameWorld:
 	var start_goods: Dictionary = data["start_goods"]
 	for good: Variant in start_goods:
 		world._start_goods[str(good)] = int(start_goods[good])
+	world._start_residents = int(data["start_residents"])
 	world._next_building_id = int(data["next_building_id"])
 	for entry: Dictionary in data["buildings"]:
 		var building := Building.from_data(entry)
 		world._buildings[building.id] = building
+	world._next_resident_id = int(data["next_resident_id"])
+	for entry: Dictionary in data["residents"]:
+		var resident := Resident.from_data(entry)
+		world._residents[resident.id] = resident
 	world._rebuild_index()
 	return world
 
@@ -171,15 +187,16 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 
 
 ## Darf der Befehl „Gebäude abreißen“ das Gebäude mit dieser ID jetzt abreißen? Leer oder
-## der Grund. Der Bergfried nie, ein Lager nur, wenn es leer ist.
+## der Grund. Typen mit "demolish_forbidden" in den Daten (Bergfried, Lagerfeuer) nie, ein
+## Lager nur, wenn es leer ist.
 func demolish_error(id: int) -> String:
 	if _founding:
 		return FOUNDING_FIRST
 	var building := get_building(id)
 	if building == null:
 		return "Dieses Gebäude gibt es nicht"
-	if building.type == FOUNDING_TYPE:
-		return "Der Bergfried kann nicht abgerissen werden."
+	if building.def().has("demolish_forbidden"):
+		return str(building.def()["demolish_forbidden"])
 	if building.is_storage() and building.stored() > 0:
 		return "%s ist nicht leer" % _building_name(building.type)
 	return ""
@@ -202,35 +219,35 @@ static func buildable_types() -> Array[String]:
 
 
 ## Darf die Burg mit dem Bergfried an diesem Ursprung gegründet werden? Leer oder der
-## Grund. Prüft Bergfried und erstes Warenlager (founding_storage_origin()).
+## Grund. Prüft der Reihe nach alle Gebäude der Gründung (founding_buildings()); die
+## früheren gelten für die späteren als belegt, ebenso die Kacheln vor ihren Eingängen.
 func founding_error(origin: Vector2i) -> String:
 	if not _founding:
 		return "Die Burg ist bereits gegründet."
-	var keep_error := placement_error(FOUNDING_TYPE, origin)
-	if keep_error != "":
-		return keep_error
-	var keep_tiles: Dictionary[Vector2i, int] = {}
-	for tile in Building.footprint(FOUNDING_TYPE, origin):
-		keep_tiles[tile] = 0
-	var storage_type := founding_storage_type()
-	var storage_origin := founding_storage_origin(origin)
-	var storage_error := _placement_error(storage_type, storage_origin, keep_tiles)
-	if storage_error != "":
-		return "%s: %s" % [_building_name(storage_type), storage_error]
-	if Building.front_of_entrance(FOUNDING_TYPE, origin) in Building.footprint(storage_type, storage_origin):
-		return "Eingang ist versperrt"
+	var blocked: Dictionary[Vector2i, String] = {}
+	for part in founding_buildings(origin):
+		var type_id: String = part[0]
+		var part_origin: Vector2i = part[1]
+		var error := _placement_error(type_id, part_origin, blocked)
+		if error != "":
+			return error if type_id == FOUNDING_TYPE else "%s: %s" % [_building_name(type_id), error]
+		for tile in Building.footprint(type_id, part_origin):
+			blocked[tile] = "%s im Weg" % _building_name(type_id)
+		if Building.has_entrance_type(type_id):
+			blocked[Building.front_of_entrance(type_id, part_origin)] = "Eingang ist versperrt"
 	return ""
 
 
-## Gebäudetyp des ersten Lagers, das mit dem Bergfried entsteht.
-func founding_storage_type() -> String:
-	return str(_founding_storage_def()["type"])
-
-
-## Ursprung des ersten Lagers, wenn der Bergfried bei keep_origin steht.
-func founding_storage_origin(keep_origin: Vector2i) -> Vector2i:
-	var offset: Array = _founding_storage_def()["offset"]
-	return keep_origin + Vector2i(int(offset[0]), int(offset[1]))
+## Die Gebäude, die bei einer Gründung mit dem Bergfried bei keep_origin entstehen, als
+## Paare [Gebäudetyp, Ursprung]: zuerst der Bergfried, dann seine Begleitgebäude
+## ("companions" in den Daten, z. B. erstes Warenlager und Lagerfeuer) mit festem Versatz.
+func founding_buildings(keep_origin: Vector2i) -> Array[Array]:
+	var result: Array[Array] = [[FOUNDING_TYPE, keep_origin]]
+	var companions: Array = GameDefs.get_instance().buildings[FOUNDING_TYPE]["companions"]
+	for companion: Dictionary in companions:
+		var offset: Array = companion["offset"]
+		result.append([str(companion["type"]), keep_origin + Vector2i(int(offset[0]), int(offset[1]))])
+	return result
 
 
 ## Die passende Gründungsstelle, deren Bergfried der Kartenmitte am nächsten liegt;
@@ -268,6 +285,51 @@ func get_building(id: int) -> Building:
 ## Das Gebäude, dessen Grundfläche die Kachel belegt, sonst null.
 func get_building_at(tile: Vector2i) -> Building:
 	return _buildings.get(_occupied.get(tile, 0))
+
+
+## Alle Bewohner nach ID aufsteigend.
+func get_residents() -> Array[Resident]:
+	var result: Array[Resident] = []
+	result.assign(_residents.values())
+	return result
+
+
+## null, wenn es die ID nicht gibt.
+func get_resident(id: int) -> Resident:
+	return _residents.get(id)
+
+
+## Die Bewohner auf dieser Kachel (jede Ebene), nach ID aufsteigend.
+func get_residents_at(tile: Vector2i) -> Array[Resident]:
+	var result: Array[Resident] = []
+	for resident: Resident in _residents.values():
+		if resident.tile == tile:
+			result.append(resident)
+	return result
+
+
+## Wie viele Bewohner ohne Arbeitsstätte sind.
+func get_idle_count() -> int:
+	var count := 0
+	for resident: Resident in _residents.values():
+		if resident.is_idle():
+			count += 1
+	return count
+
+
+## Kann ein Bewohner auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
+## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
+## (Lagerfeuer).
+func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
+	if level != Resident.Level.GROUND or not map.is_walkable(tile):
+		return false
+	var deposit := map.get_deposit(tile)
+	if deposit != null and not deposit.is_walkable():
+		return false
+	var building := get_building_at(tile)
+	if building == null:
+		return true
+	return building.is_walkable() or (building.has_entrance() and building.entrance() == tile)
 
 
 ## Bestand einer Ware: Summe über alle Lager ihrer Lagerart.
@@ -316,17 +378,75 @@ func _found(origin: Vector2i) -> String:
 	var error := founding_error(origin)
 	if error != "":
 		return error
-	_add_building(FOUNDING_TYPE, origin)
-	var storage := _add_building(founding_storage_type(), founding_storage_origin(origin))
+	var storage: Building = null
+	var campfire: Building = null
+	for part in founding_buildings(origin):
+		var building := _add_building(part[0], part[1])
+		if storage == null and building.is_storage():
+			storage = building
+		if campfire == null and building.is_campfire():
+			campfire = building
 	# Was nicht ins erste Lager passt, verfällt.
 	for good: String in _start_goods:
 		var amount := mini(_start_goods[good], storage.capacity() - storage.stored())
 		if amount > 0:
 			storage.contents[good] = storage.contents.get(good, 0) + amount
 	stock_changed.emit(storage.id)
+	assert(campfire != null, "Unter den Begleitgebäuden des Bergfrieds fehlt das Lagerfeuer")
+	_add_start_residents(campfire)
 	_founding = false
 	founded.emit()
 	return ""
+
+
+## Die Startbewohner als Untätige auf freien, begehbaren Kacheln um das Lagerfeuer: nächste
+## Kacheln zuerst, bei gleichem Abstand im Uhrzeigersinn ab „oben“ (kleineres y). Passen
+## nicht alle auf die Karte, entstehen nur so viele, wie Platz haben.
+func _add_start_residents(campfire: Building) -> void:
+	var placed := 0
+	# Erst nahe Kacheln, bei Bedarf weiter hinaus (Radius verdoppeln, Reihenfolge wie
+	# vorher); schon Besetzte zählen dann als belegt.
+	var radius := 2
+	while placed < _start_residents and radius <= 2 * maxi(map.width, map.height):
+		for offset in _offsets_within(radius):
+			if placed == _start_residents:
+				break
+			var tile := campfire.origin + offset
+			# Nicht auf Eingänge oder das Lagerfeuer selbst, obwohl begehbar.
+			if is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
+					and get_residents_at(tile).is_empty():
+				_add_resident(tile, Resident.Level.GROUND)
+				placed += 1
+		radius *= 2
+
+
+## Alle Versätze bis zum Abstand radius (ohne (0, 0)): nächste zuerst, bei gleichem
+## Abstand im Uhrzeigersinn ab „oben“.
+static func _offsets_within(radius: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	for y in range(-radius, radius + 1):
+		for x in range(-radius, radius + 1):
+			var offset := Vector2i(x, y)
+			if offset != Vector2i.ZERO and offset.length_squared() <= radius * radius:
+				result.append(offset)
+	result.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := a.length_squared()
+		var db := b.length_squared()
+		return da < db if da != db else _clockwise_angle(a) < _clockwise_angle(b))
+	return result
+
+
+## Winkel einer Richtung im Uhrzeigersinn ab „oben“ (0, -1), von 0 bis unter TAU.
+static func _clockwise_angle(direction: Vector2i) -> float:
+	return fposmod(atan2(float(direction.y), float(direction.x)) + PI / 2.0, TAU)
+
+
+func _add_resident(tile: Vector2i, level: Resident.Level) -> Resident:
+	var resident := Resident.create(_next_resident_id, tile, level)
+	_next_resident_id += 1
+	_residents[resident.id] = resident
+	resident_added.emit(resident.id)
+	return resident
 
 
 func _build(type_id: String, origin: Vector2i) -> String:
@@ -421,11 +541,13 @@ func _rebuild_index() -> void:
 func _index_building(building: Building) -> void:
 	for tile in building.tiles():
 		_occupied[tile] = building.id
-	_entrance_fronts[building.entrance_front()] = building.id
+	if building.has_entrance():
+		_entrance_fronts[building.entrance_front()] = building.id
 
 
-## Wie placement_error(); extra_blocked sind zusätzlich belegte Kacheln (für die Gründung).
-func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictionary[Vector2i, int]) -> String:
+## Wie placement_error(); extra_blocked sind zusätzlich belegte Kacheln mit dem Grund,
+## falls die Grundfläche sie trifft (für die Gründung).
+func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictionary[Vector2i, String]) -> String:
 	var tiles := Building.footprint(type_id, origin)
 	for tile in tiles:
 		if not map.in_bounds(tile):
@@ -443,7 +565,9 @@ func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictiona
 		if _occupied.has(tile):
 			return "%s im Weg" % _building_name(_buildings[_occupied[tile]].type)
 		if extra_blocked.has(tile):
-			return "%s im Weg" % _building_name(FOUNDING_TYPE)
+			return extra_blocked[tile]
+	if not Building.has_entrance_type(type_id):
+		return ""
 	var front := Building.front_of_entrance(type_id, origin)
 	if not map.is_walkable(front) or map.get_deposit(front) != null \
 			or _occupied.has(front) or extra_blocked.has(front):
@@ -486,10 +610,6 @@ func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
 		return false
 	assert(false, "Unbekannte Bauregel „%s“ bei „%s“" % [kind, type_id])
 	return false
-
-
-func _founding_storage_def() -> Dictionary:
-	return GameDefs.get_instance().buildings[FOUNDING_TYPE]["first_storage"]
 
 
 func _building_name(type_id: String) -> String:

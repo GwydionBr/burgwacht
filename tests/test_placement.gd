@@ -39,7 +39,7 @@ func test_no_buildings_in_footprint() -> void:
 	var world := empty_world()
 	world.execute(Command.found(ORIGIN))
 	assert_eq(world.placement_error("warehouse", ORIGIN + Vector2i(2, 2)), "Bergfried im Weg", "Auf dem Bergfried:")
-	var storage_origin := world.founding_storage_origin(ORIGIN)
+	var storage_origin := founding_origin(world, "warehouse", ORIGIN)
 	assert_eq(world.placement_error("warehouse", storage_origin + Vector2i(1, 1)), "Warenlager im Weg", "Auf dem Warenlager:")
 
 
@@ -87,7 +87,7 @@ func test_rules_are_checked_in_fixed_order() -> void:
 
 func test_founding_checks_first_warehouse_too() -> void:
 	var world := empty_world()
-	var storage_origin := world.founding_storage_origin(ORIGIN)
+	var storage_origin := founding_origin(world, "warehouse", ORIGIN)
 	world.map.add_deposit(storage_origin + Vector2i(1, 1), _tree())
 	assert_eq(world.founding_error(ORIGIN), "Warenlager: Baum im Weg", "Baum im Warenlager:")
 	world.map.remove_deposit(storage_origin + Vector2i(1, 1))
@@ -101,3 +101,14 @@ func test_rejected_founding_command_gives_same_reason() -> void:
 	assert_eq(world.execute(Command.found(ORIGIN)), "Baum im Weg", "Grund des Befehls:")
 	assert_true(world.is_founding(), "Weiter in Gründung")
 	assert_eq(world.get_building_at(ORIGIN + Vector2i(1, 1)), null, "Kein Bergfried:")
+
+
+func test_founding_checks_campfire_too() -> void:
+	var world := empty_world()
+	var campfire := founding_origin(world, "campfire", ORIGIN)
+	world.map.add_deposit(campfire, _tree())
+	assert_eq(world.founding_error(ORIGIN), "Lagerfeuer: Baum im Weg", "Baum auf dem Lagerfeuer:")
+	world.map.remove_deposit(campfire)
+	world.map.set_terrain(campfire, "sand")
+	assert_eq(world.founding_error(ORIGIN), "Lagerfeuer: Ufer ist nicht bebaubar", "Ufer unter dem Lagerfeuer:")
+	assert_eq(world.founding_error(Vector2i(2, world.map.height - 6)), "Lagerfeuer: Außerhalb der Karte", "Lagerfeuer am Kartenrand:")

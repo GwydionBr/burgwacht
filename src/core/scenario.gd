@@ -2,7 +2,8 @@ class_name Scenario
 extends RefCounted
 ## Ein Szenario: die Datenbeschreibung, aus der eine Partie startet (res://data/scenarios/<id>.json).
 ## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
-## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Warenlager).
+## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Warenlager)
+## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -18,6 +19,8 @@ var random_seed: bool
 var fixed_seed: int
 ## Ware → Menge, in der Reihenfolge der Datei.
 var start_goods: Dictionary[String, int] = {}
+## Bewohner, die bei der Gründung als Untätige am Lagerfeuer entstehen.
+var start_residents := 0
 var error := ""
 
 
@@ -63,6 +66,12 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		problems.append("„seed“ muss eine ganze Zahl oder \"%s\" sein" % RANDOM_SEED)
 
 	_read_start_goods(scenario, data.get("start_goods", {}), problems)
+
+	var residents_value: Variant = data.get("start_residents", 0)
+	if _is_whole_number(residents_value) and int(residents_value) >= 0:
+		scenario.start_residents = int(residents_value)
+	else:
+		problems.append("„start_residents“ muss eine ganze Zahl ab 0 sein")
 
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]

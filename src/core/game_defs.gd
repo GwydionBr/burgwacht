@@ -1,6 +1,6 @@
 class_name GameDefs
 extends RefCounted
-## Spielinhalte (Gelände, Vorkommen, Waren, Gebäude) aus den JSON-Dateien in res://data.
+## Spielinhalte (Gelände, Vorkommen, Waren, Gebäude, Einheiten) aus den JSON-Dateien in res://data.
 ## Neue Inhalte werden dort eingetragen, nicht im Code.
 
 const DATA_DIR := "res://data/"
@@ -11,6 +11,8 @@ var terrain: Dictionary = {}
 var deposits: Dictionary = {}
 var goods: Dictionary = {}
 var buildings: Dictionary = {}
+## Einheiten (bisher nur der Bewohner): Gehgeschwindigkeit, Wartezeit, Platzhalter-Farbe.
+var units: Dictionary = {}
 
 
 static func get_instance() -> GameDefs:
@@ -20,6 +22,7 @@ static func get_instance() -> GameDefs:
 		_instance.deposits = _load_json("deposits.json")
 		_instance.goods = _load_json("goods.json")
 		_instance.buildings = _load_json("buildings.json")
+		_instance.units = _load_json("units.json")
 	return _instance
 
 

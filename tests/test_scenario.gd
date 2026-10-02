@@ -107,3 +107,26 @@ func test_start_goods_must_be_object() -> void:
 	var data := _valid_data()
 	data["start_goods"] = [1, 2]
 	assert_true(_error_for(data).contains("start_goods"), "Fehler: " + _error_for(data))
+
+
+func test_free_play_starts_with_eight_residents() -> void:
+	assert_eq(Scenario.load_named(Scenario.DEFAULT).start_residents, 8, "Startbewohner:")
+
+
+func test_start_residents_are_read() -> void:
+	var data := _valid_data()
+	data["start_residents"] = 3.0
+	var scenario := Scenario.from_dict("test", data)
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.start_residents, 3, "Startbewohner:")
+
+
+func test_missing_start_residents_means_none() -> void:
+	assert_eq(Scenario.from_dict("test", _valid_data()).start_residents, 0, "Startbewohner:")
+
+
+func test_bad_start_residents_is_invalid() -> void:
+	for amount: Variant in [-1, 1.5, "8", null, true]:
+		var data := _valid_data()
+		data["start_residents"] = amount
+		assert_true(_error_for(data).contains("start_residents"), "Startbewohner %s: %s" % [str(amount), _error_for(data)])

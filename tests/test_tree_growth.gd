@@ -17,10 +17,10 @@ func _run_with_chance(world: GameWorld, ticks: int, chance: float) -> void:
 	spread["chance"] = old_chance
 
 
-## Tiny-Welt, aber leergeräumt (nur Wiese, keine Vorkommen), Burg unten links gegründet.
+## Tiny-Welt, aber leergeräumt (nur Wiese, keine Vorkommen), Burg links unten gegründet.
 func _empty_world() -> GameWorld:
 	var world := empty_world()
-	world.execute(Command.found(Vector2i(1, 10)))
+	world.execute(Command.found(Vector2i(1, 8)))
 	return world
 
 
@@ -111,7 +111,8 @@ func test_trees_do_not_grow_on_buildings_or_in_front_of_entrances() -> void:
 	var reserved: Array[Vector2i] = []
 	for building in world.get_buildings():
 		reserved.append_array(building.tiles())
-		reserved.append(building.entrance_front())
+		if building.has_entrance():
+			reserved.append(building.entrance_front())
 	# Bäume rundherum, damit jede Kachel einen Nachbarn hat, von dem aus sie wachsen könnte.
 	for y in world.map.height:
 		for x in world.map.width:

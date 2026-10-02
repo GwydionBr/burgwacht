@@ -41,7 +41,7 @@ Die Datenbeschreibung, aus der eine Partie startet: Karte, Startwaren, Startbewo
 _Avoid_: Level, Mission, Karte
 
 **Gründung**:
-Der Beginn einer Partie: Die Zeit steht still, bis der Spieler den Bergfried gesetzt hat; mit ihm entsteht das erste Warenlager mit den Startwaren.
+Der Beginn einer Partie: Die Zeit steht still, bis der Spieler den Bergfried gesetzt hat; mit ihm entstehen das erste Warenlager mit den Startwaren und das Lagerfeuer, an dem die Startbewohner als Untätige stehen.
 _Avoid_: Aufbauphase, Start
 
 **Tag**:

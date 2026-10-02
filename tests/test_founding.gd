@@ -13,12 +13,16 @@ func test_new_world_is_in_founding_and_time_stands_still() -> void:
 	assert_eq(days, [] as Array[int], "Gemeldete Tage während der Gründung:")
 
 
-## Bergfried bei (2, 2) auf leerer Karte; das erste Warenlager liegt laut Daten daneben.
+## Bergfried bei (2, 2) auf leerer Karte; erstes Warenlager und Lagerfeuer liegen laut Daten daneben.
 const ORIGIN := Vector2i(2, 2)
 
 
 func _storage_origin(world: GameWorld) -> Vector2i:
-	return world.founding_storage_origin(ORIGIN)
+	return founding_origin(world, "warehouse", ORIGIN)
+
+
+func _campfire_tile(world: GameWorld) -> Vector2i:
+	return founding_origin(world, "campfire", ORIGIN)
 
 
 func _building_ids(world: GameWorld) -> Array[int]:
@@ -37,8 +41,10 @@ func test_founding_works_immediately_without_step() -> void:
 	assert_eq(keep.type, "keep", "Gebäude auf der hinteren Ecke des Bergfrieds:")
 	assert_eq(keep.origin, ORIGIN, "Ursprung des Bergfrieds:")
 	assert_eq(storage.type, "warehouse", "Gebäude auf dem ersten Warenlager:")
+	var campfire := world.get_building_at(_campfire_tile(world))
+	assert_eq(campfire.type, "campfire", "Gebäude auf dem Lagerfeuer:")
 	assert_eq(world.get_building_at(ORIGIN + Vector2i(4, 0)), null, "Neben dem Bergfried frei:")
-	assert_eq(_building_ids(world), [1, 2] as Array[int], "Fortlaufende IDs:")
+	assert_eq(_building_ids(world), [1, 2, 3] as Array[int], "Fortlaufende IDs:")
 	assert_eq(world.get_tick(), 0, "Takt:")
 
 
@@ -76,7 +82,7 @@ func test_founding_is_reported() -> void:
 	world.stock_changed.connect(func(id: int) -> void: events.append("Bestand %d" % id))
 	world.founded.connect(func() -> void: events.append("gegründet"))
 	world.execute(Command.found(ORIGIN))
-	assert_eq(events, ["Gebäude 1", "Gebäude 2", "Bestand 2", "gegründet"] as Array[String], "Signale:")
+	assert_eq(events, ["Gebäude 1", "Gebäude 2", "Gebäude 3", "Bestand 2", "gegründet"] as Array[String], "Signale:")
 
 
 func test_only_founding_is_allowed_while_founding() -> void:
@@ -112,3 +118,20 @@ func test_founding_site_is_found_on_real_map() -> void:
 	var site := world.find_founding_site()
 	assert_true(site != GameWorld.NO_SITE, "Auf der Testkarte sollte es eine Gründungsstelle geben")
 	assert_eq(world.founding_error(site), "", "Grund an der gefundenen Stelle:")
+
+
+func test_founding_buildings_are_keep_storage_and_campfire() -> void:
+	var world := empty_world()
+	var types: Array[String] = []
+	for part in world.founding_buildings(ORIGIN):
+		types.append(str(part[0]))
+	assert_eq(types, ["keep", "warehouse", "campfire"] as Array[String], "Gebäude der Gründung:")
+	assert_eq(world.founding_buildings(ORIGIN)[0][1], ORIGIN, "Ursprung des Bergfrieds:")
+
+
+func test_campfire_leaves_tile_in_front_of_keep_entrance_free() -> void:
+	var world := empty_world()
+	world.execute(Command.found(ORIGIN))
+	var front := Building.front_of_entrance("keep", ORIGIN)
+	assert_eq(world.get_building_at(front), null, "Kachel vor dem Eingang:")
+	assert_eq(_campfire_tile(world), front + Vector2i(0, 2), "Lagerfeuer zwei Kacheln vor dem Eingang:")

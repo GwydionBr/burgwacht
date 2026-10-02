@@ -42,7 +42,7 @@ func test_save_and_load_keeps_buildings_and_storage() -> void:
 	var world := run_scenario("tiny", 10)
 	var loaded := _reload(world)
 	assert_true(not loaded.is_founding(), "Geladene Spielwelt ist gegründet")
-	assert_eq(loaded.get_buildings().size(), 2, "Gebäude:")
+	assert_eq(loaded.get_buildings().size(), 3, "Gebäude:")
 	assert_eq(loaded.get_stock("wood"), 100, "Holz:")
 	assert_eq(loaded.get_building_at(loaded.get_buildings()[0].origin), loaded.get_buildings()[0], "Belegung nach dem Laden:")
 	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
@@ -54,9 +54,9 @@ func test_save_and_load_keeps_built_buildings_and_several_storages() -> void:
 		var site := find_site(world, type_id)
 		assert_true(site != GameWorld.NO_SITE, "Auf der Testkarte sollte Platz für %s sein" % type_id)
 		assert_eq(world.execute(Command.build(type_id, site)), "", "Bauen von %s:" % type_id)
-	put_goods(world, 3, "iron", 7)
+	put_goods(world, 4, "iron", 7)
 	var loaded := _reload(world)
-	assert_eq(loaded.get_buildings().size(), 5, "Gebäude:")
+	assert_eq(loaded.get_buildings().size(), 6, "Gebäude:")
 	assert_eq(loaded.get_stock("wood"), 77, "Holz nach den Kosten:")
 	assert_eq(loaded.get_stock("iron"), 7, "Eisen im zweiten Warenlager:")
 	assert_eq(loaded.get_storage_capacity("warehouse"), 400, "Fassung:")
@@ -66,7 +66,7 @@ func test_save_and_load_keeps_built_buildings_and_several_storages() -> void:
 		each.execute(Command.build("woodcutter", find_site(each, "woodcutter")))
 		for i in GameWorld.TICKS_PER_DAY * 3:
 			each.step()
-	assert_eq(loaded.get_buildings().size(), 6, "Gebäude nach dem Weiterbauen:")
+	assert_eq(loaded.get_buildings().size(), 7, "Gebäude nach dem Weiterbauen:")
 	assert_eq(loaded.to_data(), world.to_data(), "Daten nach Weiterbauen und 3 Tagen:")
 
 

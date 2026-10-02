@@ -1,6 +1,6 @@
 class_name Hud
 extends CanvasLayer
-## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit und Bestand, Steuerungshinweise,
+## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Bestand und Bewohnern, Steuerungshinweise,
 ## Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 
@@ -26,6 +26,7 @@ var _message_label: Label
 var _message_timer: Timer
 var _info_panel: PanelContainer
 var _stock_label: Label
+var _residents_label: Label
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -49,6 +50,8 @@ func _ready() -> void:
 	row.add_child(_speed_label)
 	_stock_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_stock_label)
+	_residents_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_residents_label)
 	_message_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_message_label)
 	_message_timer = Timer.new()
@@ -129,6 +132,11 @@ func show_tile_info(text: String) -> void:
 ## Bestand und Lagerbelegung in der Titelleiste, z. B. „Holz 100 · Stein 50 · Lager 150/200“.
 func show_stock(text: String) -> void:
 	_stock_label.text = text
+
+
+## Bewohnerzahl in der Titelleiste, z. B. „Bewohner 8 (Untätig 4)“.
+func show_residents(total: int, idle: int) -> void:
+	_residents_label.text = "Bewohner %d (Untätig %d)" % [total, idle]
 
 
 ## Hinweis oben in der Mitte (leer = ausblenden); rot, wenn hier nicht gebaut werden darf.

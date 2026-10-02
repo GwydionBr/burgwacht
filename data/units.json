@@ -1,0 +1,8 @@
+{
+  "resident": {
+    "name": "Bewohner",
+    "ticks_per_tile": 5,
+    "retry_ticks": 50,
+    "color": "#d8c49a"
+  }
+}

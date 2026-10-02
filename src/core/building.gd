@@ -26,6 +26,15 @@ func is_storage() -> bool:
 	return def()["behavior"] == "storage"
 
 
+func is_campfire() -> bool:
+	return def()["behavior"] == "campfire"
+
+
+## Dürfen Bewohner die ganze Grundfläche betreten (z. B. das Lagerfeuer)?
+func is_walkable() -> bool:
+	return bool(def().get("walkable", false))
+
+
 ## Lagerart bei Lagern, sonst leer.
 func storage_type() -> String:
 	return storage_type_of(type)
@@ -45,6 +54,15 @@ func stored() -> int:
 
 func tiles() -> Array[Vector2i]:
 	return footprint(type, origin)
+
+
+## Gebäude ohne Eingang (z. B. das Lagerfeuer) haben keine Kachel davor.
+func has_entrance() -> bool:
+	return has_entrance_type(type)
+
+
+func entrance() -> Vector2i:
+	return entrance_of(type, origin)
 
 
 func entrance_front() -> Vector2i:
@@ -84,6 +102,10 @@ static func adjacent_tiles(type_id: String, origin_tile: Vector2i) -> Array[Vect
 			if inside_x != inside_y:
 				result.append(origin_tile + Vector2i(x, y))
 	return result
+
+
+static func has_entrance_type(type_id: String) -> bool:
+	return GameDefs.get_instance().buildings[type_id].has("entrance")
 
 
 ## Die Eingangskachel (innerhalb der Grundfläche).

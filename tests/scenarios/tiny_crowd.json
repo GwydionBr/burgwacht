@@ -1,0 +1,6 @@
+{
+  "name": "Kleine Testkarte mit mehr Startbewohnern, als um das Lagerfeuer passen",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_residents": 14
+}
