@@ -12,6 +12,7 @@ extends Node2D
 ##   --build=woodcutter    nach der Gründung gleich im Baumodus für diesen Typ (für Screenshots)
 ##   --demolish            nach der Gründung gleich mit dem Abriss-Werkzeug (für Screenshots)
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
+##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -21,6 +22,8 @@ extends Node2D
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
+## V öffnet und schließt die Verwaltung (Esc schließt sie auch); darin stellen ◀ ▶ bzw. −/+
+## die Ration per Befehl ein.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -59,6 +62,7 @@ func _ready() -> void:
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
 	_hud.demolish_selected.connect(_select_demolish)
+	_hud.ration_step.connect(_step_ration)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -79,6 +83,8 @@ func _ready() -> void:
 		_select_build(str(args["build"]))
 	if args.has("demolish"):
 		_select_demolish()
+	if args.has("admin"):
+		_hud.toggle_administration()
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -139,7 +145,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F9:
 			_quick_load()
 		KEY_ESCAPE:
+			_hud.close_administration()
 			_select_build("")
+		KEY_V:
+			_hud.toggle_administration()
+		KEY_MINUS, KEY_KP_SUBTRACT:
+			if _hud.is_administration_open():
+				_step_ration(-1)
+		KEY_PLUS, KEY_EQUAL, KEY_KP_ADD:
+			if _hud.is_administration_open():
+				_step_ration(1)
 		KEY_X:
 			_select_demolish()
 		KEY_F:
@@ -168,6 +183,10 @@ func _show_world(new_world: GameWorld) -> void:
 	world.resident_added.connect(_on_resident_added)
 	world.resident_changed.connect(_on_resident_changed)
 	world.founded.connect(_on_founded)
+	world.popularity_changed.connect(_update_popularity)
+	world.factors_changed.connect(_update_popularity)
+	world.settings_changed.connect(_update_popularity)
+	world.notice.connect(_hud.show_message)
 	_clock.world = world
 	_build_type = ""
 	_demolishing = false
@@ -198,6 +217,7 @@ func _show_world(new_world: GameWorld) -> void:
 	_hud.show_day(world.get_day())
 	_update_stock()
 	_update_residents()
+	_update_popularity()
 	_update_hover()
 	_update_preview()
 
@@ -303,6 +323,8 @@ func _on_resident_changed(_id: int) -> void:
 
 func _on_stock_changed(_building_id: int) -> void:
 	_update_stock()
+	# Vor dem ersten Tag hängt die Vorschau der Faktoren am Vorrat.
+	_update_popularity()
 	_update_hover()
 	_update_preview()
 
@@ -408,6 +430,29 @@ func _update_stock() -> void:
 ## Titelleiste: Bewohner, Wohnraum und Untätige.
 func _update_residents() -> void:
 	_hud.show_residents(world.get_residents().size(), world.get_housing(), world.get_idle_count())
+
+
+## Ration um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
+func _step_ration(delta: int) -> void:
+	var rations := Population.ration_ids()
+	var index := clampi(rations.find(world.get_ration()) + delta, 0, rations.size() - 1)
+	var reason := world.execute(Command.set_ration(rations[index]))
+	if reason != "":
+		_hud.show_message(reason)
+
+
+## Titelleiste (Beliebtheit, Tendenz) und Verwaltung (Ration, Faktoren).
+func _update_popularity() -> void:
+	var total := world.get_factor_sum()
+	_hud.show_popularity(world.get_popularity(), total)
+	var rations := Population.ration_ids()
+	var eaten := world.get_eaten_ration()
+	var lowered := rations.find(eaten) < rations.find(world.get_ration())
+	var factors: Array[Array] = []
+	for factor in world.get_factors():
+		factors.append([factor.name(), factor.value])
+	_hud.show_administration(Population.ration_name(world.get_ration()),
+			Population.ration_name(eaten) if lowered else "", factors, total)
 
 
 func _update_hover() -> void:
