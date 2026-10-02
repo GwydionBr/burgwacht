@@ -231,7 +231,8 @@ func test_activity_texts() -> void:
 	world.step()
 	assert_eq(world.activity_of(resident), "Holzfäller – geht zur Arbeitsstätte", "Unterwegs:")
 	_until_arrived(world, resident)
-	assert_eq(world.activity_of(resident), "Holzfäller – an der Arbeitsstätte", "Angekommen:")
+	# Auf der leeren Karte gibt es keinen Baum.
+	assert_eq(world.activity_of(resident), "Holzfäller – wartet: Kein Baum erreichbar", "Angekommen:")
 	world.execute(Command.demolish(id))
 	assert_eq(world.activity_of(resident), "Untätig – geht zum Lagerfeuer", "Nach dem Abriss:")
 

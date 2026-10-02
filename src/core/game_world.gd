@@ -10,24 +10,28 @@ extends RefCounted
 ## Startwaren, Lagerfeuer mit den Startbewohnern als Untätige drumherum).
 ##
 ## In jedem Takt bekommen Arbeitsstätten mit freien Stellen Untätige zugeteilt, dann laufen
-## die Bewohner in ID-Reihenfolge ihren Weg ein Stück weiter.
+## und arbeiten die Bewohner in ID-Reihenfolge einen Takt weiter: Arbeiter eines Sammlers
+## bauen Vorkommen ab, verarbeiten die Ware in der Arbeitsstätte und tragen sie ins Lager.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
+## Die Menge eines Vorkommens hat sich geändert (abgebaut, aber nicht erschöpft).
+signal deposit_changed(tile: Vector2i)
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
-## Tätigkeit eines Bewohners hat sich geändert (zugeteilt, angekommen, wieder untätig).
+## Tätigkeit oder getragene Ware eines Bewohners hat sich geändert (zugeteilt, angekommen,
+## Abbau, Verarbeitung, abgeliefert, wieder untätig …).
 signal resident_changed(id: int)
 signal founded()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -140,7 +144,7 @@ func step() -> void:
 	_tick += 1
 	_spread_deposits()
 	_assign_workers()
-	_move_residents()
+	_update_residents()
 	if _tick % TICKS_PER_DAY == 0:
 		day_started.emit(get_day())
 
@@ -325,14 +329,33 @@ func get_workers(building_id: int) -> Array[Resident]:
 
 
 ## Was ein Bewohner gerade tut, als Spieltext für die Kachel-Info,
-## z. B. „Holzfäller – geht zur Arbeitsstätte“.
+## z. B. „Holzfäller – trägt 4 Holz“.
 func activity_of(resident: Resident) -> String:
 	if resident.is_idle():
 		return "Untätig – geht zum Lagerfeuer" if resident.is_moving() else "Untätig"
-	var worker_name := get_building(resident.workplace_id).worker_name()
-	if resident.is_moving():
-		return "%s – geht zur Arbeitsstätte" % worker_name
-	return "%s – an der Arbeitsstätte" % worker_name
+	var workplace := get_building(resident.workplace_id)
+	return "%s – %s" % [workplace.worker_name(), _task_text(resident, workplace)]
+
+
+## Der Teil von activity_of() nach dem Namen des Arbeiters.
+func _task_text(resident: Resident, workplace: Building) -> String:
+	var deposit_name := Deposit.name_of(workplace.deposit_type()) if workplace.deposit_type() != "" else ""
+	var carried := "%d %s" % [resident.carried_amount, _good_name(resident.carried_good)] \
+			if resident.carried_amount > 0 else ""
+	match resident.task:
+		Resident.Task.TO_DEPOSIT:
+			return "geht zum %s" % deposit_name
+		Resident.Task.MINING:
+			return "baut %s ab" % deposit_name
+		Resident.Task.RETURNING, Resident.Task.TO_STORAGE:
+			return "trägt %s" % carried
+		Resident.Task.PROCESSING:
+			return "verarbeitet %s" % carried
+		Resident.Task.WAITING_FOR_DEPOSIT:
+			return "geht zur Arbeitsstätte" if resident.is_moving() else "wartet: Kein %s erreichbar" % deposit_name
+		Resident.Task.WAITING_FOR_STORAGE:
+			return "trägt %s" % carried if resident.is_moving() else "wartet: Lager voll"
+	return "geht zur Arbeitsstätte" if resident.is_moving() else "an der Arbeitsstätte"
 
 
 ## Wie viele Bewohner ohne Arbeitsstätte sind.
@@ -415,9 +438,7 @@ func _found(origin: Vector2i) -> String:
 			campfire = building
 	# Was nicht ins erste Lager passt, verfällt.
 	for good: String in _start_goods:
-		var amount := mini(_start_goods[good], storage.capacity() - storage.stored())
-		if amount > 0:
-			storage.contents[good] = storage.contents.get(good, 0) + amount
+		storage.store(good, _start_goods[good])
 	stock_changed.emit(storage.id)
 	assert(campfire != null, "Unter den Begleitgebäuden des Bergfrieds fehlt das Lagerfeuer")
 	_add_start_residents(campfire)
@@ -484,6 +505,7 @@ func _assign_workers() -> void:
 			for resident in idle:
 				if _route_to(resident, Resident.ground(building.entrance())):
 					resident.workplace_id = building.id
+					resident.task = Resident.Task.TO_WORKPLACE
 					resident_changed.emit(resident.id)
 					assigned = true
 					break
@@ -495,11 +517,176 @@ func _assign_workers() -> void:
 			open_slots -= 1
 
 
-## Alle Bewohner laufen in ID-Reihenfolge einen Takt weiter.
-func _move_residents() -> void:
+## Alle Bewohner laufen bzw. arbeiten in ID-Reihenfolge einen Takt weiter. Gemeldet wird
+## höchstens einmal je Bewohner und Takt, wenn sich Tätigkeit, Ware oder Laufen geändert hat.
+func _update_residents() -> void:
 	for resident: Resident in _residents.values():
-		if resident.advance():
+		var before := _visible_state(resident)
+		if resident.is_moving():
+			if resident.advance():
+				_arrive(resident)
+		else:
+			_work(resident)
+		if _visible_state(resident) != before:
 			resident_changed.emit(resident.id)
+
+
+## Was sich an einem Bewohner von außen sehen lässt (für resident_changed).
+func _visible_state(resident: Resident) -> Array:
+	return [resident.workplace_id, resident.task, resident.carried_good, resident.carried_amount, resident.is_moving()]
+
+
+## Ein Arbeiter ist am Ende seines Weges angekommen: der nächste Schritt im Arbeitsablauf.
+func _arrive(resident: Resident) -> void:
+	var workplace := get_building(resident.workplace_id)
+	if workplace == null or workplace.deposit_type() == "":
+		return
+	match resident.task:
+		Resident.Task.TO_WORKPLACE:
+			_seek_deposit(resident, workplace)
+		Resident.Task.TO_DEPOSIT:
+			if not _has_deposit_for(resident.deposit_tile, workplace):
+				_seek_deposit(resident, workplace)
+			else:
+				resident.task = Resident.Task.MINING
+				resident.timer = workplace.mine_ticks()
+		Resident.Task.RETURNING:
+			resident.task = Resident.Task.PROCESSING
+			resident.timer = workplace.process_ticks()
+		Resident.Task.TO_STORAGE:
+			_deliver(resident, workplace)
+
+
+## Ein Takt Arbeit oder Warten für einen stehenden Arbeiter.
+func _work(resident: Resident) -> void:
+	if resident.timer == 0:
+		return
+	resident.timer -= 1
+	if resident.timer > 0:
+		return
+	var workplace := get_building(resident.workplace_id)
+	match resident.task:
+		Resident.Task.MINING:
+			if not _has_deposit_for(resident.deposit_tile, workplace):
+				_seek_deposit(resident, workplace)
+				return
+			resident.carried_good = map.get_deposit(resident.deposit_tile).good()
+			resident.carried_amount = map.take_from_deposit(resident.deposit_tile, workplace.carry_load())
+			_go(resident, workplace.entrance(), Resident.Task.RETURNING)
+		Resident.Task.PROCESSING, Resident.Task.WAITING_FOR_STORAGE:
+			_seek_storage(resident, workplace)
+		Resident.Task.WAITING_FOR_DEPOSIT:
+			_seek_deposit(resident, workplace)
+
+
+## Liegt auf der Kachel (noch) ein Vorkommen, das die Arbeitsstätte abbaut? Ein geteilter
+## Felsen kann inzwischen erschöpft und dort ein Baum gewachsen sein.
+func _has_deposit_for(tile: Vector2i, workplace: Building) -> bool:
+	var deposit := map.get_deposit(tile)
+	return deposit != null and deposit.type == workplace.deposit_type()
+
+
+## Schickt einen Arbeiter mit diesem Auftrag zu tile. Steht er schon dort, kommt er sofort
+## an; gibt es keinen Weg, bleibt er stehen (versperrte Wege: Issue #30).
+func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
+	resident.task = task
+	resident.timer = 0
+	if _route_to(resident, Resident.ground(tile)) and not resident.is_moving():
+		_arrive(resident)
+
+
+## Sucht das nächste passende Vorkommen und schickt den Arbeiter hin (exklusive sind damit
+## reserviert); gibt es keins, wartet er in der Arbeitsstätte und sucht nach der Wartezeit erneut.
+func _seek_deposit(resident: Resident, workplace: Building) -> void:
+	var found := _nearest_deposit(resident, workplace)
+	if found.is_empty():
+		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_DEPOSIT)
+		resident.timer = Resident.retry_ticks()
+		return
+	resident.deposit_tile = found[0]
+	_go(resident, found[1], Resident.Task.TO_DEPOSIT)
+
+
+## Das nach Weglänge ab dem Eingang nächste Vorkommen vom Typ der Arbeitsstätte innerhalb
+## ihres Suchradius (gemessen bis zur Kachel, von der aus abgebaut wird), das kein anderer
+## reserviert hat, als [Kachel des Vorkommens, Kachel
+## daneben zum Abbauen]; leer, wenn es keins gibt. Abgebaut wird von einer begehbaren Kachel
+## mit gemeinsamer Kante. Bei gleicher Weglänge zuerst die kleinere Kachel (zeilenweise).
+func _nearest_deposit(resident: Resident, workplace: Building) -> Array[Vector2i]:
+	var best: Array[Vector2i] = []
+	var best_length := INF
+	var distances := Pathfinder.distances(Resident.ground(workplace.entrance()), _is_walkable_position,
+			workplace.gather_range())
+	for position: Vector3i in distances:
+		var stand := Vector2i(position.x, position.y)
+		var length := distances[position]
+		for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
+			var tile := stand + Vector2i(step.x, step.y)
+			var deposit := map.get_deposit(tile)
+			if deposit == null or deposit.type != workplace.deposit_type() or _is_reserved(tile, resident):
+				continue
+			var better := length < best_length and not Pathfinder.same_length(length, best_length)
+			if not better and Pathfinder.same_length(length, best_length):
+				better = _row_order(tile, best[0]) or (tile == best[0] and _row_order(stand, best[1]))
+			if better:
+				best = [tile, stand]
+				best_length = length
+	return best
+
+
+## Liegt a zeilenweise vor b (erst kleineres y, dann kleineres x)?
+static func _row_order(a: Vector2i, b: Vector2i) -> bool:
+	return a.y < b.y if a.y != b.y else a.x < b.x
+
+
+## Hat ein anderer Bewohner das exklusive Vorkommen auf der Kachel für sich?
+func _is_reserved(tile: Vector2i, resident: Resident) -> bool:
+	if not map.get_deposit(tile).is_exclusive():
+		return false
+	for other: Resident in _residents.values():
+		if other != resident and other.is_targeting_deposit(tile):
+			return true
+	return false
+
+
+## Schickt einen Arbeiter mit Ware zum nach Weglänge nächsten Lager ihrer Lagerart mit
+## freiem Platz (bei gleicher Länge kleinere ID); gibt es keins, wartet er mit der Ware an
+## der Arbeitsstätte und versucht es nach der Wartezeit erneut.
+func _seek_storage(resident: Resident, workplace: Building) -> void:
+	var distances := Pathfinder.distances(resident.plan_start(), _is_walkable_position)
+	var best: Building = null
+	var best_length := INF
+	for storage in _storages(_storage_type_of(resident.carried_good)):
+		var entrance := Resident.ground(storage.entrance())
+		if storage.stored() >= storage.capacity() or not distances.has(entrance):
+			continue
+		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
+		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
+			best = storage
+			best_length = distances[entrance]
+	if best == null:
+		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_STORAGE)
+		resident.timer = Resident.retry_ticks()
+		return
+	resident.storage_id = best.id
+	_go(resident, best.entrance(), Resident.Task.TO_STORAGE)
+
+
+## Am Lager: so viel einlagern, wie passt; den Rest zum nächsten Lager mit Platz, danach
+## zurück zur Arbeitsstätte.
+func _deliver(resident: Resident, workplace: Building) -> void:
+	var storage := get_building(resident.storage_id)
+	resident.storage_id = 0
+	if storage != null and storage.is_storage():
+		var stored := storage.store(resident.carried_good, resident.carried_amount)
+		if stored > 0:
+			resident.carried_amount -= stored
+			stock_changed.emit(storage.id)
+	if resident.carried_amount > 0:
+		_seek_storage(resident, workplace)
+		return
+	resident.carried_good = ""
+	_go(resident, workplace.entrance(), Resident.Task.TO_WORKPLACE)
 
 
 ## Plant den kürzesten Weg eines Bewohners zu goal und schickt ihn los; false (und nichts
@@ -586,6 +773,7 @@ func _demolish(id: int) -> String:
 	# Die Arbeiter werden wieder Untätige und gehen zum Lagerfeuer.
 	for worker in get_workers(id):
 		worker.workplace_id = 0
+		worker.clear_work()
 		_send_to_campfire(worker)
 		resident_changed.emit(worker.id)
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
@@ -605,12 +793,10 @@ func _store_goods(good: String, amount: int, changed: Dictionary[int, bool]) -> 
 	for storage in _storages(_storage_type_of(good)):
 		if remaining == 0:
 			break
-		var stored := mini(remaining, storage.capacity() - storage.stored())
-		if stored <= 0:
-			continue
-		remaining -= stored
-		storage.contents[good] = storage.contents.get(good, 0) + stored
-		changed[storage.id] = true
+		var stored := storage.store(good, remaining)
+		if stored > 0:
+			remaining -= stored
+			changed[storage.id] = true
 
 
 ## Meldet die geänderten Lager nach ID aufsteigend.
@@ -759,6 +945,7 @@ func _set_map(new_map: MapData) -> void:
 	map = new_map
 	map.deposit_added.connect(deposit_added.emit)
 	map.deposit_removed.connect(deposit_removed.emit)
+	map.deposit_changed.connect(deposit_changed.emit)
 
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume) breiten sich in ihrem Rhythmus aus:

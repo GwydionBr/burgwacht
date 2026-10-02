@@ -5,6 +5,8 @@ extends RefCounted
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
+## Die Menge eines Vorkommens hat sich geändert.
+signal deposit_changed(tile: Vector2i)
 
 var width: int
 var height: int
@@ -49,6 +51,21 @@ func add_deposit(tile: Vector2i, deposit: Deposit) -> void:
 func remove_deposit(tile: Vector2i) -> void:
 	if deposits.erase(tile):
 		deposit_removed.emit(tile)
+
+
+## Nimmt bis zu amount aus dem Vorkommen auf der Kachel und liefert, wie viel es war;
+## bei 0 verschwindet das Vorkommen.
+func take_from_deposit(tile: Vector2i, amount: int) -> int:
+	var deposit := get_deposit(tile)
+	if deposit == null:
+		return 0
+	var taken := mini(amount, deposit.amount)
+	deposit.amount -= taken
+	if deposit.amount == 0:
+		remove_deposit(tile)
+	else:
+		deposit_changed.emit(tile)
+	return taken
 
 
 func is_walkable(tile: Vector2i) -> bool:

@@ -50,9 +50,43 @@ func worker_name() -> String:
 	return str(def().get("worker_name", "Arbeiter"))
 
 
+## Sammler: Typ des Vorkommens, das seine Arbeiter abbauen ("deposit"), sonst leer.
+func deposit_type() -> String:
+	return str(def().get("deposit", ""))
+
+
+## Sammler: Takte für einen Abbau ("mine_ticks").
+func mine_ticks() -> int:
+	return int(def()["mine_ticks"])
+
+
+## Sammler: Takte für die Verarbeitung in der Arbeitsstätte ("process_ticks").
+func process_ticks() -> int:
+	return int(def()["process_ticks"])
+
+
+## Sammler: so viel nimmt ein Arbeiter je Gang höchstens aus dem Vorkommen ("load").
+func carry_load() -> int:
+	return int(def()["load"])
+
+
+## Sammler: Suchradius für Vorkommen als Weglänge ab dem Eingang ("range").
+func gather_range() -> int:
+	return int(def()["range"])
+
+
 ## Dürfen Bewohner die ganze Grundfläche betreten (z. B. das Lagerfeuer)?
 func is_walkable() -> bool:
 	return bool(def().get("walkable", false))
+
+
+## Lagert bis zu amount einer Ware ein, so viel noch Platz ist; liefert die eingelagerte Menge.
+func store(good: String, amount: int) -> int:
+	var added := mini(amount, capacity() - stored())
+	if added <= 0:
+		return 0
+	contents[good] = contents.get(good, 0) + added
+	return added
 
 
 ## Lagerart bei Lagern, sonst leer.
