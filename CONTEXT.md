@@ -41,7 +41,7 @@ Die Datenbeschreibung, aus der eine Partie startet: Karte, Startwaren, Startbewo
 _Avoid_: Level, Mission, Karte
 
 **Gründung**:
-Der Beginn einer Partie: Die Zeit steht still, bis der Spieler den Bergfried gesetzt hat; mit ihm entstehen das erste Warenlager mit den Startwaren und das Lagerfeuer, an dem die Startbewohner als Untätige stehen.
+Der Beginn einer Partie: Die Zeit steht still, bis der Spieler den Bergfried gesetzt hat; mit ihm entstehen das erste Warenlager und der erste Kornspeicher mit den Startwaren sowie das Lagerfeuer, an dem die Startbewohner als Untätige stehen.
 _Avoid_: Aufbauphase, Start
 
 **Tag**:
@@ -67,7 +67,7 @@ Die Höhenstufe, auf der sich jemand auf einer Kachel befindet: Boden oder auf e
 _Avoid_: Höhe, Stockwerk, Layer
 
 **Vorkommen**:
-Ein abbaubares Objekt auf einer Kachel (Baum, Felsen, Eisenvorkommen), das eine begrenzte Menge eines Rohstoffs liefert.
+Ein abbaubares Objekt auf einer Kachel (Baum, Felsen, Eisenvorkommen, Wild), das eine begrenzte Menge eines Rohstoffs liefert.
 _Avoid_: Ressource, Resource Node, Rohstoffquelle
 
 ### Wirtschaft
@@ -94,6 +94,26 @@ _Avoid_: Lager (für dieses konkrete Gebäude), Stockpile
 **Schatz**:
 Das Gold der Burg; liegt im Bergfried und ist keine Ware.
 _Avoid_: Gold als Ware, Kasse
+
+**Nahrung**:
+Eine Ware, die Bewohner essen (Äpfel, Fleisch, später Brot); ihre Lagerart ist der Kornspeicher.
+_Avoid_: Essen, Proviant, Lebensmittel
+
+**Kornspeicher**:
+Das Lager für Nahrung.
+_Avoid_: Speisekammer, Vorratslager
+
+**Wild**:
+Ein Vorkommen aus Tieren, das Fleisch liefert und wie Bäume nachwächst; es bewegt sich nicht.
+_Avoid_: Tiere, Hirsche, Beute
+
+**Ration**:
+Die vom Spieler eingestellte Stufe, wie viel Nahrung jeder Bewohner pro Tag isst (keine, halb, normal, extra, doppelt).
+_Avoid_: Portion, Essensmenge
+
+**Steuersatz**:
+Die vom Spieler eingestellte Stufe, wie viel Gold jeder Bewohner pro Tag in den Schatz zahlt.
+_Avoid_: Abgaben, Steuerstufe
 
 ### Gebäude und Bewohner
 
@@ -154,11 +174,19 @@ Die Menge einer Ware, die ein Arbeiter auf einmal trägt.
 _Avoid_: Ladung, Kapazität
 
 **Beliebtheit**:
-Wert von 0 bis 100, wie gern Bewohner in der Burg leben; bestimmt, ob Bewohner kommen oder gehen.
+Wert von 0 bis 100, wie gern Bewohner in der Burg leben; bestimmt, ob Bewohner kommen oder gehen. Sie ändert sich jeden Tag um die Summe ihrer Faktoren.
 _Avoid_: Zufriedenheit, Stimmung, Ansehen
 
+**Faktor**:
+Ein Beitrag zur täglichen Änderung der Beliebtheit, z. B. Ration, Vielfalt der Nahrung, Steuersatz.
+_Avoid_: Modifikator, Einfluss
+
+**Wohnhaus**:
+Ein Gebäude, das den Wohnraum erhöht; Bewohner wohnen nicht sichtbar darin.
+_Avoid_: Hütte, Haus
+
 **Wohnraum**:
-Die Zahl der Bewohner, die die Burg insgesamt beherbergen kann.
+Die Zahl der Bewohner, die die Burg insgesamt beherbergen kann; der Bergfried stellt einen Grundwohnraum, jedes Wohnhaus mehr.
 _Avoid_: Bevölkerungslimit, Kapazität
 
 ### Kampf
