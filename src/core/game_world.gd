@@ -357,6 +357,8 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 			return "trägt %s" % carried
 		Resident.Task.PROCESSING:
 			return "verarbeitet %s" % carried
+		Resident.Task.FARMING:
+			return workplace.work_text()
 		Resident.Task.WAITING_FOR_DEPOSIT:
 			return "geht zur Arbeitsstätte" if resident.is_moving() else "wartet: Kein %s erreichbar" % deposit_name
 		Resident.Task.WAITING_FOR_STORAGE:
@@ -577,13 +579,18 @@ func _visible_state(resident: Resident) -> Array:
 
 
 ## Ein Arbeiter ist am Ende seines Weges angekommen: der nächste Schritt im Arbeitsablauf.
+## Am Hof arbeitet er in der Arbeitsstätte, beim Sammler sucht er ein Vorkommen.
 func _arrive(resident: Resident) -> void:
 	var workplace := get_building(resident.workplace_id)
-	if workplace == null or workplace.deposit_type() == "":
+	if workplace == null or (workplace.deposit_type() == "" and not workplace.is_farm()):
 		return
 	match resident.task:
 		Resident.Task.TO_WORKPLACE:
-			_seek_deposit(resident, workplace)
+			if workplace.is_farm():
+				resident.task = Resident.Task.FARMING
+				resident.timer = workplace.work_ticks()
+			else:
+				_seek_deposit(resident, workplace)
 		Resident.Task.TO_DEPOSIT:
 			if not _has_deposit_for(resident.deposit_tile, workplace):
 				_seek_deposit(resident, workplace)
@@ -612,6 +619,11 @@ func _work(resident: Resident) -> void:
 			resident.carried_amount = map.take_from_deposit(resident.deposit_tile, workplace.carry_load())
 			_go(resident, workplace.entrance(), Resident.Task.RETURNING)
 		Resident.Task.PROCESSING:
+			_seek_storage(resident, workplace)
+		Resident.Task.FARMING:
+			# Ein Vorkommen braucht der Hof nicht: Die Ware entsteht bei der Arbeit.
+			resident.carried_good = workplace.product()
+			resident.carried_amount = workplace.carry_load()
 			_seek_storage(resident, workplace)
 		_:
 			_resume(resident)
@@ -1056,6 +1068,13 @@ func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
 			if deposit != null and deposit.type == deposit_type:
 				return true
 		return false
+	if kind == "on_terrain":
+		# Jede Kachel der Grundfläche muss eines der genannten Gelände haben.
+		var allowed: Array = rule["terrain"]
+		for tile in Building.footprint(type_id, origin):
+			if not allowed.has(map.get_terrain(tile)):
+				return false
+		return true
 	assert(false, "Unbekannte Bauregel „%s“ bei „%s“" % [kind, type_id])
 	return false
 

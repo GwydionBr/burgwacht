@@ -117,7 +117,7 @@ func test_types_without_hotkey_cannot_be_built() -> void:
 
 
 func test_buildable_types_come_from_data() -> void:
-	assert_eq(GameWorld.buildable_types(), ["warehouse", "granary", "woodcutter", "quarry", "house"] as Array[String], "Baubare Typen:")
+	assert_eq(GameWorld.buildable_types(), ["warehouse", "granary", "woodcutter", "quarry", "house", "orchard"] as Array[String], "Baubare Typen:")
 
 
 func test_campfire_cannot_be_built() -> void:
