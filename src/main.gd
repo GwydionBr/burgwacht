@@ -5,6 +5,7 @@ extends Node2D
 ## Startparameter (nach "--"):
 ##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
+##   --days=3              Spielwelt vorab so viele Tage laufen lassen (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 
 var world: GameWorld
@@ -34,6 +35,8 @@ func _ready() -> void:
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
+	for i in int(args.get("days", 0)) * GameWorld.TICKS_PER_DAY:
+		world.step()
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(args["screenshot"])
 
