@@ -2,6 +2,7 @@ class_name GameClock
 extends Node
 ## Treibt die Spielwelt an: sammelt die verstrichene Zeit und ruft passend oft step() auf.
 ## Spielgeschwindigkeit und Pause gehören hierher, nicht in die Spielwelt.
+## Während der Gründung steht die Uhr und lässt sich nicht starten.
 
 signal speed_changed(speed: int, paused: bool)
 
@@ -13,11 +14,15 @@ const MAX_TICKS_PER_FRAME := 10
 ## Gleicht Rundungsfehler beim Aufsummieren kleiner Zeitschritte aus.
 const EPSILON := 0.000001
 
-## Beim Wechsel der Spielwelt verfällt ein noch angesammelter Zeitrest.
+## Beim Wechsel der Spielwelt verfällt ein noch angesammelter Zeitrest;
+## eine Spielwelt in Gründung hält die Uhr an.
 var world: GameWorld:
 	set(value):
 		world = value
 		_pending_ticks = 0.0
+		if world != null and world.is_founding() and not _paused:
+			_paused = true
+			speed_changed.emit(_speed, _paused)
 
 var _speed := 1
 var _paused := false
@@ -46,12 +51,16 @@ func advance(delta: float) -> int:
 
 func set_speed(speed: int) -> void:
 	assert(speed in SPEEDS, "Unbekannte Geschwindigkeit %d" % speed)
+	if _is_founding():
+		return
 	_speed = speed
 	_paused = false
 	speed_changed.emit(_speed, _paused)
 
 
 func toggle_pause() -> void:
+	if _is_founding():
+		return
 	_paused = not _paused
 	speed_changed.emit(_speed, _paused)
 
@@ -62,3 +71,7 @@ func get_speed() -> int:
 
 func is_paused() -> bool:
 	return _paused
+
+
+func _is_founding() -> bool:
+	return world != null and world.is_founding()

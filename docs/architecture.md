@@ -10,11 +10,13 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `map_data.gd` – Karte: Gelände pro Kachel, Vorkommen; meldet Änderungen per Signal
   - `map_generator.gd` – erzeugt Karten deterministisch aus einem Seed
   - `scenario.gd` – lädt und prüft ein Szenario aus `data/scenarios/<id>.json` (Fehler als deutscher Text in `error`)
-  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator; entsteht nur aus einem Szenario. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus. `to_data()`/`from_data()` für den Spielstand
-- `src/view/` – zeichnet den Zustand (alles prozedural mit `_draw`, noch keine Bilddateien). Objekte liegen im y-sortierten `Objects`-Node.
+  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator, Gebäude und Lager; entsteht nur aus einem Szenario. Befehle über `execute()`, rein lesende Abfragen `placement_error()`/`founding_error()` (gemeinsam für Vorschau und Befehl). Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus, nicht aber in Grundflächen und vor Eingänge. `to_data()`/`from_data()` für den Spielstand
+  - `command.gd` – ein Befehl (Gründen, Bauen) für `GameWorld.execute()`
+  - `building.gd` – ein Gebäude (ID, Typ, Ursprung, bei Lagern der Inhalt); Grundfläche und Kachel vor dem Eingang aus `buildings.json`
+- `src/view/` – zeichnet den Zustand (alles prozedural mit `_draw`, noch keine Bilddateien). Objekte (Vorkommen, Gebäudeblöcke) liegen im y-sortierten `Objects`-Node; `placement_preview.gd` zeigt die Bauvorschau.
 - `src/ui/` – Oberfläche (HUD), im Code aufgebaut.
-- `src/game_clock.gd` – treibt die Spielwelt an (Pause, 1×/2×/4×, begrenzte Takte pro Frame).
-- `src/main.gd` – erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe, Startparameter (`--scenario=`, `--seed=`, `--days=`), Schnellspeichern F5 / Laden F9 (`user://quicksave.sav`). Keine Spiellogik.
+- `src/game_clock.gd` – treibt die Spielwelt an (Pause, 1×/2×/4×, begrenzte Takte pro Frame); steht während der Gründung.
+- `src/main.gd` – erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe, Startparameter (`--scenario=`, `--seed=`, `--found`, `--days=`), Gründung per Linksklick, Schnellspeichern F5 / Laden F9 (`user://quicksave.sav`). Keine Spiellogik.
 - `data/` – Spielinhalte als JSON; `data/scenarios/` die Szenarien (Standard: `free_play`).
 - `tests/` – eigener kleiner Testrunner; jede `test_*.gd` erweitert `TestCase`, Methoden mit `test_`-Präfix laufen automatisch.
 
@@ -27,11 +29,13 @@ Siehe `docs/adr/0001` bis `0004`. Kurz:
 - Deterministisch: gleiches Szenario + gleiche Befehle = gleicher Verlauf. Zufall nur über den Generator der Spielwelt.
 - Spielereingaben gehen als **Befehle** hinein, Änderungen als Signale hinaus. `view/` und `ui/` ändern den Zustand nie direkt.
 - Der Zustand ist serialisierbar (Verweise über IDs). Jedes neue Zustandsstück bekommt einen Test „speichern → laden → gleicher Verlauf“.
-- Gebäude: Werte in `data/buildings.json`, Ablauf über ein Verhalten aus einer festen Menge im Code.
+- Gebäude: Werte in `data/buildings.json`, Ablauf über ein Verhalten aus einer festen Menge im Code. Jede Ware hat in `goods.json` ihre Lagerart (`storage`); Lager haben Lagerart und Fassungsvermögen.
+- **Gründung**: Eine neue Spielwelt ist in Gründung – `step()` lässt keine Takte vergehen, nur der Gründungsbefehl ist erlaubt. Er setzt den Bergfried und das erste Warenlager (Lage aus `first_storage` des Bergfrieds) und legt die Startwaren des Szenarios (`start_goods`) hinein; Überschuss verfällt.
+- **Befehle** wirken sofort, auch ohne Takt; Ergebnis ist leer (Erfolg) oder ein deutscher Grund, ein abgelehnter Befehl ändert nichts. Prüfreihenfolge beim Platzieren: auf der Karte → Gelände bebaubar → keine Vorkommen → keine Gebäude → Kachel vor dem Eingang begehbar und frei.
 
 ## Spielstand
 
-`GameWorld.to_data()` liefert den ganzen Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte, Formatversion `SAVE_VERSION`), `GameWorld.from_data()` stellt daraus eine Spielwelt her; `GameWorld.data_error()` nennt auf Deutsch, warum Daten nicht passen (z. B. unbekannte Version). Jede Zustandsklasse hat ein eigenes `to_data()`/`from_data()` (`MapData`, `Deposit`), die Spielwelt setzt sie zusammen. Gespeichert wird mit `FileAccess.store_var` (verlustfrei für 64-Bit-Zahlen wie den Zustand des Zufallsgenerators; JSON wäre es nicht).
+`GameWorld.to_data()` liefert den ganzen Zustand als reine Daten (Dictionaries, Arrays, Zahlen, Texte, Formatversion `SAVE_VERSION`), `GameWorld.from_data()` stellt daraus eine Spielwelt her; `GameWorld.data_error()` nennt auf Deutsch, warum Daten nicht passen (z. B. unbekannte Version). Jede Zustandsklasse hat ein eigenes `to_data()`/`from_data()` (`MapData`, `Deposit`, `Building`), die Spielwelt setzt sie zusammen. Gespeichert wird mit `FileAccess.store_var` (verlustfrei für 64-Bit-Zahlen wie den Zustand des Zufallsgenerators; JSON wäre es nicht).
 
 Neues Zustandsstück:
 
@@ -43,7 +47,9 @@ Neues Zustandsstück:
 
 - Einzeltests für reine Logik (z. B. `Iso`, Kartengenerator).
 - **Simulationstests** über die Spielwelt: Mini-Szenario laden, Befehle geben, N Takte laufen lassen, Ergebnis prüfen. Das ist die bevorzugte Teststelle. Die Mini-Szenarien liegen in `tests/scenarios/` (z. B. `tiny`: 20×16, Seed 7); `run_scenario("tiny", ticks)` bzw. `run_scenario_with_seed("tiny", ticks, seed)` aus `TestCase` laden eins, erzeugen die Spielwelt und lassen sie N Takte laufen.
-- Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage]`; mit Tagen läuft die Spielwelt vorher so lange).
+- Neue Spielwelten aus `run_scenario…` sind schon gegründet (`found_castle()`: Stelle nächst der Kartenmitte); `new_world()` liefert eine in Gründung, `empty_world()` eine leergeräumte (nur Wiese) in Gründung.
+- Einzelne Testdateien: `tools/test.sh test_founding` (Teil des Dateinamens).
+- Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage] [--found]`; mit Tagen wird gegründet und die Spielwelt läuft vorher so lange, sonst zeigt das Bild die Gründungsvorschau über der Kartenmitte).
 
 ## Spielmodus
 

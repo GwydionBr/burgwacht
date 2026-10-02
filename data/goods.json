@@ -1,5 +1,5 @@
 {
-  "wood":  { "name": "Holz" },
-  "stone": { "name": "Stein" },
-  "iron":  { "name": "Eisen" }
+  "wood":  { "name": "Holz",  "storage": "warehouse" },
+  "stone": { "name": "Stein", "storage": "warehouse" },
+  "iron":  { "name": "Eisen", "storage": "warehouse" }
 }

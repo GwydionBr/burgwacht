@@ -1,14 +1,18 @@
 extends SceneTree
 ## Führt alle tests/test_*.gd aus. Aufruf: tools/test.sh
+## Nur bestimmte Dateien: tools/test.sh test_founding (Teil des Dateinamens, mehrere möglich).
 
 
 func _initialize() -> void:
 	var failed := 0
 	var passed := 0
+	var filters := OS.get_cmdline_user_args()
 	var files := Array(DirAccess.get_files_at("res://tests"))
 	files.sort()
 	for file: String in files:
 		if not (file.begins_with("test_") and file.ends_with(".gd")) or file == "test_case.gd":
+			continue
+		if not filters.is_empty() and not Array(filters).any(func(f: String) -> bool: return file.contains(f)):
 			continue
 		var script: GDScript = load("res://tests/" + file)
 		if script == null or not script.can_instantiate():

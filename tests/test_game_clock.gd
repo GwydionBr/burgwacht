@@ -52,3 +52,17 @@ func test_new_world_drops_pending_time() -> void:
 	clock.world = run_scenario("tiny", 0)
 	assert_eq(clock.advance(0.09), 0, "Zeitrest der alten Welt zählt nicht mit:")
 	clock.free()
+
+
+func test_clock_cannot_start_before_founding() -> void:
+	var clock := GameClock.new()
+	clock.world = new_world("tiny")
+	assert_true(clock.is_paused(), "Uhr steht während der Gründung")
+	clock.toggle_pause()
+	clock.set_speed(2)
+	assert_true(clock.is_paused(), "Uhr lässt sich in der Gründung nicht starten")
+	found_castle(clock.world)
+	clock.toggle_pause()
+	assert_true(not clock.is_paused(), "Nach der Gründung lässt sich die Uhr starten")
+	assert_eq(clock.advance(1.0), 10, "Takte nach der Gründung:")
+	clock.free()

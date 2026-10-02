@@ -21,19 +21,43 @@ func assert_eq(actual: Variant, expected: Variant, message := "") -> void:
 
 
 ## Simulationstest-Hilfe: Test-Szenario laden, Spielwelt mit dem Seed des Szenarios
-## erzeugen (zufällig → TEST_RANDOM_SEED) und N Takte laufen lassen.
+## erzeugen (zufällig → TEST_RANDOM_SEED), an der ersten passenden Stelle gründen
+## und N Takte laufen lassen.
 func run_scenario(scenario_id: String, ticks: int) -> GameWorld:
-	var scenario := _load_test_scenario(scenario_id)
-	return _run_world(GameWorld.create(scenario, scenario.resolve_seed(TEST_RANDOM_SEED)), ticks)
+	return _run_world(found_castle(new_world(scenario_id)), ticks)
 
 
 ## Wie run_scenario(), aber der Seed überschreibt den des Szenarios (wie --seed=).
 func run_scenario_with_seed(scenario_id: String, ticks: int, world_seed: int) -> GameWorld:
-	return _run_world(GameWorld.create(_load_test_scenario(scenario_id), world_seed), ticks)
+	return _run_world(found_castle(GameWorld.create(_load_test_scenario(scenario_id), world_seed)), ticks)
+
+
+## Neue Spielwelt aus einem Test-Szenario, noch in Gründung.
+func new_world(scenario_id: String) -> GameWorld:
+	var scenario := _load_test_scenario(scenario_id)
+	return GameWorld.create(scenario, scenario.resolve_seed(TEST_RANDOM_SEED))
+
+
+## Tiny-Welt in Gründung, aber leergeräumt: nur Wiese, keine Vorkommen.
+func empty_world() -> GameWorld:
+	var world := new_world("tiny")
+	world.map.deposits.clear()
+	for y in world.map.height:
+		for x in world.map.width:
+			world.map.set_terrain(Vector2i(x, y), "grass")
+	return world
+
+
+## Gründet die Burg an der passenden Stelle nächst der Kartenmitte.
+func found_castle(world: GameWorld) -> GameWorld:
+	var site := world.find_founding_site()
+	var reason := world.execute(Command.found(site))
+	assert(reason == "", "Gründung bei %s fehlgeschlagen: %s" % [str(site), reason])
+	return world
 
 
 ## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten
-## (Vorkommen nach Kachel sortiert).
+## (Vorkommen nach Kachel sortiert, Gebäude nach ID).
 func world_snapshot(world: GameWorld) -> Dictionary:
 	var map := world.map
 	var terrain: Array[String] = []
@@ -46,7 +70,16 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	for tile: Vector2i in tiles:
 		var deposit := map.deposits[tile]
 		deposits.append([tile, deposit.type, deposit.amount, deposit.variant])
-	return {"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits}
+	var buildings: Array[Array] = []
+	for building in world.get_buildings():
+		buildings.append([building.id, building.type, building.origin, building.contents])
+	var stock: Dictionary[String, int] = {}
+	for good: String in GameDefs.get_instance().goods:
+		stock[good] = world.get_stock(good)
+	return {
+		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
+		"founding": world.is_founding(), "buildings": buildings, "stock": stock,
+	}
 
 
 func _load_test_scenario(scenario_id: String) -> Scenario:
