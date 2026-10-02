@@ -312,6 +312,66 @@ func test_cut_off_from_workplace_without_deposit_waits_visibly() -> void:
 	assert_eq(worker.task, Resident.Task.WAITING_FOR_DEPOSIT, "Wartet dort auf einen Baum:")
 
 
+## Holzfäller am WOODCUTTER_SITE, Arbeiter mit Holz auf dem Weg ins Warenlager; dann ist
+## das Lager voll und der Eingang des Holzfällers versperrt. Liefert die Felsen.
+func _full_storage_and_cut_off(world: GameWorld) -> Array[Vector2i]:
+	add_deposit(world, TREE, "tree")
+	build(world, "woodcutter", WOODCUTTER_SITE)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE, "Unterwegs zum Lager")
+	var warehouse := world.get_building(WAREHOUSE)
+	# Mit Stein bis unters Dach auffüllen.
+	put_goods(world, WAREHOUSE, "stone", warehouse.capacity() - warehouse.stored() + warehouse.contents.get("stone", 0))
+	var blockers: Array[Vector2i] = [Vector2i(11, 3), Vector2i(12, 4)]
+	for tile in blockers:
+		add_deposit(world, tile, "stone")
+	return blockers
+
+
+func test_full_storage_and_cut_off_from_workplace_waits_visibly() -> void:
+	var world := _founded()
+	var blockers := _full_storage_and_cut_off(world)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return not worker.is_moving(), "Stehenbleiben")
+	assert_true(worker.is_blocked(), "Versperrt")
+	assert_eq(worker.carried_amount, 4, "Behält die Ware:")
+	assert_eq(world.activity_of(worker), "Holzfäller – wartet: Weg versperrt", "Tätigkeit:")
+	_assert_all_walkable(world, "Beim Warten")
+	# Weg frei, Lager noch voll: nach der Wartezeit geht er zur Arbeitsstätte und wartet dort.
+	for tile in blockers:
+		world.map.remove_deposit(tile)
+	_until(world, func() -> bool: return worker.task == Resident.Task.WAITING_FOR_STORAGE and not worker.is_moving(),
+			"Warten an der Arbeitsstätte")
+	assert_eq(worker.tile, world.get_building(worker.workplace_id).entrance(), "An der Arbeitsstätte:")
+	assert_eq(world.activity_of(worker), "Holzfäller – wartet: Lager voll", "Tätigkeit:")
+
+
+func test_full_storage_and_cut_off_delivers_once_storage_has_room() -> void:
+	var world := _founded()
+	_full_storage_and_cut_off(world)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.is_blocked(), "Versperrt")
+	# Platz im Lager, Arbeitsstätte weiter versperrt: nach der Wartezeit liefert er ab.
+	put_goods(world, WAREHOUSE, "stone", 0)
+	var wood_before := world.get_stock("wood")
+	_until(world, func() -> bool: return world.get_stock("wood") == wood_before + 4, "Lieferung")
+	assert_eq(worker.carried_amount, 0, "Ware abgeliefert:")
+
+
+func test_save_while_full_storage_and_cut_off_gives_same_course() -> void:
+	var world := _founded()
+	_full_storage_and_cut_off(world)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.is_blocked(), "Versperrt")
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+	assert_eq(loaded.activity_of(loaded.get_resident(1)), "Holzfäller – wartet: Weg versperrt", "Tätigkeit nach dem Laden:")
+	for each: GameWorld in [world, loaded]:
+		put_goods(each, WAREHOUSE, "stone", 0)
+		_steps(each, 300)
+	assert_eq(loaded.to_data(), world.to_data(), "Daten nach weiteren Takten:")
+
+
 ## Holzfäller am WOODCUTTER_SITE, Arbeiter angekommen, dann Felsen rund um ihn und Abriss:
 ## Der neue Untätige kommt nicht zum Lagerfeuer. Liefert die Felsen.
 func _idle_walled_in(world: GameWorld) -> Array[Vector2i]:

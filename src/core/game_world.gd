@@ -726,7 +726,8 @@ func _is_reserved(tile: Vector2i, resident: Resident) -> bool:
 
 ## Schickt einen Arbeiter mit Ware zum nach Weglänge nächsten Lager ihrer Lagerart mit
 ## freiem Platz (bei gleicher Länge kleinere ID); gibt es keins, wartet er mit der Ware an
-## der Arbeitsstätte und versucht es nach der Wartezeit erneut.
+## der Arbeitsstätte und versucht es nach der Wartezeit erneut. Erreicht er sie nicht, wartet
+## er mit der Ware, wo er ist, und sucht danach erneut ein Lager.
 func _seek_storage(resident: Resident, workplace: Building) -> void:
 	var distances := Pathfinder.distances(resident.plan_start(), _is_walkable_position)
 	var best: Building = null
@@ -741,6 +742,11 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 			best_length = distances[entrance]
 	if best == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_STORAGE)
+		if resident.timer > 0:
+			# Kein Weg (_go() hat die Wartezeit gesetzt): Er wartet sichtbar draußen und will
+			# danach weiter ein Lager suchen – ohne Ziellager, denn er kommt dort nie an.
+			resident.task = Resident.Task.TO_STORAGE
+			resident.storage_id = 0
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.storage_id = best.id

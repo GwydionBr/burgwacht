@@ -22,7 +22,8 @@ enum Task {
 	RETURNING,
 	## Verarbeitet die Ware unsichtbar in der Arbeitsstätte (timer).
 	PROCESSING,
-	## Trägt die Ware zum Lager storage_id.
+	## Trägt die Ware zum Lager storage_id; versperrt (0) wartet er draußen auf einen neuen
+	## Versuch.
 	TO_STORAGE,
 	## Kein Vorkommen erreichbar: wartet in der Arbeitsstätte (timer).
 	WAITING_FOR_DEPOSIT,
@@ -75,7 +76,7 @@ var task := Task.NONE
 ## Bei TO_DEPOSIT und MINING: Kachel des Vorkommens. Exklusive Vorkommen (Bäume) gelten
 ## damit als reserviert.
 var deposit_tile := Vector2i.ZERO
-## Bei TO_STORAGE: ID des Lagers.
+## Bei TO_STORAGE: ID des Lagers; 0, wenn er versperrt auf einen neuen Versuch wartet.
 var storage_id := 0
 ## Getragene Ware und Menge; leer bzw. 0, wenn er nichts trägt.
 var carried_good := ""
