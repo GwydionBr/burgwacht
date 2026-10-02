@@ -72,3 +72,38 @@ func test_error_names_scenario() -> void:
 	var data := _valid_data()
 	data.erase("name")
 	assert_true(Scenario.from_dict("mein_test", data).error.contains("mein_test"), "Fehler nennt die ID")
+
+
+func test_start_goods_are_read() -> void:
+	var scenario := Scenario.load_named("tiny", TEST_SCENARIO_DIR)
+	assert_eq(scenario.start_goods, {"wood": 100, "stone": 50} as Dictionary[String, int], "Startwaren:")
+
+
+func test_free_play_starts_with_wood_and_stone() -> void:
+	var scenario := Scenario.load_named(Scenario.DEFAULT)
+	assert_eq(scenario.start_goods, {"wood": 100, "stone": 50} as Dictionary[String, int], "Startwaren:")
+
+
+func test_missing_start_goods_means_none() -> void:
+	var scenario := Scenario.from_dict("test", _valid_data())
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.start_goods, {} as Dictionary[String, int], "Startwaren:")
+
+
+func test_unknown_good_in_start_goods_is_invalid() -> void:
+	var data := _valid_data()
+	data["start_goods"] = {"wood": 10, "gold": 5}
+	assert_true(_error_for(data).contains("„gold“"), "Fehler nennt die Ware: " + _error_for(data))
+
+
+func test_bad_start_goods_amount_is_invalid() -> void:
+	for amount: Variant in [-1, 1.5, "10", null]:
+		var data := _valid_data()
+		data["start_goods"] = {"wood": amount}
+		assert_true(_error_for(data).contains("start_goods"), "Menge %s: %s" % [str(amount), _error_for(data)])
+
+
+func test_start_goods_must_be_object() -> void:
+	var data := _valid_data()
+	data["start_goods"] = [1, 2]
+	assert_true(_error_for(data).contains("start_goods"), "Fehler: " + _error_for(data))

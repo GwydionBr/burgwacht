@@ -1,7 +1,8 @@
 class_name Scenario
 extends RefCounted
 ## Ein Szenario: die Datenbeschreibung, aus der eine Partie startet (res://data/scenarios/<id>.json).
-## Felder bisher: "name", "map" ({"width", "height"}) und "seed" (Zahl oder "random").
+## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
+## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Warenlager).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -15,6 +16,8 @@ var title: String
 var map_size: Vector2i
 var random_seed: bool
 var fixed_seed: int
+## Ware → Menge, in der Reihenfolge der Datei.
+var start_goods: Dictionary[String, int] = {}
 var error := ""
 
 
@@ -59,6 +62,8 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 	else:
 		problems.append("„seed“ muss eine ganze Zahl oder \"%s\" sein" % RANDOM_SEED)
 
+	_read_start_goods(scenario, data.get("start_goods", {}), problems)
+
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]
 	return scenario
@@ -68,6 +73,22 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 ## Den Zufallswert liefert der Aufrufer, damit der Kern keinen globalen Zufall nutzt (ADR 0001).
 func resolve_seed(random_value: int) -> int:
 	return random_value if random_seed else fixed_seed
+
+
+static func _read_start_goods(scenario: Scenario, value: Variant, problems: PackedStringArray) -> void:
+	if not value is Dictionary:
+		problems.append("„start_goods“ muss ein Objekt Ware → Menge sein")
+		return
+	var goods := GameDefs.get_instance().goods
+	var entries: Dictionary = value
+	for good: Variant in entries:
+		var amount: Variant = entries[good]
+		if not goods.has(good):
+			problems.append("„start_goods“ enthält die unbekannte Ware „%s“" % str(good))
+		elif not _is_whole_number(amount) or int(amount) < 0:
+			problems.append("„start_goods“: Menge für „%s“ muss eine ganze Zahl ab 0 sein" % str(good))
+		else:
+			scenario.start_goods[str(good)] = int(amount)
 
 
 static func _failed(scenario_id: String, message: String) -> Scenario:

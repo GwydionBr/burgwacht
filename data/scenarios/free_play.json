@@ -1,5 +1,6 @@
 {
   "name": "Freies Spiel",
   "map": { "width": 80, "height": 80 },
-  "seed": "random"
+  "seed": "random",
+  "start_goods": { "wood": 100, "stone": 50 }
 }
