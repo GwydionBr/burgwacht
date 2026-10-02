@@ -12,6 +12,8 @@ const WOODCUTTER_SITE := Vector2i(12, 2)
 const TREE := Vector2i(14, 6)
 ## Holzfäller weiter weg, damit der Weg dorthin lang genug zum Versperren ist.
 const SITE_FAR := Vector2i(15, 10)
+## Holzfäller über einem Untätigen, daneben entsteht eine abgeschlossene Tasche.
+const POCKET_SITE := Vector2i(10, 12)
 ## Obergrenze für einen ganzen Arbeitsgang.
 const MAX_TICKS := 1000
 
@@ -336,3 +338,64 @@ func test_save_while_waiting_for_blocked_way_gives_same_course() -> void:
 	for each: GameWorld in [world, loaded]:
 		_steps(each, 300)
 	assert_eq(loaded.to_data(), world.to_data(), "Daten nach weiteren Takten:")
+
+
+## Stellt Untätigen 2 auf POCKET_SITE; die Kachel direkt über ihm ist nach dem Bau eines
+## Holzfällers dort ringsum von Felsen und Grundfläche eingeschlossen. Liefert sie.
+func _idle_next_to_pocket(world: GameWorld) -> Vector2i:
+	var idle := world.get_resident(2)
+	idle.tile = POCKET_SITE
+	var pocket := POCKET_SITE + Vector2i(0, -1)
+	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0),
+			Vector2i(1, 0), Vector2i(-1, 1)]:
+		add_deposit(world, pocket + offset, "stone")
+	return pocket
+
+
+func test_displaced_resident_skips_closed_pocket() -> void:
+	var world := _founded()
+	var pocket := _idle_next_to_pocket(world)
+	var idle := world.get_resident(2)
+	build(world, "woodcutter", POCKET_SITE)
+	_assert_all_walkable(world, "Nach dem Bau")
+	assert_true(idle.tile != pocket, "Nicht in die abgeschlossene Tasche")
+	var campfire := Resident.ground(world.get_building(CAMPFIRE).origin)
+	assert_true(not Pathfinder.find_path(idle.position(), campfire, world._is_walkable_position).is_empty(),
+			"Erreicht von %s aus das Lagerfeuer" % str(idle.tile))
+	# Über ihm die Tasche, rechts die Grundfläche, darunter der Eingang.
+	assert_eq(idle.tile, POCKET_SITE + Vector2i(0, 1), "Nächste erreichbare Kachel:")
+
+
+## Umringt das Lagerfeuer mit Felsen (Bewohner dort stehen dann im Felsen; egal für die Tests).
+func _wall_in_campfire(world: GameWorld) -> void:
+	var campfire := world.get_building(CAMPFIRE).origin
+	for y: int in range(-1, 2):
+		for x: int in range(-1, 2):
+			if x != 0 or y != 0:
+				add_deposit(world, campfire + Vector2i(x, y), "stone")
+
+
+func test_displaced_worker_measures_way_to_workplace() -> void:
+	# Das Lagerfeuer ist abgeschnitten, die Arbeitsstätte nicht: Der Arbeiter weicht so aus,
+	# dass er sie erreicht.
+	var world := _founded()
+	var id := build(world, "woodcutter", WOODCUTTER_SITE)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.workplace_id == id and not worker.is_moving(), "Ankunft")
+	var pocket := _idle_next_to_pocket(world)
+	worker.tile = POCKET_SITE
+	world.get_resident(2).tile = world.get_building(id).entrance()
+	_wall_in_campfire(world)
+	build(world, "woodcutter", POCKET_SITE)
+	assert_true(worker.tile != pocket, "Nicht in die abgeschlossene Tasche")
+	assert_true(not Pathfinder.find_path(worker.position(), Resident.ground(world.get_building(id).entrance()),
+			world._is_walkable_position).is_empty(), "Erreicht von %s aus die Arbeitsstätte" % str(worker.tile))
+
+
+func test_displaced_resident_into_pocket_when_nothing_else_reachable() -> void:
+	# Ist das Lagerfeuer von nirgends erreichbar, bleibt es bei der nächsten begehbaren Kachel.
+	var world := _founded()
+	var pocket := _idle_next_to_pocket(world)
+	_wall_in_campfire(world)
+	build(world, "woodcutter", POCKET_SITE)
+	assert_eq(world.get_resident(2).tile, pocket, "In der Tasche:")

@@ -812,13 +812,17 @@ func _build(type_id: String, origin: Vector2i) -> String:
 
 
 ## Bewohner auf der Grundfläche eines neuen Gebäudes weichen auf die nächste begehbare
-## Kachel aus; wer unterwegs ist und nun über die Grundfläche müsste, plant neu. Wer dort
+## Kachel aus, von der aus sie ihren Anker erreichen (_anchor_of()), sonst auf die nächste
+## begehbare; wer unterwegs ist und nun über die Grundfläche müsste, plant neu. Wer dort
 ## abgebaut hat, sucht sein Vorkommen neu.
 func _make_way(building: Building) -> void:
+	# In diesem Abstand liegt von jeder Kachel der Grundfläche aus der ganze Rand um sie herum.
+	var size := Building.size_of(building.type)
+	var reach := ceili(Vector2(size).length())
 	for resident: Resident in _residents.values():
 		var before := _visible_state(resident)
 		if not is_walkable(resident.tile, resident.level):
-			resident.tile = _nearest_walkable(resident.tile)
+			resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach)
 			resident.step_progress = 0
 			if resident.is_moving():
 				_reroute(resident)
@@ -839,16 +843,44 @@ func _crosses(resident: Resident, building: Building) -> bool:
 	return false
 
 
-## Die nächste begehbare Kachel am Boden: Suche nach außen, Reihenfolge wie am Lagerfeuer
-## (_offsets_within()); gibt es keine, die Kachel selbst.
-func _nearest_walkable(tile: Vector2i) -> Vector2i:
+## Woran gemessen wird, ob ein verdrängter Bewohner nicht abgeschnitten ist: Arbeiter am
+## Eingang ihrer Arbeitsstätte (von dort aus suchen sie Vorkommen und Lager), Untätige am
+## Lagerfeuer.
+func _anchor_of(resident: Resident) -> Vector3i:
+	var workplace := get_building(resident.workplace_id)
+	if workplace != null:
+		return Resident.ground(workplace.entrance())
+	return Resident.ground(_campfire().origin)
+
+
+## Die nächste begehbare Kachel am Boden, von der aus anchor erreichbar ist: Suche nach
+## außen, Reihenfolge wie am Lagerfeuer (_offsets_within()), bis zum Abstand reach.
+## Abgeschlossene Taschen werden so übersprungen; ist anchor in der Nähe von keiner aus
+## erreichbar, die nächste begehbare, gibt es gar keine, die Kachel selbst.
+func _nearest_reachable(tile: Vector2i, anchor: Vector3i, reach: int) -> Vector2i:
+	var nearest := tile
+	var found := false
+	# Meist erreicht schon die nächste begehbare Kachel den Anker (ein Weg). Sonst wird
+	# einmal alles gemessen, was vom Anker aus erreichbar ist (selten, aber die ganze Burg).
+	var reachable: Dictionary[Vector3i, float] = {}
 	var radius := 2
 	while radius <= 2 * maxi(map.width, map.height):
 		for offset in _offsets_within(radius):
-			if is_walkable(tile + offset, Resident.Level.GROUND):
-				return tile + offset
+			var candidate := tile + offset
+			if not is_walkable(candidate, Resident.Level.GROUND):
+				continue
+			if not found:
+				found = true
+				nearest = candidate
+				if not Pathfinder.find_path(Resident.ground(candidate), anchor, _is_walkable_position).is_empty():
+					return candidate
+				reachable = Pathfinder.distances(anchor, _is_walkable_position)
+			elif offset.length_squared() <= reach * reach and reachable.has(Resident.ground(candidate)):
+				return candidate
+		if found and radius >= reach:
+			return nearest
 		radius *= 2
-	return tile
+	return nearest
 
 
 func _demolish(id: int) -> String:
