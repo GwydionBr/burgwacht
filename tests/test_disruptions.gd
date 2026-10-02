@@ -163,7 +163,7 @@ func test_tree_growing_across_path_replans() -> void:
 		if worker.tile == entrance:
 			break
 		world.step()
-		assert_true(worker.tile != ahead, "Läuft nicht durch den Baum")
+		assert_eq(world.map.get_deposit(worker.tile), null, "Läuft nicht durch Bäume auf %s:" % str(worker.tile))
 	assert_eq(worker.tile, entrance, "Angekommen:")
 
 
