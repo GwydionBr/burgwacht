@@ -1,5 +1,6 @@
 extends Node2D
-## Einstiegspunkt: erzeugt die Karte und verbindet Spiellogik mit Darstellung.
+## Einstiegspunkt: erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe.
+## Enthält keine Spiellogik – die lebt in der Spielwelt (src/core/).
 ##
 ## Startparameter (nach "--"):
 ##   --seed=123            feste Karte statt Zufall
@@ -7,11 +8,12 @@ extends Node2D
 
 const MAP_SIZE := Vector2i(80, 80)
 
-var map: MapData
+var world: GameWorld
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _hovered := Vector2i(-1, -1)
 
+@onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
 @onready var _objects: Node2D = $Objects
 @onready var _highlight: TileHighlight = $Highlight
@@ -21,7 +23,9 @@ var _hovered := Vector2i(-1, -1)
 
 func _ready() -> void:
 	var args := _parse_user_args()
-	_new_map(int(args["seed"]) if args.has("seed") else randi())
+	_clock.speed_changed.connect(_hud.show_speed)
+	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
+	_new_world(int(args["seed"]) if args.has("seed") else randi())
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(args["screenshot"])
 
@@ -39,15 +43,26 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_N:
-			_new_map(randi())
+			_new_world(randi())
+		KEY_SPACE:
+			_clock.toggle_pause()
+		KEY_1:
+			_clock.set_speed(1)
+		KEY_2:
+			_clock.set_speed(2)
+		KEY_3:
+			_clock.set_speed(4)
 		KEY_F:
 			var window := get_window()
 			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
 
 
-func _new_map(map_seed: int) -> void:
-	map = MapGenerator.generate(map_seed, MAP_SIZE.x, MAP_SIZE.y)
-	map.deposit_removed.connect(_on_deposit_removed)
+func _new_world(world_seed: int) -> void:
+	world = GameWorld.create(world_seed, MAP_SIZE.x, MAP_SIZE.y)
+	world.deposit_removed.connect(_on_deposit_removed)
+	world.day_started.connect(_hud.show_day)
+	_clock.world = world
+	var map := world.map
 	_terrain.show_map(map)
 
 	for view in _deposit_views.values():
@@ -61,7 +76,8 @@ func _new_map(map_seed: int) -> void:
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
-	_hud.set_seed(map_seed)
+	_hud.set_seed(world_seed)
+	_hud.show_day(world.get_day())
 	_update_hover()
 
 
@@ -72,6 +88,7 @@ func _on_deposit_removed(tile: Vector2i) -> void:
 
 
 func _update_hover() -> void:
+	var map := world.map
 	if not map.in_bounds(_hovered):
 		_highlight.visible = false
 		_hud.show_tile_info("")
