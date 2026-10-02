@@ -18,11 +18,6 @@ func _founded_world() -> GameWorld:
 	return world
 
 
-## Felsen rechts neben einem Steinbruch mit diesem Ursprung (Bauregel des Steinbruchs).
-func _add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:
-	add_deposit(world, origin + Vector2i(3, 1), "stone")
-
-
 func test_woodcutter_is_built_and_costs_wood() -> void:
 	var world := _founded_world()
 	assert_eq(world.execute(Command.build("woodcutter", SITE)), "", "Grund:")
@@ -37,7 +32,7 @@ func test_woodcutter_is_built_and_costs_wood() -> void:
 
 func test_quarry_costs_twenty_wood() -> void:
 	var world := _founded_world()
-	_add_rock_for_quarry(world, SITE)
+	add_rock_for_quarry(world, SITE)
 	assert_eq(world.execute(Command.build("quarry", SITE)), "", "Grund:")
 	assert_eq(world.get_stock("wood"), 80, "Holz:")
 	assert_eq(world.get_storage_used("warehouse"), 130, "Belegt:")
@@ -145,7 +140,7 @@ func test_cost_from_oldest_storage_leaves_newer_untouched() -> void:
 	put_goods(world, 3, "wood", 10)
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
-	_add_rock_for_quarry(world, SITE_BELOW)
+	add_rock_for_quarry(world, SITE_BELOW)
 	world.execute(Command.build("quarry", SITE_BELOW))
 	assert_eq(world.get_building(2).contents["wood"], 80, "Aus dem ältesten Lager:")
 	assert_eq(world.get_building(3).contents["wood"], 10, "Neueres Lager unberührt:")

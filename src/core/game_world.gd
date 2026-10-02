@@ -465,20 +465,21 @@ func _rules_error(type_id: String, origin: Vector2i) -> String:
 ## auf einer Kachel direkt neben der Grundfläche (Building.adjacent_tiles(), nicht schräg).
 func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
 	var kind := str(rule["kind"])
-	var neighbors := Building.adjacent_tiles(type_id, origin)
+	var adjacent := Building.adjacent_tiles(type_id, origin)
 	if kind == "next_to_same_storage":
 		# Gibt es gerade kein Lager dieser Lagerart, darf das neue überall stehen.
-		var storage_type := str(GameDefs.get_instance().buildings[type_id]["storage"])
+		var storage_type := Building.storage_type_of(type_id)
+		assert(storage_type != "", "Bauregel „%s“ bei „%s“, das kein Lager ist" % [kind, type_id])
 		if _storages(storage_type).is_empty():
 			return true
-		for tile in neighbors:
+		for tile in adjacent:
 			var other := get_building_at(tile)
 			if other != null and other.is_storage() and other.storage_type() == storage_type:
 				return true
 		return false
 	if kind == "next_to_deposit":
 		var deposit_type := str(rule["deposit"])
-		for tile in neighbors:
+		for tile in adjacent:
 			var deposit := map.get_deposit(tile)
 			if deposit != null and deposit.type == deposit_type:
 				return true

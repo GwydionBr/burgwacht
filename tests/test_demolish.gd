@@ -18,11 +18,6 @@ func _founded_world() -> GameWorld:
 	return world
 
 
-## Felsen rechts neben einem Steinbruch mit diesem Ursprung (Bauregel des Steinbruchs).
-func _add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:
-	add_deposit(world, origin + Vector2i(3, 1), "stone")
-
-
 ## Baut ein Gebäude und liefert seine ID.
 func _build(world: GameWorld, type_id: String, origin: Vector2i) -> int:
 	var reason := world.execute(Command.build(type_id, origin))
@@ -51,7 +46,7 @@ func test_refund_is_half_the_cost_rounded_down() -> void:
 
 func test_refund_of_quarry() -> void:
 	var world := _founded_world()
-	_add_rock_for_quarry(world, SITE)
+	add_rock_for_quarry(world, SITE)
 	var id := _build(world, "quarry", SITE)
 	world.execute(Command.demolish(id))
 	assert_eq(world.get_stock("wood"), 90, "20 Holz → 10 Holz zurück:")
@@ -60,7 +55,7 @@ func test_refund_of_quarry() -> void:
 func test_refund_goes_to_storages_in_ascending_id() -> void:
 	var world := _founded_world()
 	_build(world, "warehouse", NEXT_TO_STORAGE)
-	_add_rock_for_quarry(world, SITE_BELOW)
+	add_rock_for_quarry(world, SITE_BELOW)
 	var quarry := _build(world, "quarry", SITE_BELOW)
 	# Erstes Lager bis auf 4 Plätze voll, das zweite leer.
 	put_goods(world, 2, "wood", 146)
@@ -74,7 +69,7 @@ func test_refund_goes_to_storages_in_ascending_id() -> void:
 
 func test_refund_that_does_not_fit_is_lost() -> void:
 	var world := _founded_world()
-	_add_rock_for_quarry(world, SITE)
+	add_rock_for_quarry(world, SITE)
 	var id := _build(world, "quarry", SITE)
 	put_goods(world, 2, "wood", 145)
 	assert_eq(world.execute(Command.demolish(id)), "", "Abriss gelingt trotzdem:")

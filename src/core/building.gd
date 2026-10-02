@@ -28,7 +28,7 @@ func is_storage() -> bool:
 
 ## Lagerart bei Lagern, sonst leer.
 func storage_type() -> String:
-	return str(def().get("storage", ""))
+	return storage_type_of(type)
 
 
 func capacity() -> int:
@@ -49,6 +49,11 @@ func tiles() -> Array[Vector2i]:
 
 func entrance_front() -> Vector2i:
 	return front_of_entrance(type, origin)
+
+
+## Lagerart eines Gebäudetyps, wenn er ein Lager ist, sonst leer.
+static func storage_type_of(type_id: String) -> String:
+	return str(GameDefs.get_instance().buildings[type_id].get("storage", ""))
 
 
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.

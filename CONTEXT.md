@@ -105,6 +105,10 @@ _Avoid_: Building, Haus (allgemein)
 Das Rechteck aus Kacheln, das ein Gebäude belegt; Gebäude werden nicht gedreht.
 _Avoid_: Footprint, Fläche
 
+**Bauregel**:
+Eine Bedingung aus den Daten eines Gebäudetyps, wo er stehen darf, z. B. „grenzt an Felsen“. **Grenzen** heißt: eine Kachel direkt neben der Grundfläche, mit gemeinsamer Kante; schräg zählt nicht.
+_Avoid_: Bauvoraussetzung, Platzierungsregel
+
 **Abriss**:
 Das Entfernen eines Gebäudes durch den Spieler; die Hälfte der Baukosten kommt zurück.
 _Avoid_: Abbau (das ist das Gewinnen von Rohstoffen), Löschen

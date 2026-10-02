@@ -10,6 +10,8 @@ const NEXT_TO_STORAGE := Vector2i(10, 2)
 const DIAGONAL_TO_STORAGE := Vector2i(10, 5)
 ## Freie Stelle mit zwei Kacheln Abstand zum ersten Warenlager.
 const AWAY := Vector2i(12, 2)
+## Direkt rechts neben dem Warenlager bei NEXT_TO_STORAGE.
+const NEXT_TO_SECOND_STORAGE := Vector2i(13, 2)
 const NOT_NEXT_TO_STORAGE := "Muss an ein Warenlager grenzen"
 const NOT_NEXT_TO_ROCK := "Muss an Felsen grenzen"
 
@@ -41,7 +43,7 @@ func test_diagonal_does_not_count_as_next_to() -> void:
 func test_warehouse_next_to_a_newer_warehouse_is_allowed() -> void:
 	var world := _founded_world()
 	world.execute(Command.build("warehouse", NEXT_TO_STORAGE))
-	assert_eq(world.build_error("warehouse", Vector2i(13, 2)), "", "An das zweite Warenlager:")
+	assert_eq(world.build_error("warehouse", NEXT_TO_SECOND_STORAGE), "", "An das zweite Warenlager:")
 
 
 func test_warehouse_anywhere_when_no_warehouse_is_left() -> void:
@@ -56,12 +58,12 @@ func test_other_buildings_do_not_count_as_warehouse() -> void:
 	var world := _founded_world()
 	# Holzfäller rechts neben dem Warenlager, das neue Warenlager rechts neben dem Holzfäller.
 	world.execute(Command.build("woodcutter", NEXT_TO_STORAGE))
-	assert_eq(world.build_error("warehouse", Vector2i(12, 2)), NOT_NEXT_TO_STORAGE, "Neben dem Holzfäller:")
+	assert_eq(world.build_error("warehouse", AWAY), NOT_NEXT_TO_STORAGE, "Neben dem Holzfäller:")
 
 
 func test_quarry_next_to_rock_is_allowed() -> void:
 	var world := _founded_world()
-	add_deposit(world, AWAY + Vector2i(3, 1), "stone")
+	add_rock_for_quarry(world, AWAY)
 	assert_eq(world.execute(Command.build("quarry", AWAY)), "", "Grund:")
 
 
@@ -100,7 +102,7 @@ func test_rules_come_before_goods() -> void:
 	var world := _founded_world()
 	put_goods(world, 2, "wood", 0)
 	assert_eq(world.build_error("quarry", AWAY), NOT_NEXT_TO_ROCK, "Bauregel vor zu wenig Waren:")
-	add_deposit(world, AWAY + Vector2i(3, 1), "stone")
+	add_rock_for_quarry(world, AWAY)
 	assert_eq(world.build_error("quarry", AWAY), "Zu wenig Holz (20 nötig)", "Mit Felsen dann die Waren:")
 
 

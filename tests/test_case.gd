@@ -81,6 +81,12 @@ func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
 	world.map.add_deposit(tile, Deposit.create(type_id, RandomNumberGenerator.new()))
 
 
+## Testvorbereitung: Felsen rechts neben einem Steinbruch (3×3) mit diesem Ursprung,
+## damit seine Bauregel gilt.
+func add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:
+	add_deposit(world, origin + Vector2i(3, 1), "stone")
+
+
 ## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten
 ## (Vorkommen nach Kachel sortiert, Gebäude nach ID).
 func world_snapshot(world: GameWorld) -> Dictionary:
