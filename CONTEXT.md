@@ -138,8 +138,20 @@ Ein Bewohner, der einer Arbeitsstätte zugeteilt ist.
 _Avoid_: Angestellter, Worker
 
 **Untätiger**:
-Ein Bewohner ohne Arbeitsstätte, der am Lagerfeuer auf Arbeit wartet.
+Ein Bewohner ohne Arbeitsstätte, der am Lagerfeuer auf Arbeit wartet; er wird automatisch einer freien Arbeitsstätte zugeteilt.
 _Avoid_: Arbeitsloser, Faulenzer
+
+**Lagerfeuer**:
+Das Gebäude, das mit dem Bergfried bei der Gründung entsteht und an dem die Untätigen stehen; weder baubar noch abreißbar.
+_Avoid_: Sammelpunkt, Feuerstelle
+
+**Abbau**:
+Das Gewinnen von Rohstoffen aus einem Vorkommen durch einen Arbeiter; ist ein Vorkommen erschöpft, verschwindet es.
+_Avoid_: Ernte, Abriss (das ist das Entfernen eines Gebäudes)
+
+**Traglast**:
+Die Menge einer Ware, die ein Arbeiter auf einmal trägt.
+_Avoid_: Ladung, Kapazität
 
 **Beliebtheit**:
 Wert von 0 bis 100, wie gern Bewohner in der Burg leben; bestimmt, ob Bewohner kommen oder gehen.
