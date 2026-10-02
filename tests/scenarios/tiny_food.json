@@ -1,0 +1,7 @@
+{
+  "name": "Kleine Testkarte mit Startnahrung",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50, "apples": 30, "meat": 10 },
+  "start_residents": 4
+}

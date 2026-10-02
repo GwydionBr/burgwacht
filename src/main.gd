@@ -15,9 +15,9 @@ extends Node2D
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
-## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager und
-## Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
-## Danach wählt die Bauleiste (oder L/H/B) ein Gebäude: Vorschau unter der Maus,
+## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
+## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
+## Danach wählt die Bauleiste (oder L/G/H/B) ein Gebäude: Vorschau unter der Maus,
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
@@ -347,7 +347,7 @@ func _update_preview() -> void:
 	var reason := world.founding_error(origin)
 	_preview.show_parts(world.founding_buildings(origin), reason == "")
 	if reason == "":
-		_hud.show_build_hint("Gründung: Bergfried, Warenlager und Lagerfeuer setzen (Linksklick)", true)
+		_hud.show_build_hint("Gründung: Bergfried, Warenlager, Kornspeicher und Lagerfeuer setzen (Linksklick)", true)
 	else:
 		_hud.show_build_hint("Gründung: %s" % reason, false)
 
@@ -386,14 +386,20 @@ func _update_demolish_preview() -> void:
 		_hud.show_build_hint("Abriss: %s" % reason, false)
 
 
-## Titelleiste: Bestand je Ware der Lagerart Warenlager und Belegung.
+## Titelleiste: je Lagerart (Warenlager, Kornspeicher) der Bestand ihrer Waren und die Belegung.
 func _update_stock() -> void:
 	var defs := GameDefs.get_instance()
-	var parts: PackedStringArray = []
+	var groups: Dictionary[String, PackedStringArray] = {}
 	for good: String in defs.goods:
-		if defs.goods[good]["storage"] == "warehouse":
-			parts.append("%s %d" % [defs.goods[good]["name"], world.get_stock(good)])
-	parts.append("Lager %d/%d" % [world.get_storage_used("warehouse"), world.get_storage_capacity("warehouse")])
+		var storage_type := str(defs.goods[good]["storage"])
+		if not groups.has(storage_type):
+			groups[storage_type] = PackedStringArray()
+		groups[storage_type].append("%s %d" % [defs.goods[good]["name"], world.get_stock(good)])
+	var parts: PackedStringArray = []
+	for storage_type: String in groups:
+		parts.append_array(groups[storage_type])
+		parts.append("%s %d/%d" % [Building.storage_name(storage_type), world.get_storage_used(storage_type),
+				world.get_storage_capacity(storage_type)])
 	_hud.show_stock("  ·  ".join(parts))
 
 

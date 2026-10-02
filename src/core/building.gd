@@ -128,6 +128,16 @@ static func storage_type_of(type_id: String) -> String:
 	return str(GameDefs.get_instance().buildings[type_id].get("storage", ""))
 
 
+## Name der Lagerart, z. B. „Kornspeicher“: der Name des ersten Gebäudetyps (Reihenfolge in
+## den Daten), der Waren dieser Lagerart lagert.
+static func storage_name(storage_type: String) -> String:
+	var buildings := GameDefs.get_instance().buildings
+	for type_id: String in buildings:
+		if storage_type_of(type_id) == storage_type:
+			return str(buildings[type_id]["name"])
+	return storage_type
+
+
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.
 static func size_of(type_id: String) -> Vector2i:
 	return _vec(GameDefs.get_instance().buildings[type_id]["size"])

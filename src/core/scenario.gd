@@ -2,7 +2,7 @@ class_name Scenario
 extends RefCounted
 ## Ein Szenario: die Datenbeschreibung, aus der eine Partie startet (res://data/scenarios/<id>.json).
 ## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
-## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Warenlager)
+## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 

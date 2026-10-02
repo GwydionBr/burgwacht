@@ -2,7 +2,8 @@ extends TestCase
 ## Simulationstests: Arbeiter von Holzfäller und Steinbruch bauen Vorkommen ab, verarbeiten
 ## die Ware in der Arbeitsstätte und tragen sie ins nächste Lager mit Platz.
 ## Leere Karte (nur Wiese); Bergfried (ID 1) bei (2, 2), erstes Warenlager (ID 2) bei (7, 2)
-## mit Eingang (8, 4), Lagerfeuer (ID 3) bei (3, 8) mit den 4 Startbewohnern.
+## mit Eingang (8, 4), Lagerfeuer (ID 3) bei (3, 8) mit den 4 Startbewohnern, erster
+## Kornspeicher (ID 4) unter dem Warenlager.
 
 const KEEP_ORIGIN := Vector2i(2, 2)
 const WAREHOUSE := 2
@@ -191,41 +192,41 @@ func test_quarry_without_rock_in_range_says_rock() -> void:
 	assert_eq(world.activity_of(worker), "Steinbrucharbeiter – wartet: Kein Felsen erreichbar", "Tätigkeit:")
 
 
-## Zweites Warenlager (ID 4) rechts am ersten, Holzfäller (ID 5) mit Baum rechts daneben;
+## Zweites Warenlager (ID 5) rechts am ersten, Holzfäller (ID 6) mit Baum rechts daneben;
 ## das zweite Lager liegt dem Holzfäller näher.
 func _two_warehouses() -> GameWorld:
 	var world := _founded()
-	assert_eq(build(world, "warehouse", Vector2i(10, 1)), 4, "Zweites Lager:")
+	assert_eq(build(world, "warehouse", Vector2i(10, 1)), 5, "Zweites Lager:")
 	_woodcutter_with_tree(world, Vector2i(15, 2), Vector2i(16, 7))
 	return world
 
 
 func test_partial_delivery_carries_rest_to_next_storage() -> void:
 	var world := _two_warehouses()
-	put_goods(world, 4, "stone", 198)
+	put_goods(world, 5, "stone", 198)
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
 	var wood_before := world.get_stock("wood")
 	_until(world, func() -> bool: return world.get_stock("wood") == wood_before + 4, "Lieferung")
-	assert_eq(world.get_building(4).contents.get("wood", 0), 2, "Ins nächste Lager, so viel passt:")
+	assert_eq(world.get_building(5).contents.get("wood", 0), 2, "Ins nächste Lager, so viel passt:")
 	assert_eq(world.get_building(WAREHOUSE).contents["wood"], wood_before + 2, "Rest ins andere Lager:")
-	assert_eq(changed, [4, WAREHOUSE] as Array[int], "Gemeldete Lager:")
+	assert_eq(changed, [5, WAREHOUSE] as Array[int], "Gemeldete Lager:")
 
 
 func test_all_storages_full_waits_with_goods() -> void:
 	var world := _two_warehouses()
-	put_goods(world, 4, "stone", 200)
+	put_goods(world, 5, "stone", 200)
 	var first := world.get_building(WAREHOUSE)
 	put_goods(world, WAREHOUSE, "stone", first.capacity() - first.contents["wood"])
 	var worker := world.get_resident(1)
 	_until(world, func() -> bool: return worker.task == Resident.Task.WAITING_FOR_STORAGE and not worker.is_moving(),
 			"Warten bei vollem Lager")
-	assert_eq(worker.tile, world.get_building(5).entrance(), "Wartet an der Arbeitsstätte:")
+	assert_eq(worker.tile, world.get_building(6).entrance(), "Wartet an der Arbeitsstätte:")
 	assert_eq(worker.carried_amount, 4, "Behält die Ware:")
 	assert_true(not worker.is_inside_building(), "Sichtbar mit der Ware")
 	assert_eq(world.activity_of(worker), "Holzfäller – wartet: Lager voll", "Tätigkeit:")
 	# Wieder Platz: nach der Wartezeit liefert er.
-	put_goods(world, 4, "stone", 100)
+	put_goods(world, 5, "stone", 100)
 	var wood_before := world.get_stock("wood")
 	_until(world, func() -> bool: return world.get_stock("wood") == wood_before + 4, "Lieferung nach dem Warten")
 

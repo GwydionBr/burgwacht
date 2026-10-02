@@ -1,14 +1,14 @@
 extends TestCase
 ## Simulationstests: Gebäude bauen mit Kosten aus den Warenlagern.
 ## Leere Karte (nur Wiese); Bergfried bei (2, 2), das erste Warenlager (ID 2) daneben, davor
-## das Lagerfeuer (ID 3),
-## darin die Startwaren des Testszenarios (100 Holz, 50 Stein).
+## das Lagerfeuer (ID 3), unter dem Warenlager der erste Kornspeicher (ID 4); im Warenlager
+## die Startwaren des Testszenarios (100 Holz, 50 Stein).
 
 const KEEP_ORIGIN := Vector2i(2, 2)
 ## Freie Stelle rechts vom ersten Warenlager.
 const SITE := Vector2i(12, 2)
-## Freie Stelle unter dem ersten Warenlager.
-const SITE_BELOW := Vector2i(7, 8)
+## Freie Stelle unter dem ersten Kornspeicher.
+const SITE_BELOW := Vector2i(7, 11)
 ## Freie Stelle direkt rechts neben dem ersten Warenlager (Bauregel des Warenlagers).
 const NEXT_TO_STORAGE := Vector2i(10, 2)
 
@@ -24,7 +24,7 @@ func test_woodcutter_is_built_and_costs_wood() -> void:
 	assert_eq(world.execute(Command.build("woodcutter", SITE)), "", "Grund:")
 	var building := world.get_building_at(SITE + Vector2i(1, 1))
 	assert_eq(building.type, "woodcutter", "Gebäude auf der Grundfläche:")
-	assert_eq(building.id, 4, "ID nach Bergfried, Warenlager und Lagerfeuer:")
+	assert_eq(building.id, 5, "ID nach Bergfried, Warenlager, Lagerfeuer und Kornspeicher:")
 	assert_eq(building.origin, SITE, "Ursprung:")
 	assert_eq(world.get_stock("wood"), 97, "Holz nach 3 Holz Kosten:")
 	assert_eq(world.get_stock("stone"), 50, "Stein unverändert:")
@@ -53,7 +53,7 @@ func test_building_is_reported() -> void:
 	world.building_added.connect(func(id: int) -> void: events.append("Gebäude %d" % id))
 	world.stock_changed.connect(func(id: int) -> void: events.append("Bestand %d" % id))
 	world.execute(Command.build("woodcutter", SITE))
-	assert_eq(events, ["Bestand 2", "Gebäude 4"] as Array[String], "Signale:")
+	assert_eq(events, ["Bestand 2", "Gebäude 5"] as Array[String], "Signale:")
 
 
 func test_too_few_goods_is_rejected_and_changes_nothing() -> void:
@@ -117,7 +117,7 @@ func test_types_without_hotkey_cannot_be_built() -> void:
 
 
 func test_buildable_types_come_from_data() -> void:
-	assert_eq(GameWorld.buildable_types(), ["warehouse", "woodcutter", "quarry"] as Array[String], "Baubare Typen:")
+	assert_eq(GameWorld.buildable_types(), ["warehouse", "granary", "woodcutter", "quarry"] as Array[String], "Baubare Typen:")
 
 
 func test_campfire_cannot_be_built() -> void:
@@ -131,27 +131,27 @@ func test_cost_comes_from_storages_in_ascending_id() -> void:
 	var world := _founded_world()
 	world.execute(Command.build("warehouse", NEXT_TO_STORAGE))
 	put_goods(world, 2, "wood", 2)
-	put_goods(world, 4, "wood", 10)
+	put_goods(world, 5, "wood", 10)
 	assert_eq(world.get_stock("wood"), 12, "Bestand ist die Summe über alle Lager:")
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
 	assert_eq(world.execute(Command.build("woodcutter", SITE_BELOW)), "", "Grund:")
 	assert_eq(world.get_building(2).contents, {"stone": 50} as Dictionary[String, int], "Ältestes Lager zuerst geleert:")
-	assert_eq(world.get_building(4).contents, {"wood": 9} as Dictionary[String, int], "Rest aus dem nächsten Lager:")
+	assert_eq(world.get_building(5).contents, {"wood": 9} as Dictionary[String, int], "Rest aus dem nächsten Lager:")
 	assert_eq(world.get_stock("wood"), 9, "Holz:")
-	assert_eq(changed, [2, 4] as Array[int], "Gemeldete Lager:")
+	assert_eq(changed, [2, 5] as Array[int], "Gemeldete Lager:")
 
 
 func test_cost_from_oldest_storage_leaves_newer_untouched() -> void:
 	var world := _founded_world()
 	world.execute(Command.build("warehouse", NEXT_TO_STORAGE))
-	put_goods(world, 4, "wood", 10)
+	put_goods(world, 5, "wood", 10)
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
 	add_rock_for_quarry(world, SITE_BELOW)
 	world.execute(Command.build("quarry", SITE_BELOW))
 	assert_eq(world.get_building(2).contents["wood"], 80, "Aus dem ältesten Lager:")
-	assert_eq(world.get_building(4).contents["wood"], 10, "Neueres Lager unberührt:")
+	assert_eq(world.get_building(5).contents["wood"], 10, "Neueres Lager unberührt:")
 	assert_eq(changed, [2] as Array[int], "Nur das älteste Lager gemeldet:")
 
 

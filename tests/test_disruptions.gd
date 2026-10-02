@@ -2,7 +2,7 @@ extends TestCase
 ## Simulationstests: Bewohner kommen mit einer sich ändernden Burg zurecht – Bauen auf
 ## Bewohnern, versperrte Wege, verschwundene Vorkommen, Abriss mitten im Arbeitsgang.
 ## Leere Karte (nur Wiese); Bergfried (ID 1) bei (2, 2), erstes Warenlager (ID 2) bei (7, 2),
-## Lagerfeuer (ID 3) bei (3, 8) mit den 4 Startbewohnern.
+## Lagerfeuer (ID 3) bei (3, 8) mit den 4 Startbewohnern, erster Kornspeicher (ID 4) bei (7, 6).
 
 const KEEP_ORIGIN := Vector2i(2, 2)
 const WAREHOUSE := 2
@@ -199,13 +199,13 @@ func test_demolished_workplace_mid_work_leaves_no_half_state() -> void:
 
 func test_demolished_storage_on_the_way_replans_at_once() -> void:
 	var world := _founded()
-	assert_eq(build(world, "warehouse", Vector2i(10, 1)), 4, "Zweites Lager:")
+	assert_eq(build(world, "warehouse", Vector2i(10, 1)), 5, "Zweites Lager:")
 	add_deposit(world, Vector2i(16, 7), "tree")
 	build(world, "woodcutter", Vector2i(15, 2))
 	var worker := world.get_resident(1)
 	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE, "Weg zum Lager")
-	assert_eq(worker.storage_id, 4, "Zum näheren Lager:")
-	assert_eq(world.execute(Command.demolish(4)), "", "Abriss des Lagers:")
+	assert_eq(worker.storage_id, 5, "Zum näheren Lager:")
+	assert_eq(world.execute(Command.demolish(5)), "", "Abriss des Lagers:")
 	assert_eq(worker.task, Resident.Task.TO_STORAGE, "Weiter mit der Ware unterwegs:")
 	assert_eq(worker.storage_id, WAREHOUSE, "Gleich zum anderen Lager:")
 	assert_eq(worker.destination(), world.get_building(WAREHOUSE).entrance(), "Weg zum anderen Lager:")
