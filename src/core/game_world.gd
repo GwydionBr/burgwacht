@@ -7,9 +7,7 @@ extends RefCounted
 signal deposit_removed(tile: Vector2i)
 signal day_started(day: int)
 
-## Takte pro Sekunde Spielzeit bei 1×.
-const TICKS_PER_SECOND := 10
-## Ein Tag dauert 60 Sekunden Spielzeit.
+## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 
 var map: MapData

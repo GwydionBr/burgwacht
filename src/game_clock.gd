@@ -5,17 +5,23 @@ extends Node
 
 signal speed_changed(speed: int, paused: bool)
 
+## Takte pro Sekunde Echtzeit bei 1×.
+const TICKS_PER_SECOND := 10
 const SPEEDS: Array[int] = [1, 2, 4]
 ## Obergrenze pro Frame, damit ein Hänger keine Lawine an Takten auslöst.
 const MAX_TICKS_PER_FRAME := 10
 ## Gleicht Rundungsfehler beim Aufsummieren kleiner Zeitschritte aus.
 const EPSILON := 0.000001
 
-var world: GameWorld
+## Beim Wechsel der Spielwelt verfällt ein noch angesammelter Zeitrest.
+var world: GameWorld:
+	set(value):
+		world = value
+		_pending_ticks = 0.0
 
 var _speed := 1
 var _paused := false
-var _pending := 0.0
+var _pending_ticks := 0.0
 
 
 func _process(delta: float) -> void:
@@ -29,12 +35,12 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> int:
 	if _paused:
 		return 0
-	_pending += delta * GameWorld.TICKS_PER_SECOND * _speed
-	var ticks := floori(_pending + EPSILON)
+	_pending_ticks += delta * TICKS_PER_SECOND * _speed
+	var ticks := floori(_pending_ticks + EPSILON)
 	if ticks > MAX_TICKS_PER_FRAME:
-		_pending = 0.0
+		_pending_ticks = 0.0
 		return MAX_TICKS_PER_FRAME
-	_pending -= ticks
+	_pending_ticks -= ticks
 	return ticks
 
 
