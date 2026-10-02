@@ -13,8 +13,8 @@ extends Node2D
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
-## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried und erstem
-## Warenlager unter der Maus, Linksklick schickt den Gründungsbefehl.
+## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager und
+## Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/H/B) ein Gebäude: Vorschau unter der Maus,
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
@@ -28,6 +28,7 @@ var _scenario: Scenario
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
+var _resident_views: Dictionary[int, ResidentView] = {}
 var _hovered := Vector2i(-1, -1)
 ## Gewählter Gebäudetyp im Baumodus, leer = kein Baumodus.
 var _build_type := ""
@@ -151,6 +152,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.building_added.connect(_on_building_added)
 	world.building_removed.connect(_on_building_removed)
 	world.stock_changed.connect(_on_stock_changed)
+	world.resident_added.connect(_on_resident_added)
 	world.founded.connect(_on_founded)
 	_clock.world = world
 	_build_type = ""
@@ -170,12 +172,18 @@ func _show_world(new_world: GameWorld) -> void:
 	_building_views.clear()
 	for building in world.get_buildings():
 		_add_building_view(building.id)
+	for view: ResidentView in _resident_views.values():
+		view.queue_free()
+	_resident_views.clear()
+	for resident in world.get_residents():
+		_add_resident_view(resident.id)
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
 	_hud.set_seed(world.get_seed())
 	_hud.show_day(world.get_day())
 	_update_stock()
+	_update_residents()
 	_update_hover()
 	_update_preview()
 
@@ -254,6 +262,19 @@ func _on_building_removed(id: int) -> void:
 	_update_preview()
 
 
+func _add_resident_view(id: int) -> void:
+	var view := ResidentView.new()
+	view.setup(world.get_resident(id))
+	_objects.add_child(view)
+	_resident_views[id] = view
+
+
+func _on_resident_added(id: int) -> void:
+	_add_resident_view(id)
+	_update_residents()
+	_update_hover()
+
+
 func _on_stock_changed(_building_id: int) -> void:
 	_update_stock()
 	_update_hover()
@@ -300,13 +321,9 @@ func _update_preview() -> void:
 		return
 	var origin := _origin_under_mouse(GameWorld.FOUNDING_TYPE)
 	var reason := world.founding_error(origin)
-	var parts: Array[Array] = [
-		[GameWorld.FOUNDING_TYPE, origin],
-		[world.founding_storage_type(), world.founding_storage_origin(origin)],
-	]
-	_preview.show_parts(parts, reason == "")
+	_preview.show_parts(world.founding_buildings(origin), reason == "")
 	if reason == "":
-		_hud.show_build_hint("Gründung: Bergfried und Warenlager setzen (Linksklick)", true)
+		_hud.show_build_hint("Gründung: Bergfried, Warenlager und Lagerfeuer setzen (Linksklick)", true)
 	else:
 		_hud.show_build_hint("Gründung: %s" % reason, false)
 
@@ -356,6 +373,11 @@ func _update_stock() -> void:
 	_hud.show_stock("  ·  ".join(parts))
 
 
+## Titelleiste: Bewohner und Untätige.
+func _update_residents() -> void:
+	_hud.show_residents(world.get_residents().size(), world.get_idle_count())
+
+
 func _update_hover() -> void:
 	var map := world.map
 	if not map.in_bounds(_hovered):
@@ -377,6 +399,11 @@ func _update_hover() -> void:
 			for good: String in building.contents:
 				stored.append("%d %s" % [building.contents[good], defs.goods[good]["name"]])
 			text += " (%d/%d): %s" % [building.stored(), building.capacity(), ", ".join(stored) if not stored.is_empty() else "leer"]
+	var activities: PackedStringArray = []
+	for resident in world.get_residents_at(_hovered):
+		activities.append(resident.activity())
+	if not activities.is_empty():
+		text += "  ·  Bewohner: %s" % ", ".join(activities)
 	_hud.show_tile_info(text)
 
 

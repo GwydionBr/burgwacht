@@ -4,7 +4,8 @@ extends Node2D
 ## aus den Daten, Name als Beschriftung, Eingang als dunkles Tor. Liegt im y-sortierten
 ## Objekt-Container. Der Sortierpunkt liegt zwischen den Kacheln hinter dem Gebäude und
 ## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
-## erscheinen (exakt für quadratische Grundflächen).
+## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
+## ein Steinkreis mit Flamme (Platzhalter).
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -12,6 +13,10 @@ const OUTLINE_COLOR := Color(0, 0, 0, 0.35)
 const LABEL_COLOR := Color("#f4ead2")
 const LABEL_SIZE := 13
 const GATE_HEIGHT := 18.0
+const LOG_COLOR := Color("#5b3d24")
+const FIRE_STONE_COLOR := Color("#77736b")
+const FLAME_OUTER_COLOR := Color("#e0702a")
+const FLAME_INNER_COLOR := Color("#ffd166")
 
 var _type: String
 var _origin: Vector2i
@@ -27,6 +32,9 @@ func setup(building: Building) -> void:
 
 func _draw() -> void:
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
+	if def["behavior"] == "campfire":
+		_draw_campfire()
+		return
 	var color := Color(str(def["color"]))
 	var base := footprint_corners(_type, _origin, position, INSET)
 	var faces := block_faces(base, float(def["height"]))
@@ -67,6 +75,24 @@ static func footprint_corners(type_id: String, origin: Vector2i, anchor: Vector2
 	for i in corners.size():
 		corners[i] = corners[i] - anchor + (center - corners[i]).normalized() * inset
 	return corners
+
+
+## Steinkreis mit Holzscheiten und Flamme, mittig auf der Kachel.
+func _draw_campfire() -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
+	draw_circle(Vector2.ZERO, 15.0, Color(0, 0, 0, 0.25))
+	for i in 9:
+		var angle := TAU * i / 9.0
+		draw_circle(Vector2(cos(angle), sin(angle)) * 12.0, 3.2, FIRE_STONE_COLOR)
+	draw_set_transform(Vector2.ZERO)
+	draw_line(Vector2(-8, 2), Vector2(8, -3), LOG_COLOR, 3.0)
+	draw_line(Vector2(-8, -3), Vector2(8, 2), LOG_COLOR, 3.0)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-6, 0), Vector2(-4, -9), Vector2(-1, -6), Vector2(1, -16), Vector2(4, -7), Vector2(6, 0),
+	]), FLAME_OUTER_COLOR)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-3, 0), Vector2(-1, -6), Vector2(1, -10), Vector2(3, -4), Vector2(3, 0),
+	]), FLAME_INNER_COLOR)
 
 
 ## Tor auf der vorderen Seite, an der der Eingang liegt.

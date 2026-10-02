@@ -44,7 +44,7 @@ func _draw() -> void:
 		for tile in Building.footprint(type_id, origin):
 			draw_colored_polygon(Iso.tile_polygon(tile), Color(color, FILL_ALPHA))
 		_draw_ghost_block(type_id, origin, color)
-		if _demolish:
+		if _demolish or not Building.has_entrance_type(type_id):
 			continue
 		var front := Iso.tile_polygon(Building.front_of_entrance(type_id, origin))
 		front.append(front[0])
