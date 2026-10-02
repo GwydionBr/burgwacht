@@ -52,7 +52,7 @@ func test_save_and_load_keeps_built_buildings_and_several_storages() -> void:
 	var world := run_scenario("tiny", 10)
 	for type_id: String in ["warehouse", "woodcutter", "quarry"]:
 		var site := find_site(world, type_id)
-		assert_true(site != NO_SITE, "Auf der Testkarte sollte Platz für %s sein" % type_id)
+		assert_true(site != GameWorld.NO_SITE, "Auf der Testkarte sollte Platz für %s sein" % type_id)
 		assert_eq(world.execute(Command.build(type_id, site)), "", "Bauen von %s:" % type_id)
 	put_goods(world, 3, "iron", 7)
 	var loaded := _reload(world)

@@ -105,6 +105,13 @@ func test_keep_cannot_be_built() -> void:
 	assert_eq(world.to_data(), before, "Spielwelt unverändert:")
 
 
+func test_types_without_hotkey_cannot_be_built() -> void:
+	var world := _founded_world()
+	var before := world.to_data()
+	assert_eq(world.execute(Command.build("castle", SITE)), "„castle“ kann nicht gebaut werden.", "Unbekannter Typ:")
+	assert_eq(world.to_data(), before, "Spielwelt unverändert:")
+
+
 func test_buildable_types_come_from_data() -> void:
 	assert_eq(GameWorld.buildable_types(), ["warehouse", "woodcutter", "quarry"] as Array[String], "Baubare Typen:")
 

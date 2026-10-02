@@ -56,17 +56,14 @@ func found_castle(world: GameWorld) -> GameWorld:
 	return world
 
 
-## Steht für „keine passende Stelle“ (find_site()).
-const NO_SITE := Vector2i(-1, -1)
-
-
-## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf.
+## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf;
+## sonst GameWorld.NO_SITE.
 func find_site(world: GameWorld, type_id: String) -> Vector2i:
 	for y in world.map.height:
 		for x in world.map.width:
 			if world.build_error(type_id, Vector2i(x, y)) == "":
 				return Vector2i(x, y)
-	return NO_SITE
+	return GameWorld.NO_SITE
 
 
 ## Testvorbereitung: legt eine Menge einer Ware direkt in ein Lager (0 = entfernen),

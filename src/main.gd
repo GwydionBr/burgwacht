@@ -57,7 +57,7 @@ func _ready() -> void:
 	for i in days * GameWorld.TICKS_PER_DAY:
 		world.step()
 	if args.has("build"):
-		_select_build(args["build"])
+		_select_build(str(args["build"]))
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -90,9 +90,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var reason := ""
 	if world.is_founding():
-		reason = world.execute(Command.found(_founding_origin()))
+		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
 	elif _build_type != "":
-		reason = world.execute(Command.build(_build_type, _build_origin()))
+		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
 	if reason != "":
 		_hud.show_message(reason)
 
@@ -250,10 +250,10 @@ func _on_founded() -> void:
 	_hud.show_message("Burg gegründet – Leertaste startet die Zeit")
 
 
-## Bergfried so, dass seine Grundfläche mittig unter der Maus liegt.
+## Ursprung eines Gebäudes dieses Typs, dessen Grundfläche mittig unter der Maus liegt.
 @warning_ignore("integer_division")
-func _founding_origin() -> Vector2i:
-	return _hovered - Building.size_of(GameWorld.FOUNDING_TYPE) / 2
+func _origin_under_mouse(type_id: String) -> Vector2i:
+	return _hovered - Building.size_of(type_id) / 2
 
 
 ## Baumodus für einen Gebäudetyp beginnen (leer = beenden); in der Gründung gesperrt.
@@ -266,17 +266,11 @@ func _select_build(type_id: String) -> void:
 	_update_preview()
 
 
-## Gebäude so, dass seine Grundfläche mittig unter der Maus liegt.
-@warning_ignore("integer_division")
-func _build_origin() -> Vector2i:
-	return _hovered - Building.size_of(_build_type) / 2
-
-
 func _update_preview() -> void:
 	if not world.is_founding():
 		_update_build_preview()
 		return
-	var origin := _founding_origin()
+	var origin := _origin_under_mouse(GameWorld.FOUNDING_TYPE)
 	var reason := world.founding_error(origin)
 	var parts: Array[Array] = [
 		[GameWorld.FOUNDING_TYPE, origin],
@@ -294,7 +288,7 @@ func _update_build_preview() -> void:
 		_preview.visible = false
 		_hud.show_build_hint("", true)
 		return
-	var origin := _build_origin()
+	var origin := _origin_under_mouse(_build_type)
 	var reason := world.build_error(_build_type, origin)
 	_preview.show_parts([[_build_type, origin]] as Array[Array], reason == "")
 	var building_name: String = GameDefs.get_instance().buildings[_build_type]["name"]

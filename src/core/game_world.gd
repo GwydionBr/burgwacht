@@ -152,22 +152,30 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 		return FOUNDING_FIRST
 	if type_id == FOUNDING_TYPE:
 		return "Der Bergfried entsteht nur bei der Gründung."
+	if not is_buildable(type_id):
+		return "„%s“ kann nicht gebaut werden." % type_id
 	var placement := placement_error(type_id, origin)
 	if placement != "":
 		return placement
-	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	var cost := _cost_of(type_id)
 	for good: String in cost:
 		if get_stock(good) < int(cost[good]):
 			return "Zu wenig %s (%d nötig)" % [_good_name(good), int(cost[good])]
 	return ""
 
 
-## Gebäudetypen, die der Spieler bauen kann (mit Taste in den Daten), in Datenreihenfolge.
+## Darf der Spieler diesen Gebäudetyp bauen? Baubar ist, was in den Daten eine Taste für
+## die Bauleiste hat; Bauleiste und Befehl richten sich beide danach.
+static func is_buildable(type_id: String) -> bool:
+	var def: Dictionary = GameDefs.get_instance().buildings.get(type_id, {})
+	return def.has("hotkey")
+
+
+## Gebäudetypen, die der Spieler bauen kann (is_buildable()), in Datenreihenfolge.
 static func buildable_types() -> Array[String]:
 	var result: Array[String] = []
-	var defs := GameDefs.get_instance().buildings
-	for type_id: String in defs:
-		if defs[type_id].has("hotkey"):
+	for type_id: String in GameDefs.get_instance().buildings:
+		if is_buildable(type_id):
 			result.append(type_id)
 	return result
 
@@ -304,7 +312,7 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	var error := build_error(type_id, origin)
 	if error != "":
 		return error
-	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	var cost := _cost_of(type_id)
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
 		_take_goods(good, int(cost[good]), changed)
@@ -389,6 +397,11 @@ func _founding_storage_def() -> Dictionary:
 
 func _building_name(type_id: String) -> String:
 	return str(GameDefs.get_instance().buildings[type_id]["name"])
+
+
+## Baukosten eines Gebäudetyps: Ware → Menge.
+func _cost_of(type_id: String) -> Dictionary:
+	return GameDefs.get_instance().buildings[type_id]["cost"]
 
 
 func _good_name(good: String) -> String:
