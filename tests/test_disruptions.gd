@@ -241,6 +241,44 @@ func test_vanished_deposit_while_mining_seeks_another_at_once() -> void:
 	assert_eq(worker.carried_amount, 0, "Nichts abgebaut:")
 
 
+func test_building_on_miner_seeks_deposit_again() -> void:
+	var world := _founded()
+	add_deposit(world, TREE, "tree")
+	build(world, "woodcutter", WOODCUTTER_SITE)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.task == Resident.Task.MINING, "Abbau")
+	var origin := _woodcutter_covering(world, worker.tile)
+	assert_true(origin != GameWorld.NO_SITE, "Holzfäller über dem Abbauenden baubar")
+	build(world, "woodcutter", origin)
+	_assert_all_walkable(world, "Nach dem Bau")
+	assert_eq([worker.task, worker.deposit_tile], [Resident.Task.TO_DEPOSIT, TREE], "Geht wieder zum Baum:")
+	_until(world, func() -> bool: return worker.task == Resident.Task.MINING, "Abbau von neuer Stelle")
+	assert_true(world.is_walkable(worker.tile, worker.level), "Baut von begehbarer Kachel ab")
+
+
+func test_cut_off_from_workplace_without_deposit_waits_visibly() -> void:
+	var world := _founded()
+	add_deposit(world, TREE, "tree")
+	var id := build(world, "woodcutter", WOODCUTTER_SITE)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.task == Resident.Task.MINING, "Abbau")
+	# Felsen vor dem Eingang (12, 3), dann verschwindet der Baum.
+	var blockers: Array[Vector2i] = [Vector2i(11, 3), Vector2i(12, 4)]
+	for tile in blockers:
+		add_deposit(world, tile, "stone")
+	world.map.remove_deposit(TREE)
+	world.step()
+	assert_true(not worker.is_moving(), "Bleibt stehen")
+	assert_true(not worker.is_inside_building(), "Nicht unsichtbar draußen")
+	assert_eq(world.activity_of(worker), "Holzfäller – wartet: Weg versperrt", "Tätigkeit:")
+	for tile in blockers:
+		world.map.remove_deposit(tile)
+	_until(world, func() -> bool: return worker.tile == world.get_building(id).entrance() and not worker.is_moving(),
+			"Zurück in der Arbeitsstätte")
+	_steps(world, 1)
+	assert_eq(worker.task, Resident.Task.WAITING_FOR_DEPOSIT, "Wartet dort auf einen Baum:")
+
+
 func test_save_while_waiting_for_blocked_way_gives_same_course() -> void:
 	var world := _founded()
 	_walking_to_far_site(world)

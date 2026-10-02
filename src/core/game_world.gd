@@ -638,10 +638,15 @@ func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
 
 ## Sucht das nächste passende Vorkommen und schickt den Arbeiter hin (exklusive sind damit
 ## reserviert); gibt es keins, wartet er in der Arbeitsstätte und sucht nach der Wartezeit erneut.
+## Erreicht er sie nicht, wartet er, wo er ist, und geht danach erneut zur Arbeitsstätte.
 func _seek_deposit(resident: Resident, workplace: Building) -> void:
 	var found := _nearest_deposit(resident, workplace)
 	if found.is_empty():
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_DEPOSIT)
+		if resident.timer > 0:
+			# Kein Weg (_go() hat die Wartezeit gesetzt): Er wartet sichtbar draußen und will
+			# danach wieder zur Arbeitsstätte.
+			resident.task = Resident.Task.TO_WORKPLACE
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.deposit_tile = found[0]
