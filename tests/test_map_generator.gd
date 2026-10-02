@@ -72,15 +72,24 @@ func test_game_only_on_grass() -> void:
 			assert_eq(map.get_terrain(tile), "grass", "Seed %d: Wild bei %s auf" % [map_seed, tile])
 
 
-func test_game_comes_in_packs() -> void:
+func test_game_comes_in_packs_of_three_to_six() -> void:
 	for map_seed in range(1, 11):
 		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
-		var tiles := _game_tiles(map)
-		# Rudel aus mindestens 3 Kacheln: Jedes Wild hat ein Wild mit gemeinsamer Kante.
-		for tile in tiles:
-			var neighbours := [tile + Vector2i.LEFT, tile + Vector2i.RIGHT, tile + Vector2i.UP, tile + Vector2i.DOWN]
-			assert_true(neighbours.any(func(other: Vector2i) -> bool: return tiles.has(other)),
-					"Seed %d: Wild bei %s allein" % [map_seed, tile])
+		var unvisited := _game_tiles(map)
+		while not unvisited.is_empty():
+			# Ein Rudel: alle über gemeinsame Kanten verbundenen Wild-Kacheln.
+			var pack: Array[Vector2i] = [unvisited.pop_front()]
+			var i := 0
+			while i < pack.size():
+				var neighbours: Array[Vector2i] = [pack[i] + Vector2i.LEFT, pack[i] + Vector2i.RIGHT,
+						pack[i] + Vector2i.UP, pack[i] + Vector2i.DOWN]
+				for next in neighbours:
+					if unvisited.has(next):
+						unvisited.erase(next)
+						pack.append(next)
+				i += 1
+			assert_true(pack.size() >= 3 and pack.size() <= 6,
+					"Seed %d: Rudel bei %s mit %d Kacheln" % [map_seed, pack[0], pack.size()])
 
 
 func test_same_seed_gives_same_game() -> void:

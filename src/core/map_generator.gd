@@ -125,15 +125,28 @@ static func _game_site(map: MapData, rng: RandomNumberGenerator) -> Vector2i:
 static func _is_near_forest(map: MapData, tile: Vector2i) -> bool:
 	for y in range(tile.y - 2, tile.y + 3):
 		for x in range(tile.x - 2, tile.x + 3):
-			var near := Vector2i(x, y)
-			if map.in_bounds(near) and map.get_deposit(near) != null and map.get_deposit(near).type == "tree":
+			if _deposit_type_at(map, Vector2i(x, y)) == "tree":
 				return true
 	return false
 
 
-static func _is_free_meadow(map: MapData, tile: Vector2i) -> bool:
-	return map.in_bounds(tile) and map.get_terrain(tile) == "grass" and map.get_deposit(tile) == null \
-			and Vector2(tile - map.center()).length() > START_CLEAR_RADIUS
+static func _deposit_type_at(map: MapData, tile: Vector2i) -> String:
+	if not map.in_bounds(tile) or map.get_deposit(tile) == null:
+		return ""
+	return map.get_deposit(tile).type
+
+
+## Frei für Wild: Gelände, auf dem es sich auch vermehrt ("spread" → "terrain"), ohne Vorkommen,
+## außerhalb des Startgebiets und ohne fremdes Wild daneben, damit Rudel getrennt bleiben.
+static func _is_free_meadow(map: MapData, tile: Vector2i, pack: Array[Vector2i] = []) -> bool:
+	var terrains: Array = GameDefs.get_instance().deposits["game"]["spread"]["terrain"]
+	if not map.in_bounds(tile) or not terrains.has(map.get_terrain(tile)) or map.get_deposit(tile) != null \
+			or Vector2(tile - map.center()).length() <= START_CLEAR_RADIUS:
+		return false
+	for offset: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+		if _deposit_type_at(map, tile + offset) == "game" and not pack.has(tile + offset):
+			return false
+	return true
 
 
 ## Wächst von site aus über Nachbarn mit gemeinsamer Kante bis zu size Kacheln freier Wiese.
@@ -144,7 +157,7 @@ static func _grow_pack(map: MapData, site: Vector2i, size: int, rng: RandomNumbe
 		for tile in pack:
 			for offset: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 				var next := tile + offset
-				if _is_free_meadow(map, next) and not pack.has(next) and not candidates.has(next):
+				if _is_free_meadow(map, next, pack) and not pack.has(next) and not candidates.has(next):
 					candidates.append(next)
 		if candidates.is_empty():
 			break

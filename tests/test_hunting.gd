@@ -74,7 +74,7 @@ func test_hunter_data() -> void:
 	assert_eq(def["behavior"], "gather", "Verhalten:")
 	assert_eq(Building.size_of("hunter"), Vector2i(2, 2), "Größe:")
 	assert_eq(int(def["workers"]), 1, "Arbeiter:")
-	var actual := [hunter.deposit_type(), hunter.mine_ticks(), hunter.process_ticks(),
+	var actual: Array = [hunter.deposit_type(), hunter.mine_ticks(), hunter.process_ticks(),
 			hunter.carry_load(), hunter.gather_range()]
 	assert_eq(actual, ["game", 30, 20, 3, 15], "Sammlerwerte:")
 	assert_eq(int(def["cost"]["wood"]), 5, "Kosten an Holz:")
