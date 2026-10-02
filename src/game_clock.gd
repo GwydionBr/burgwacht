@@ -49,6 +49,12 @@ func advance(delta: float) -> int:
 	return ticks
 
 
+## Bruchteil bis zum nächsten Takt (0 bis unter 1), damit die Darstellung zwischen zwei
+## Takten interpolieren kann – auch im Zeitraffer.
+func tick_fraction() -> float:
+	return clampf(_pending_ticks, 0.0, 1.0)
+
+
 func set_speed(speed: int) -> void:
 	assert(speed in SPEEDS, "Unbekannte Geschwindigkeit %d" % speed)
 	if _is_founding():

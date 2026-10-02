@@ -8,6 +8,9 @@ extends RefCounted
 ## Eine neue Spielwelt ist in Gründung: Es vergehen keine Takte und nur der Gründungsbefehl
 ## ist erlaubt. Er setzt den Bergfried mit seinen Begleitgebäuden (erstes Warenlager mit den
 ## Startwaren, Lagerfeuer mit den Startbewohnern als Untätige drumherum).
+##
+## In jedem Takt bekommen Arbeitsstätten mit freien Stellen Untätige zugeteilt, dann laufen
+## die Bewohner in ID-Reihenfolge ihren Weg ein Stück weiter.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -17,12 +20,14 @@ signal building_removed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
+## Tätigkeit eines Bewohners hat sich geändert (zugeteilt, angekommen, wieder untätig).
+signal resident_changed(id: int)
 signal founded()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -134,6 +139,8 @@ func step() -> void:
 		return
 	_tick += 1
 	_spread_deposits()
+	_assign_workers()
+	_move_residents()
 	if _tick % TICKS_PER_DAY == 0:
 		day_started.emit(get_day())
 
@@ -308,6 +315,26 @@ func get_residents_at(tile: Vector2i) -> Array[Resident]:
 	return result
 
 
+## Die Arbeiter einer Arbeitsstätte nach ID aufsteigend (0: die Untätigen).
+func get_workers(building_id: int) -> Array[Resident]:
+	var result: Array[Resident] = []
+	for resident: Resident in _residents.values():
+		if resident.workplace_id == building_id:
+			result.append(resident)
+	return result
+
+
+## Was ein Bewohner gerade tut, als Spieltext für die Kachel-Info,
+## z. B. „Holzfäller – geht zur Arbeitsstätte“.
+func activity_of(resident: Resident) -> String:
+	if resident.is_idle():
+		return "Untätig – geht zum Lagerfeuer" if resident.is_moving() else "Untätig"
+	var worker_name := get_building(resident.workplace_id).worker_name()
+	if resident.is_moving():
+		return "%s – geht zur Arbeitsstätte" % worker_name
+	return "%s – an der Arbeitsstätte" % worker_name
+
+
 ## Wie viele Bewohner ohne Arbeitsstätte sind.
 func get_idle_count() -> int:
 	var count := 0
@@ -441,6 +468,91 @@ static func _clockwise_angle(direction: Vector2i) -> float:
 	return fposmod(atan2(float(direction.y), float(direction.x)) + PI / 2.0, TAU)
 
 
+## Zuteilung: Arbeitsstätten in ID-Reihenfolge bekommen für jede freie Stelle den
+## Untätigen mit der kleinsten ID, der einen Weg zum Eingang hat. Hat keiner einen, bleibt
+## die Stelle frei, die Arbeitsstätte gilt als nicht erreichbar und wird erst nach der
+## Wartezeit (Resident.retry_ticks()) erneut geprüft. Ohne Untätige gibt es nichts zu prüfen
+## und keine gilt als nicht erreichbar.
+func _assign_workers() -> void:
+	for building: Building in _buildings.values():
+		if not building.is_workplace() or _tick < building.retry_tick:
+			continue
+		var open_slots := building.worker_slots() - get_workers(building.id).size()
+		while open_slots > 0:
+			var idle := get_workers(0)
+			var assigned := false
+			for resident in idle:
+				if _route_to(resident, Resident.ground(building.entrance())):
+					resident.workplace_id = building.id
+					resident_changed.emit(resident.id)
+					assigned = true
+					break
+			building.unreachable = not idle.is_empty() and not assigned
+			if building.unreachable:
+				building.retry_tick = _tick + Resident.retry_ticks()
+			if not assigned:
+				break
+			open_slots -= 1
+
+
+## Alle Bewohner laufen in ID-Reihenfolge einen Takt weiter.
+func _move_residents() -> void:
+	for resident: Resident in _residents.values():
+		if resident.advance():
+			resident_changed.emit(resident.id)
+
+
+## Plant den kürzesten Weg eines Bewohners zu goal und schickt ihn los; false (und nichts
+## ändert sich), wenn es keinen Weg gibt. Mitten im Schritt geht er den erst zu Ende.
+func _route_to(resident: Resident, goal: Vector3i) -> bool:
+	var start := resident.plan_start()
+	var path := Pathfinder.find_path(start, goal, _is_walkable_position)
+	if path.is_empty():
+		return false
+	if resident.step_progress == 0:
+		path.pop_front()
+	resident.path = path
+	return true
+
+
+## Schickt einen Untätigen zu einer freien Kachel am Lagerfeuer (Reihenfolge wie bei den
+## Startbewohnern); frei heißt: niemand steht dort oder ist dorthin unterwegs. Ist keine
+## erreichbar, bleibt er, wo er ist.
+func _send_to_campfire(resident: Resident) -> void:
+	var campfire := _campfire()
+	var taken: Dictionary[Vector2i, bool] = {}
+	for other: Resident in _residents.values():
+		if other != resident:
+			taken[other.destination()] = true
+	var ground := Resident.Level.GROUND
+	# Erreicht er das Lagerfeuer gar nicht, braucht er die Kacheln drumherum nicht zu prüfen.
+	if Pathfinder.find_path(resident.plan_start(), Resident.ground(campfire.origin), _is_walkable_position).is_empty():
+		resident.stop()
+		return
+	var radius := 2
+	while radius <= 2 * maxi(map.width, map.height):
+		for offset in _offsets_within(radius):
+			var tile := campfire.origin + offset
+			if not taken.has(tile) and is_walkable(tile, ground) and get_building_at(tile) == null \
+					and _route_to(resident, Resident.ground(tile)):
+				return
+		radius *= 2
+	resident.stop()
+
+
+## Das Lagerfeuer (entsteht bei der Gründung).
+func _campfire() -> Building:
+	for building: Building in _buildings.values():
+		if building.is_campfire():
+			return building
+	assert(false, "Kein Lagerfeuer in der Spielwelt")
+	return null
+
+
+func _is_walkable_position(position: Vector3i) -> bool:
+	return is_walkable(Vector2i(position.x, position.y), position.z as Resident.Level)
+
+
 func _add_resident(tile: Vector2i, level: Resident.Level) -> Resident:
 	var resident := Resident.create(_next_resident_id, tile, level)
 	_next_resident_id += 1
@@ -471,6 +583,11 @@ func _demolish(id: int) -> String:
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
+	# Die Arbeiter werden wieder Untätige und gehen zum Lagerfeuer.
+	for worker in get_workers(id):
+		worker.workplace_id = 0
+		_send_to_campfire(worker)
+		resident_changed.emit(worker.id)
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
 	var cost := _cost_of(building.type)
 	var changed: Dictionary[int, bool] = {}

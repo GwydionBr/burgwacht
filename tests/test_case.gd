@@ -77,6 +77,13 @@ func find_site(world: GameWorld, type_id: String, reason := "") -> Vector2i:
 	return GameWorld.NO_SITE
 
 
+## Baut ein Gebäude per Befehl (muss gelingen) und liefert seine ID.
+func build(world: GameWorld, type_id: String, origin: Vector2i) -> int:
+	var reason := world.execute(Command.build(type_id, origin))
+	assert(reason == "", "Bauen von %s fehlgeschlagen: %s" % [type_id, reason])
+	return world.get_building_at(origin).id
+
+
 ## Testvorbereitung: legt eine Menge einer Ware direkt in ein Lager (0 = entfernen),
 ## ohne Befehl – solange es noch keine Arbeiter gibt, die Waren bringen.
 func put_goods(world: GameWorld, building_id: int, good: String, amount: int) -> void:
@@ -112,9 +119,9 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	for tile: Vector2i in tiles:
 		var deposit := map.deposits[tile]
 		deposits.append([tile, deposit.type, deposit.amount, deposit.variant])
-	var buildings: Array[Array] = []
+	var buildings: Array[Dictionary] = []
 	for building in world.get_buildings():
-		buildings.append([building.id, building.type, building.origin, building.contents])
+		buildings.append(building.to_data())
 	var residents: Array[Dictionary] = []
 	for resident in world.get_residents():
 		residents.append(resident.to_data())
