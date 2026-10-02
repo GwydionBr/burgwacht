@@ -7,6 +7,10 @@ extends Node2D
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --days=3              Spielwelt vorab so viele Tage laufen lassen (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
+##
+## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
+
+const QUICKSAVE_PATH := "user://quicksave.sav"
 
 var world: GameWorld
 
@@ -60,13 +64,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_clock.toggle_pause()
 		KEY_1, KEY_2, KEY_3:
 			_clock.set_speed(GameClock.SPEEDS[key.keycode - KEY_1])
+		KEY_F5:
+			_quick_save()
+		KEY_F9:
+			_quick_load()
 		KEY_F:
 			var window := get_window()
 			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
 
 
 func _new_world(world_seed: int) -> void:
-	world = GameWorld.create(_scenario, world_seed)
+	_show_world(GameWorld.create(_scenario, world_seed))
+
+
+## Verbindet eine Spielwelt mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
+func _show_world(new_world: GameWorld) -> void:
+	world = new_world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.day_started.connect(_hud.show_day)
@@ -82,9 +95,41 @@ func _new_world(world_seed: int) -> void:
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
-	_hud.set_seed(world_seed)
+	_hud.set_seed(world.get_seed())
 	_hud.show_day(world.get_day())
 	_update_hover()
+
+
+func _quick_save() -> void:
+	var file := FileAccess.open(QUICKSAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		_hud.show_message("Speichern fehlgeschlagen: %s" % error_string(FileAccess.get_open_error()))
+		return
+	file.store_var(world.to_data())
+	file.close()
+	_hud.show_message("Gespeichert (Tag %d)" % world.get_day())
+
+
+func _quick_load() -> void:
+	if not FileAccess.file_exists(QUICKSAVE_PATH):
+		_hud.show_message("Noch kein Spielstand – erst mit F5 speichern")
+		return
+	var file := FileAccess.open(QUICKSAVE_PATH, FileAccess.READ)
+	var data: Variant = file.get_var() if file != null else null
+	if not data is Dictionary:
+		_hud.show_message("Spielstand ist beschädigt")
+		return
+	var error := GameWorld.data_error(data)
+	if error != "":
+		_hud.show_message(error)
+		return
+	var loaded := GameWorld.from_data(data)
+	# Neue Karte (N) danach im Szenario des Spielstands.
+	var scenario := Scenario.load_named(loaded.get_scenario_id())
+	if scenario.error == "":
+		_scenario = scenario
+	_show_world(loaded)
+	_hud.show_message("Geladen (Tag %d)" % world.get_day())
 
 
 func _add_deposit_view(tile: Vector2i) -> void:
