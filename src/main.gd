@@ -46,12 +46,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_new_world(randi())
 		KEY_SPACE:
 			_clock.toggle_pause()
-		KEY_1:
-			_clock.set_speed(1)
-		KEY_2:
-			_clock.set_speed(2)
-		KEY_3:
-			_clock.set_speed(4)
+		KEY_1, KEY_2, KEY_3:
+			_clock.set_speed(GameClock.SPEEDS[key.keycode - KEY_1])
 		KEY_F:
 			var window := get_window()
 			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
