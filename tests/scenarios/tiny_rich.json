@@ -1,0 +1,6 @@
+{
+  "name": "Kleine Testkarte mit mehr Startwaren, als ins erste Warenlager passen",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 180, "stone": 50, "iron": 10 }
+}

@@ -17,13 +17,10 @@ func _run_with_chance(world: GameWorld, ticks: int, chance: float) -> void:
 	spread["chance"] = old_chance
 
 
-## Tiny-Welt, aber leergeräumt: nur Wiese, keine Vorkommen.
+## Tiny-Welt, aber leergeräumt (nur Wiese, keine Vorkommen), Burg unten links gegründet.
 func _empty_world() -> GameWorld:
-	var world := run_scenario("tiny", 0)
-	world.map.deposits.clear()
-	for y in world.map.height:
-		for x in world.map.width:
-			world.map.set_terrain(Vector2i(x, y), "grass")
+	var world := empty_world()
+	world.execute(Command.found(Vector2i(1, 10)))
 	return world
 
 
@@ -106,3 +103,25 @@ func test_same_scenario_and_seed_grow_identical_trees() -> void:
 	assert_true(not first.is_empty(), "Es sollten Bäume wachsen")
 	assert_eq(first, second, "Neue Bäume bei gleichem Seed:")
 	assert_true(first != other, "Anderer Seed sollte andere Bäume ergeben")
+
+
+func test_trees_do_not_grow_on_buildings_or_in_front_of_entrances() -> void:
+	var world := empty_world()
+	world.execute(Command.found(Vector2i(2, 2)))
+	var reserved: Array[Vector2i] = []
+	for building in world.get_buildings():
+		reserved.append_array(building.tiles())
+		reserved.append(building.entrance_front())
+	# Bäume rundherum, damit jede Kachel einen Nachbarn hat, von dem aus sie wachsen könnte.
+	for y in world.map.height:
+		for x in world.map.width:
+			var tile := Vector2i(x, y)
+			if not tile in reserved and (x + y) % 2 == 0:
+				world.map.add_deposit(tile, Deposit.create("tree", RandomNumberGenerator.new()))
+	_run_with_chance(world, _interval(), 1.0)
+	var grown_on_reserved: Array[Vector2i] = []
+	for tile in reserved:
+		if world.map.get_deposit(tile) != null:
+			grown_on_reserved.append(tile)
+	assert_eq(grown_on_reserved, [] as Array[Vector2i], "Bäume auf Grundflächen oder vor Eingängen:")
+	assert_true(world.map.get_deposit(Vector2i(15, 12)) != null, "Freie Kacheln wachsen zu")

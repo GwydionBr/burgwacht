@@ -38,6 +38,31 @@ func test_loaded_world_continues_exactly_like_unsaved_one() -> void:
 	assert_eq(loaded.to_data(), original.to_data(), "Daten nach weiteren %d Takten:" % ticks_after)
 
 
+func test_save_and_load_keeps_buildings_and_storage() -> void:
+	var world := run_scenario("tiny", 10)
+	var loaded := _reload(world)
+	assert_true(not loaded.is_founding(), "Geladene Spielwelt ist gegründet")
+	assert_eq(loaded.get_buildings().size(), 2, "Gebäude:")
+	assert_eq(loaded.get_stock("wood"), 100, "Holz:")
+	assert_eq(loaded.get_building_at(loaded.get_buildings()[0].origin), loaded.get_buildings()[0], "Belegung nach dem Laden:")
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+
+
+func test_save_and_load_during_founding() -> void:
+	var world := new_world("tiny")
+	var loaded := _reload(world)
+	assert_true(loaded.is_founding(), "Geladene Spielwelt ist noch in Gründung")
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+	# Gründung nach dem Laden ergibt dasselbe wie ohne Speichern – samt Startwaren.
+	found_castle(world)
+	found_castle(loaded)
+	for i in GameWorld.TICKS_PER_DAY * 3:
+		world.step()
+		loaded.step()
+	assert_eq(loaded.get_stock("stone"), 50, "Stein aus den Startwaren:")
+	assert_eq(loaded.to_data(), world.to_data(), "Daten nach Gründung und 3 Tagen:")
+
+
 func test_loaded_world_reports_new_day() -> void:
 	var loaded := _reload(run_scenario("tiny", GameWorld.TICKS_PER_DAY - 1))
 	var days: Array[int] = []

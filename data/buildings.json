@@ -1,0 +1,23 @@
+{
+  "keep": {
+    "name": "Bergfried",
+    "behavior": "keep",
+    "size": [4, 4],
+    "entrance": [1, 3],
+    "cost": {},
+    "first_storage": { "type": "warehouse", "offset": [5, 0] },
+    "color": "#8a8478",
+    "height": 64
+  },
+  "warehouse": {
+    "name": "Warenlager",
+    "behavior": "storage",
+    "size": [3, 3],
+    "entrance": [1, 2],
+    "cost": {},
+    "storage": "warehouse",
+    "capacity": 200,
+    "color": "#9a7445",
+    "height": 22
+  }
+}
