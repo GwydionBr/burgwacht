@@ -25,6 +25,8 @@ const SAVE_VERSION := 2
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
 const NO_SITE := Vector2i(-1, -1)
+## Grund für jeden anderen Befehl während der Gründung.
+const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
 
 var map: MapData
 
@@ -125,8 +127,10 @@ func step() -> void:
 func execute(command: Command) -> String:
 	if command.kind == Command.Kind.FOUND:
 		return _found(command.origin)
+	if command.kind == Command.Kind.BUILD:
+		return _build(command.building_type, command.origin)
 	if _founding:
-		return "Erst die Burg gründen: Bergfried setzen."
+		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
 
 
@@ -139,6 +143,33 @@ func is_founding() -> bool:
 ## bebaubar → keine Vorkommen → keine Gebäude → Kachel vor dem Eingang begehbar und frei.
 func placement_error(type_id: String, origin: Vector2i) -> String:
 	return _placement_error(type_id, origin, {})
+
+
+## Darf der Befehl „Gebäude bauen“ jetzt Typ type_id mit diesem Ursprung bauen? Leer oder
+## der Grund. Erst placement_error(), als letzte Prüfung „genug Waren“ (Kosten aus den Daten).
+func build_error(type_id: String, origin: Vector2i) -> String:
+	if _founding:
+		return FOUNDING_FIRST
+	if type_id == FOUNDING_TYPE:
+		return "Der Bergfried entsteht nur bei der Gründung."
+	var placement := placement_error(type_id, origin)
+	if placement != "":
+		return placement
+	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	for good: String in cost:
+		if get_stock(good) < int(cost[good]):
+			return "Zu wenig %s (%d nötig)" % [_good_name(good), int(cost[good])]
+	return ""
+
+
+## Gebäudetypen, die der Spieler bauen kann (mit Taste in den Daten), in Datenreihenfolge.
+static func buildable_types() -> Array[String]:
+	var result: Array[String] = []
+	var defs := GameDefs.get_instance().buildings
+	for type_id: String in defs:
+		if defs[type_id].has("hotkey"):
+			result.append(type_id)
+	return result
 
 
 ## Darf die Burg mit dem Bergfried an diesem Ursprung gegründet werden? Leer oder der
@@ -269,6 +300,40 @@ func _found(origin: Vector2i) -> String:
 	return ""
 
 
+func _build(type_id: String, origin: Vector2i) -> String:
+	var error := build_error(type_id, origin)
+	if error != "":
+		return error
+	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	var changed: Dictionary[int, bool] = {}
+	for good: String in cost:
+		_take_goods(good, int(cost[good]), changed)
+	var changed_ids: Array[int] = changed.keys()
+	changed_ids.sort()
+	for id in changed_ids:
+		stock_changed.emit(id)
+	_add_building(type_id, origin)
+	return ""
+
+
+## Entnimmt amount einer Ware aus den Lagern ihrer Lagerart, ältestes zuerst; der Bestand
+## muss reichen. Betroffene Lager-IDs kommen in changed.
+func _take_goods(good: String, amount: int, changed: Dictionary[int, bool]) -> void:
+	var remaining := amount
+	for storage in _storages(_storage_type_of(good)):
+		if remaining == 0:
+			break
+		var taken := mini(remaining, storage.contents.get(good, 0))
+		if taken == 0:
+			continue
+		remaining -= taken
+		storage.contents[good] -= taken
+		if storage.contents[good] == 0:
+			storage.contents.erase(good)
+		changed[storage.id] = true
+	assert(remaining == 0, "Zu wenig %s im Lager" % good)
+
+
 func _add_building(type_id: String, origin: Vector2i) -> Building:
 	var building := Building.create(_next_building_id, type_id, origin)
 	_next_building_id += 1
@@ -324,6 +389,10 @@ func _founding_storage_def() -> Dictionary:
 
 func _building_name(type_id: String) -> String:
 	return str(GameDefs.get_instance().buildings[type_id]["name"])
+
+
+func _good_name(good: String) -> String:
+	return str(GameDefs.get_instance().goods[good]["name"])
 
 
 func _storage_type_of(good: String) -> String:

@@ -56,6 +56,29 @@ func found_castle(world: GameWorld) -> GameWorld:
 	return world
 
 
+## Steht für „keine passende Stelle“ (find_site()).
+const NO_SITE := Vector2i(-1, -1)
+
+
+## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf.
+func find_site(world: GameWorld, type_id: String) -> Vector2i:
+	for y in world.map.height:
+		for x in world.map.width:
+			if world.build_error(type_id, Vector2i(x, y)) == "":
+				return Vector2i(x, y)
+	return NO_SITE
+
+
+## Testvorbereitung: legt eine Menge einer Ware direkt in ein Lager (0 = entfernen),
+## ohne Befehl – solange es noch keine Arbeiter gibt, die Waren bringen.
+func put_goods(world: GameWorld, building_id: int, good: String, amount: int) -> void:
+	var contents := world.get_building(building_id).contents
+	if amount == 0:
+		contents.erase(good)
+	else:
+		contents[good] = amount
+
+
 ## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten
 ## (Vorkommen nach Kachel sortiert, Gebäude nach ID).
 func world_snapshot(world: GameWorld) -> Dictionary:

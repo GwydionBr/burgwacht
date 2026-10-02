@@ -48,6 +48,28 @@ func test_save_and_load_keeps_buildings_and_storage() -> void:
 	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
 
 
+func test_save_and_load_keeps_built_buildings_and_several_storages() -> void:
+	var world := run_scenario("tiny", 10)
+	for type_id: String in ["warehouse", "woodcutter", "quarry"]:
+		var site := find_site(world, type_id)
+		assert_true(site != NO_SITE, "Auf der Testkarte sollte Platz für %s sein" % type_id)
+		assert_eq(world.execute(Command.build(type_id, site)), "", "Bauen von %s:" % type_id)
+	put_goods(world, 3, "iron", 7)
+	var loaded := _reload(world)
+	assert_eq(loaded.get_buildings().size(), 5, "Gebäude:")
+	assert_eq(loaded.get_stock("wood"), 77, "Holz nach den Kosten:")
+	assert_eq(loaded.get_stock("iron"), 7, "Eisen im zweiten Warenlager:")
+	assert_eq(loaded.get_storage_capacity("warehouse"), 400, "Fassung:")
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+	# Weiterbauen und weiterlaufen ergibt dasselbe wie ohne Speichern.
+	for each: GameWorld in [world, loaded]:
+		each.execute(Command.build("woodcutter", find_site(each, "woodcutter")))
+		for i in GameWorld.TICKS_PER_DAY * 3:
+			each.step()
+	assert_eq(loaded.get_buildings().size(), 6, "Gebäude nach dem Weiterbauen:")
+	assert_eq(loaded.to_data(), world.to_data(), "Daten nach Weiterbauen und 3 Tagen:")
+
+
 func test_save_and_load_during_founding() -> void:
 	var world := new_world("tiny")
 	var loaded := _reload(world)
