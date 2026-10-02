@@ -1,15 +1,33 @@
 extends TestCase
 
-const SIZE := 30
+
+func _make_world() -> GameWorld:
+	return run_scenario("tiny", 0)
 
 
-func _make_world(world_seed := 1) -> GameWorld:
-	return GameWorld.create(world_seed, SIZE, SIZE)
+func _make_world_with_seed(world_seed: int) -> GameWorld:
+	return run_scenario_with_seed("tiny", 0, world_seed)
 
 
 func _run(world: GameWorld, ticks: int) -> void:
 	for i in ticks:
 		world.step()
+
+
+## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten.
+func _snapshot(world: GameWorld) -> Dictionary:
+	var map := world.map
+	var terrain: Array[String] = []
+	for y in map.height:
+		for x in map.width:
+			terrain.append(map.get_terrain(Vector2i(x, y)))
+	var deposits: Array[Array] = []
+	var tiles := map.deposits.keys()
+	tiles.sort()
+	for tile: Vector2i in tiles:
+		var deposit := map.deposits[tile]
+		deposits.append([tile, deposit.type, deposit.amount, deposit.variant])
+	return {"tick": world.get_tick(), "terrain": terrain, "deposits": deposits}
 
 
 func test_new_world_starts_at_tick_zero_on_day_one() -> void:
@@ -46,15 +64,43 @@ func test_day_started_signal_fires_once_per_day() -> void:
 	assert_eq(days, [2, 3, 4] as Array[int], "Gemeldete Tage:")
 
 
-func test_world_owns_generated_map() -> void:
-	var world := _make_world(42)
-	var expected := MapGenerator.generate(42, SIZE, SIZE)
-	assert_eq(world.map.width, SIZE, "Breite:")
-	assert_eq(world.map.deposits.keys(), expected.deposits.keys(), "Vorkommen wie beim Kartengenerator:")
+func test_map_size_comes_from_scenario() -> void:
+	var world := _make_world()
+	assert_eq(Vector2i(world.map.width, world.map.height), Vector2i(20, 16), "Kartengröße:")
+
+
+func test_world_knows_its_scenario_and_seed() -> void:
+	var world := _make_world()
+	assert_eq(world.get_scenario_id(), "tiny", "Szenario:")
+	assert_eq(world.get_seed(), 7, "Seed aus dem Szenario:")
+
+
+func test_seed_override_replaces_scenario_seed() -> void:
+	var world := _make_world_with_seed(42)
+	var expected := MapGenerator.generate(42, 20, 16)
+	assert_eq(world.get_seed(), 42, "Seed:")
+	assert_eq(world.map.deposits.keys(), expected.deposits.keys(), "Vorkommen wie beim Kartengenerator mit Seed 42:")
+
+
+func test_scenario_seed_is_used_for_map() -> void:
+	var world := _make_world()
+	var expected := MapGenerator.generate(7, 20, 16)
+	assert_eq(world.map.deposits.keys(), expected.deposits.keys(), "Vorkommen wie beim Kartengenerator mit Seed 7:")
+
+
+func test_same_scenario_and_seed_give_same_world_after_ticks() -> void:
+	var ticks := GameWorld.TICKS_PER_DAY * 3 + 17
+	var first := run_scenario_with_seed("tiny", ticks, 99)
+	var second := run_scenario_with_seed("tiny", ticks, 99)
+	assert_eq(_snapshot(first), _snapshot(second), "Spielwelt nach %d Takten:" % ticks)
+
+
+func test_different_seeds_give_different_worlds() -> void:
+	assert_true(_snapshot(_make_world_with_seed(1)) != _snapshot(_make_world_with_seed(2)), "Seeds 1 und 2 sollten verschiedene Karten ergeben")
 
 
 func test_deposit_removed_is_reported_by_world() -> void:
-	var world := _make_world(42)
+	var world := _make_world_with_seed(42)
 	var removed: Array[Vector2i] = []
 	world.deposit_removed.connect(func(tile: Vector2i) -> void: removed.append(tile))
 	var tile: Vector2i = world.map.deposits.keys()[0]

@@ -3,12 +3,13 @@ extends Node2D
 ## Enthält keine Spiellogik – die lebt in der Spielwelt (src/core/).
 ##
 ## Startparameter (nach "--"):
-##   --seed=123            feste Karte statt Zufall
+##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
+##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 
-const MAP_SIZE := Vector2i(80, 80)
-
 var world: GameWorld
+
+var _scenario: Scenario
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _hovered := Vector2i(-1, -1)
@@ -23,9 +24,16 @@ var _hovered := Vector2i(-1, -1)
 
 func _ready() -> void:
 	var args := _parse_user_args()
+	_scenario = Scenario.load_named(args.get("scenario", Scenario.DEFAULT))
+	if _scenario.error != "":
+		printerr("Fehler: ", _scenario.error)
+		set_process(false)
+		set_process_unhandled_key_input(false)
+		get_tree().quit(1)
+		return
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
-	_new_world(int(args["seed"]) if args.has("seed") else randi())
+	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(args["screenshot"])
 
@@ -43,6 +51,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_N:
+			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed.
 			_new_world(randi())
 		KEY_SPACE:
 			_clock.toggle_pause()
@@ -54,7 +63,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _new_world(world_seed: int) -> void:
-	world = GameWorld.create(world_seed, MAP_SIZE.x, MAP_SIZE.y)
+	world = GameWorld.create(_scenario, world_seed)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.day_started.connect(_hud.show_day)
 	_clock.world = world

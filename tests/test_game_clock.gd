@@ -49,6 +49,6 @@ func test_long_frame_is_capped() -> void:
 func test_new_world_drops_pending_time() -> void:
 	var clock := GameClock.new()
 	assert_eq(clock.advance(0.09), 0, "Takte nach 0,09 s:")
-	clock.world = GameWorld.create(1, 8, 8)
+	clock.world = run_scenario("tiny", 0)
 	assert_eq(clock.advance(0.09), 0, "Zeitrest der alten Welt zählt nicht mit:")
 	clock.free()
