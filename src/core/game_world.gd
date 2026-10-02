@@ -129,6 +129,8 @@ func execute(command: Command) -> String:
 		return _found(command.origin)
 	if command.kind == Command.Kind.BUILD:
 		return _build(command.building_type, command.origin)
+	if command.kind == Command.Kind.DEMOLISH:
+		return _demolish(command.building_id)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -161,6 +163,21 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 	for good: String in cost:
 		if get_stock(good) < int(cost[good]):
 			return "Zu wenig %s (%d nötig)" % [_good_name(good), int(cost[good])]
+	return ""
+
+
+## Darf der Befehl „Gebäude abreißen“ das Gebäude mit dieser ID jetzt abreißen? Leer oder
+## der Grund. Der Bergfried nie, ein Lager nur, wenn es leer ist.
+func demolish_error(id: int) -> String:
+	if _founding:
+		return FOUNDING_FIRST
+	var building := get_building(id)
+	if building == null:
+		return "Dieses Gebäude gibt es nicht"
+	if building.type == FOUNDING_TYPE:
+		return "Der Bergfried kann nicht abgerissen werden."
+	if building.is_storage() and building.stored() > 0:
+		return "%s ist nicht leer" % _building_name(building.type)
 	return ""
 
 
@@ -316,12 +333,51 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
 		_take_goods(good, int(cost[good]), changed)
+	_emit_stock_changed(changed)
+	_add_building(type_id, origin)
+	return ""
+
+
+func _demolish(id: int) -> String:
+	var error := demolish_error(id)
+	if error != "":
+		return error
+	var building: Building = _buildings[id]
+	_buildings.erase(id)
+	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
+	_rebuild_index()
+	building_removed.emit(id)
+	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
+	var cost := _cost_of(building.type)
+	var changed: Dictionary[int, bool] = {}
+	for good: String in cost:
+		@warning_ignore("integer_division")
+		_store_goods(good, int(cost[good]) / 2, changed)
+	_emit_stock_changed(changed)
+	return ""
+
+
+## Lagert bis zu amount einer Ware in die Lager ihrer Lagerart ein, ältestes zuerst; was
+## nicht passt, verfällt. Betroffene Lager-IDs kommen in changed.
+func _store_goods(good: String, amount: int, changed: Dictionary[int, bool]) -> void:
+	var remaining := amount
+	for storage in _storages(_storage_type_of(good)):
+		if remaining == 0:
+			break
+		var stored := mini(remaining, storage.capacity() - storage.stored())
+		if stored <= 0:
+			continue
+		remaining -= stored
+		storage.contents[good] = storage.contents.get(good, 0) + stored
+		changed[storage.id] = true
+
+
+## Meldet die geänderten Lager nach ID aufsteigend.
+func _emit_stock_changed(changed: Dictionary[int, bool]) -> void:
 	var changed_ids: Array[int] = changed.keys()
 	changed_ids.sort()
 	for id in changed_ids:
 		stock_changed.emit(id)
-	_add_building(type_id, origin)
-	return ""
 
 
 ## Entnimmt amount einer Ware aus den Lagern ihrer Lagerart, ältestes zuerst; der Bestand

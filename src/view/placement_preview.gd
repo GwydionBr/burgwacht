@@ -1,10 +1,12 @@
 class_name PlacementPreview
 extends Node2D
 ## Halbdurchsichtige Bauvorschau unter der Maus: Grundflächen grün (erlaubt) oder rot,
-## dazu die Kachel vor dem Eingang. Kennt nur Typ und Ursprung, keinen Zustand.
+## dazu die Kachel vor dem Eingang. Beim Abriss das Gebäude unter der Maus orange
+## (abreißbar) oder rot, ohne Eingang. Kennt nur Typ und Ursprung, keinen Zustand.
 
 const OK_COLOR := Color(0.35, 0.9, 0.4)
 const BLOCKED_COLOR := Color(0.95, 0.3, 0.25)
+const DEMOLISH_COLOR := Color(1.0, 0.6, 0.15)
 const FILL_ALPHA := 0.35
 const BLOCK_ALPHA := 0.45
 const FRONT_COLOR := Color(1, 0.95, 0.7, 0.8)
@@ -12,23 +14,38 @@ const FRONT_COLOR := Color(1, 0.95, 0.7, 0.8)
 ## Paare [Gebäudetyp, Ursprung].
 var _parts: Array[Array] = []
 var _allowed := true
+var _demolish := false
 
 
 func show_parts(parts: Array[Array], allowed: bool) -> void:
 	_parts = parts
 	_allowed = allowed
+	_demolish = false
+	visible = true
+	queue_redraw()
+
+
+## Hebt ein bestehendes Gebäude für den Abriss hervor.
+func show_demolish(type_id: String, origin: Vector2i, allowed: bool) -> void:
+	_parts = [[type_id, origin]]
+	_allowed = allowed
+	_demolish = true
 	visible = true
 	queue_redraw()
 
 
 func _draw() -> void:
-	var color := OK_COLOR if _allowed else BLOCKED_COLOR
+	var color := BLOCKED_COLOR
+	if _allowed:
+		color = DEMOLISH_COLOR if _demolish else OK_COLOR
 	for part in _parts:
 		var type_id: String = part[0]
 		var origin: Vector2i = part[1]
 		for tile in Building.footprint(type_id, origin):
 			draw_colored_polygon(Iso.tile_polygon(tile), Color(color, FILL_ALPHA))
 		_draw_ghost_block(type_id, origin, color)
+		if _demolish:
+			continue
 		var front := Iso.tile_polygon(Building.front_of_entrance(type_id, origin))
 		front.append(front[0])
 		draw_polyline(front, FRONT_COLOR, 2.0, true)

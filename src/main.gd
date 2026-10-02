@@ -8,6 +8,7 @@ extends Node2D
 ##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
 ##   --days=3              Spielwelt vorab gründen und so viele Tage laufen lassen (für Screenshots)
 ##   --build=woodcutter    nach der Gründung gleich im Baumodus für diesen Typ (für Screenshots)
+##   --demolish            nach der Gründung gleich mit dem Abriss-Werkzeug (für Screenshots)
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
@@ -16,6 +17,8 @@ extends Node2D
 ## Warenlager unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/H/B) ein Gebäude: Vorschau unter der Maus,
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
+## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
+## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -28,6 +31,8 @@ var _building_views: Dictionary[int, BuildingView] = {}
 var _hovered := Vector2i(-1, -1)
 ## Gewählter Gebäudetyp im Baumodus, leer = kein Baumodus.
 var _build_type := ""
+## Abriss-Werkzeug gewählt (schließt den Baumodus aus).
+var _demolishing := false
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
@@ -50,6 +55,7 @@ func _ready() -> void:
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
+	_hud.demolish_selected.connect(_select_demolish)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -58,6 +64,8 @@ func _ready() -> void:
 		world.step()
 	if args.has("build"):
 		_select_build(str(args["build"]))
+	if args.has("demolish"):
+		_select_demolish()
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -93,6 +101,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
 	elif _build_type != "":
 		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
+	elif _demolishing:
+		var building := world.get_building_at(_hovered)
+		if building != null:
+			reason = world.execute(Command.demolish(building.id))
 	if reason != "":
 		_hud.show_message(reason)
 
@@ -115,6 +127,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_quick_load()
 		KEY_ESCAPE:
 			_select_build("")
+		KEY_X:
+			_select_demolish()
 		KEY_F:
 			var window := get_window()
 			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
@@ -140,7 +154,8 @@ func _show_world(new_world: GameWorld) -> void:
 	world.founded.connect(_on_founded)
 	_clock.world = world
 	_build_type = ""
-	_hud.show_build_mode("")
+	_demolishing = false
+	_hud.show_tool("", false)
 	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
 	_terrain.show_map(map)
@@ -236,6 +251,7 @@ func _on_building_removed(id: int) -> void:
 		_building_views[id].queue_free()
 		_building_views.erase(id)
 	_update_hover()
+	_update_preview()
 
 
 func _on_stock_changed(_building_id: int) -> void:
@@ -256,13 +272,25 @@ func _origin_under_mouse(type_id: String) -> Vector2i:
 	return _hovered - Building.size_of(type_id) / 2
 
 
-## Baumodus für einen Gebäudetyp beginnen (leer = beenden); in der Gründung gesperrt.
+## Baumodus für einen Gebäudetyp beginnen (leer = beenden, auch den Abriss); in der
+## Gründung gesperrt.
 func _select_build(type_id: String) -> void:
-	if type_id != "" and world.is_founding():
+	_select_tool(type_id, false)
+
+
+## Abriss-Werkzeug wählen; in der Gründung gesperrt.
+func _select_demolish() -> void:
+	_select_tool("", true)
+
+
+func _select_tool(build_type: String, demolishing: bool) -> void:
+	if (build_type != "" or demolishing) and world.is_founding():
 		_hud.show_message(GameWorld.FOUNDING_FIRST)
-		type_id = ""
-	_build_type = type_id
-	_hud.show_build_mode(type_id)
+		build_type = ""
+		demolishing = false
+	_build_type = build_type
+	_demolishing = demolishing
+	_hud.show_tool(build_type, demolishing)
 	_update_preview()
 
 
@@ -284,6 +312,9 @@ func _update_preview() -> void:
 
 
 func _update_build_preview() -> void:
+	if _demolishing:
+		_update_demolish_preview()
+		return
 	if _build_type == "":
 		_preview.visible = false
 		_hud.show_build_hint("", true)
@@ -296,6 +327,22 @@ func _update_build_preview() -> void:
 		_hud.show_build_hint("%s setzen (Linksklick)  ·  Rechtsklick/Esc: beenden" % building_name, true)
 	else:
 		_hud.show_build_hint("%s: %s" % [building_name, reason], false)
+
+
+## Abriss: Gebäude unter der Maus hervorheben, mit Grund, wenn es nicht abreißbar ist.
+func _update_demolish_preview() -> void:
+	var building := world.get_building_at(_hovered)
+	if building == null:
+		_preview.visible = false
+		_hud.show_build_hint("Abriss: Gebäude anklicken  ·  Rechtsklick/Esc: beenden", true)
+		return
+	var reason := world.demolish_error(building.id)
+	_preview.show_demolish(building.type, building.origin, reason == "")
+	var building_name: String = building.def()["name"]
+	if reason == "":
+		_hud.show_build_hint("%s abreißen (Linksklick)  ·  Rechtsklick/Esc: beenden" % building_name, true)
+	else:
+		_hud.show_build_hint("Abriss: %s" % reason, false)
 
 
 ## Titelleiste: Bestand je Ware der Lagerart Warenlager und Belegung.
