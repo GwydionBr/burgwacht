@@ -136,6 +136,37 @@ func test_blocked_next_tile_replans() -> void:
 	assert_eq(worker.tile, world.get_building(id).entrance(), "Angekommen:")
 
 
+func test_tree_growing_across_path_replans() -> void:
+	var world := _founded()
+	var id := _walking_to_far_site(world)
+	var worker := world.get_resident(1)
+	var start := worker.tile
+	var next := Vector2i(worker.path[0].x, worker.path[0].y)
+	var ahead := Vector2i(worker.path[1].x, worker.path[1].y)
+	# Bäume seitlich neben dem Bewohner und neben der übernächsten Kachel; die andere Seite bleibt frei.
+	var side := Vector2i(signi(next.y - start.y), -signi(next.x - start.x))
+	add_deposit(world, start + side, "tree")
+	add_deposit(world, ahead + side, "tree")
+	# Einen Takt lang wächst sicher überall Wald, wo es darf.
+	var spread: Dictionary = GameDefs.get_instance().deposits["tree"]["spread"]
+	var old_spread := spread.duplicate()
+	spread["interval_ticks"] = 1
+	spread["chance"] = 1.0
+	world.step()
+	spread.assign(old_spread)
+	assert_true(world.map.get_deposit(ahead) != null, "Baum auf dem Weg gewachsen")
+	assert_true(world.map.get_deposit(next) != null, "Auch auf der nächsten Kachel")
+	assert_eq(world.map.get_deposit(start), null, "Kein Baum unter dem Bewohner")
+	# Danach geht er zum neuen Wald fällen; gezählt wird nur der Weg bis zur Arbeitsstätte.
+	var entrance := world.get_building(id).entrance()
+	for i in MAX_TICKS:
+		if worker.tile == entrance:
+			break
+		world.step()
+		assert_eq(world.map.get_deposit(worker.tile), null, "Läuft nicht durch Bäume auf %s:" % str(worker.tile))
+	assert_eq(worker.tile, entrance, "Angekommen:")
+
+
 func test_unreachable_goal_waits_and_retries() -> void:
 	var world := _founded()
 	var id := _walking_to_far_site(world)
