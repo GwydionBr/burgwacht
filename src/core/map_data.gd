@@ -3,6 +3,7 @@ extends RefCounted
 ## Der Spielzustand der Karte: Gelände pro Kachel und Vorkommen.
 ## Enthält bewusst keine Darstellung – die Views lesen nur daraus.
 
+signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
 
 var width: int
@@ -42,6 +43,7 @@ func get_deposit(tile: Vector2i) -> Deposit:
 
 func add_deposit(tile: Vector2i, deposit: Deposit) -> void:
 	deposits[tile] = deposit
+	deposit_added.emit(tile)
 
 
 func remove_deposit(tile: Vector2i) -> void:

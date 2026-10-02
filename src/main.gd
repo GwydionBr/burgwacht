@@ -5,6 +5,7 @@ extends Node2D
 ## Startparameter (nach "--"):
 ##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
+##   --days=3              Spielwelt vorab so viele Tage laufen lassen (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 
 var world: GameWorld
@@ -34,6 +35,8 @@ func _ready() -> void:
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
+	for i in int(args.get("days", 0)) * GameWorld.TICKS_PER_DAY:
+		world.step()
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(args["screenshot"])
 
@@ -64,6 +67,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _new_world(world_seed: int) -> void:
 	world = GameWorld.create(_scenario, world_seed)
+	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.day_started.connect(_hud.show_day)
 	_clock.world = world
@@ -74,10 +78,7 @@ func _new_world(world_seed: int) -> void:
 		view.queue_free()
 	_deposit_views.clear()
 	for tile in map.deposits:
-		var view := DepositView.new()
-		view.setup(tile, map.deposits[tile])
-		_objects.add_child(view)
-		_deposit_views[tile] = view
+		_add_deposit_view(tile)
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
@@ -86,10 +87,25 @@ func _new_world(world_seed: int) -> void:
 	_update_hover()
 
 
+func _add_deposit_view(tile: Vector2i) -> void:
+	var view := DepositView.new()
+	view.setup(tile, world.map.deposits[tile])
+	_objects.add_child(view)
+	_deposit_views[tile] = view
+
+
+func _on_deposit_added(tile: Vector2i) -> void:
+	_add_deposit_view(tile)
+	if tile == _hovered:
+		_update_hover()
+
+
 func _on_deposit_removed(tile: Vector2i) -> void:
 	if _deposit_views.has(tile):
 		_deposit_views[tile].queue_free()
 		_deposit_views.erase(tile)
+	if tile == _hovered:
+		_update_hover()
 
 
 func _update_hover() -> void:

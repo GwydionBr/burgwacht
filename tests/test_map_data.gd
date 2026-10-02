@@ -26,3 +26,11 @@ func test_remove_deposit_emits_signal() -> void:
 func test_deposit_amount_comes_from_data() -> void:
 	var deposit := Deposit.create("tree", RandomNumberGenerator.new())
 	assert_eq(deposit.amount, int(GameDefs.get_instance().deposits["tree"]["amount"]), "Menge:")
+
+
+func test_add_deposit_emits_signal() -> void:
+	var map := MapData.new(4, 4)
+	var added: Array[Vector2i] = []
+	map.deposit_added.connect(func(tile: Vector2i) -> void: added.append(tile))
+	map.add_deposit(Vector2i(3, 1), Deposit.create("tree", RandomNumberGenerator.new()))
+	assert_eq(added, [Vector2i(3, 1)] as Array[Vector2i], "Signal:")
