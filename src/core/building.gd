@@ -75,6 +75,12 @@ func gather_range() -> int:
 	return int(def()["range"])
 
 
+## Wie viel Wohnraum das Gebäude laut Daten stellt ("housing"): Grundwohnraum beim
+## Bergfried, sonst bei Wohnhäusern.
+func housing() -> int:
+	return int(def().get("housing", 0))
+
+
 ## Dürfen Bewohner die ganze Grundfläche betreten (z. B. das Lagerfeuer)?
 func is_walkable() -> bool:
 	return bool(def().get("walkable", false))

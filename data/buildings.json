@@ -10,6 +10,7 @@
       { "type": "campfire", "offset": [1, 6] },
       { "type": "granary", "offset": [5, 4] }
     ],
+    "housing": 8,
     "demolish_forbidden": "Der Bergfried kann nicht abgerissen werden.",
     "color": "#8a8478",
     "height": 64
@@ -84,5 +85,16 @@
     "hotkey": "B",
     "color": "#9c9a92",
     "height": 18
+  },
+  "house": {
+    "name": "Wohnhaus",
+    "behavior": "housing",
+    "housing": 8,
+    "size": [2, 2],
+    "entrance": [0, 1],
+    "cost": { "wood": 6 },
+    "hotkey": "O",
+    "color": "#a8673f",
+    "height": 26
   }
 }
