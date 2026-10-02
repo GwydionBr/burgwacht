@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
-## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Bestand und Bewohnern, Steuerungshinweise,
-## Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
+## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Bestand und Bewohnern, Meldungen oben
+## rechts darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
@@ -15,7 +15,7 @@ const HINT_COLOR := Color("#a89c80")
 const BLOCKED_COLOR := Color("#ff8a70")
 ## So lange bleibt eine Meldung (z. B. „Gespeichert“) stehen, in Sekunden.
 const MESSAGE_SECONDS := 3.0
-## Abstand des Bauhinweises vom oberen Rand, unterhalb der Titelleiste.
+## Abstand des Bauhinweises und der Meldungen vom oberen Rand, unterhalb der Titelleiste.
 const BUILD_HINT_TOP := 64
 
 var _info_label: Label
@@ -23,6 +23,7 @@ var _seed_label: Label
 var _day_label: Label
 var _speed_label: Label
 var _message_label: Label
+var _message_panel: PanelContainer
 var _message_timer: Timer
 var _info_panel: PanelContainer
 var _stock_label: Label
@@ -52,13 +53,21 @@ func _ready() -> void:
 	row.add_child(_stock_label)
 	_residents_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_residents_label)
+	add_child(bar)
+
+	# Meldungen eigen statt in der Titelleiste, damit sie bei langem Bestand nicht abgeschnitten werden.
+	_message_panel = _make_panel()
 	_message_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_message_label)
+	_message_panel.add_child(_message_label)
+	add_child(_message_panel)
+	_message_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
+	_message_panel.offset_top = BUILD_HINT_TOP
+	_message_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_message_panel.visible = false
 	_message_timer = Timer.new()
 	_message_timer.one_shot = true
-	_message_timer.timeout.connect(func() -> void: _message_label.text = "")
+	_message_timer.timeout.connect(func() -> void: _message_panel.visible = false)
 	add_child(_message_timer)
-	add_child(bar)
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
@@ -117,9 +126,11 @@ func show_speed(speed: int, paused: bool) -> void:
 	_speed_label.text = "Pause" if paused else "%d×" % speed
 
 
-## Kurze Meldung in der Titelleiste, verschwindet nach MESSAGE_SECONDS.
+## Kurze Meldung oben rechts unter der Titelleiste, verschwindet nach MESSAGE_SECONDS.
 func show_message(text: String) -> void:
 	_message_label.text = text
+	_message_panel.visible = true
+	_message_panel.reset_size()
 	_message_timer.start(MESSAGE_SECONDS)
 
 
@@ -129,7 +140,7 @@ func show_tile_info(text: String) -> void:
 	_info_panel.reset_size()
 
 
-## Bestand und Lagerbelegung in der Titelleiste, z. B. „Holz 100 · Stein 50 · Lager 150/200“.
+## Bestand und Lagerbelegung in der Titelleiste, z. B. „Holz 100 · Stein 50 · Warenlager 150/200“.
 func show_stock(text: String) -> void:
 	_stock_label.text = text
 
