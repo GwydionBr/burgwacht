@@ -11,7 +11,7 @@ Burgenbau-Strategiespiel im Stil von Stronghold für macOS. Godot 4.7, GDScript,
 ## Regeln
 
 - `src/core/` ist reine Logik und kennt nichts aus `view/` oder `ui/`.
-- Neue Gelände-, Rohstoff-, Waren- oder Gebäudetypen gehören nach `data/*.json`, nicht in den Code.
+- Neue Gelände-, Vorkommens-, Waren- oder Gebäudetypen gehören nach `data/*.json`, nicht in den Code.
 - Bezeichner auf Englisch, Kommentare und Spieltexte auf Deutsch.
 - Statische Typisierung überall, keine Variant-Inferenz.
 - Logik in `core/` testen; Grafik per Screenshot prüfen. Kleine Commits pro Feature.

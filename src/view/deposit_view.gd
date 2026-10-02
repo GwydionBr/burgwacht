@@ -1,6 +1,6 @@
-class_name ResourceView
+class_name DepositView
 extends Node2D
-## Zeichnet ein Rohstoffvorkommen (Baum, Felsen, Eisen). Liegt in einem
+## Zeichnet ein Vorkommen (Baum, Felsen, Eisen). Liegt in einem
 ## y-sortierten Container, damit weiter vorne stehende Objekte davor erscheinen.
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.22)
@@ -9,19 +9,19 @@ const STONE_COLOR := Color("#8d8a82")
 const IRON_STONE_COLOR := Color("#6f6660")
 const ORE_COLOR := Color("#b0562e")
 
-var resource: ResourceNode
+var deposit: Deposit
 
 
-func setup(tile: Vector2i, node: ResourceNode) -> void:
-	resource = node
+func setup(tile: Vector2i, shown: Deposit) -> void:
+	deposit = shown
 	position = Iso.tile_to_world(tile)
 	queue_redraw()
 
 
 func _draw() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = resource.variant
-	match resource.type:
+	rng.seed = deposit.variant
+	match deposit.type:
 		"tree":
 			_draw_tree(rng)
 		"stone":
