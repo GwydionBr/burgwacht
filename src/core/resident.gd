@@ -29,6 +29,38 @@ enum Task {
 	## Alle Lager voll: wartet mit der Ware an der Arbeitsstätte (timer).
 	WAITING_FOR_STORAGE,
 }
+## Wie ein Arbeitsschritt abläuft: unterwegs, Arbeit vor Ort oder Warten (beides mit timer).
+enum Phase { NONE, WALK, WORK, WAIT }
+## Worum es im Arbeitsschritt geht; danach richtet sich, was er beim Wiederaufnehmen neu
+## sucht bzw. wohin er geht.
+enum Goal { WORKPLACE, DEPOSIT, STORAGE }
+
+## Die Bedeutung der Arbeitsschritte an einer Stelle; ein neuer Schritt braucht hier je
+## einen Eintrag.
+const TASK_PHASE: Dictionary[Task, Phase] = {
+	Task.NONE: Phase.NONE,
+	Task.TO_WORKPLACE: Phase.WALK,
+	Task.TO_DEPOSIT: Phase.WALK,
+	Task.MINING: Phase.WORK,
+	Task.RETURNING: Phase.WALK,
+	Task.PROCESSING: Phase.WORK,
+	Task.TO_STORAGE: Phase.WALK,
+	Task.WAITING_FOR_DEPOSIT: Phase.WAIT,
+	Task.WAITING_FOR_STORAGE: Phase.WAIT,
+}
+const TASK_GOAL: Dictionary[Task, Goal] = {
+	Task.NONE: Goal.WORKPLACE,
+	Task.TO_WORKPLACE: Goal.WORKPLACE,
+	Task.TO_DEPOSIT: Goal.DEPOSIT,
+	Task.MINING: Goal.DEPOSIT,
+	Task.RETURNING: Goal.WORKPLACE,
+	Task.PROCESSING: Goal.WORKPLACE,
+	Task.TO_STORAGE: Goal.STORAGE,
+	Task.WAITING_FOR_DEPOSIT: Goal.DEPOSIT,
+	Task.WAITING_FOR_STORAGE: Goal.STORAGE,
+}
+## Bei diesen Schritten ist er im Stehen unsichtbar in seiner Arbeitsstätte.
+const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT]
 
 var id: int
 var tile: Vector2i
@@ -88,23 +120,37 @@ func is_moving() -> bool:
 	return not path.is_empty()
 
 
-## Ist er in seiner Arbeitsstätte und damit nicht zu sehen (beim Verarbeiten und beim
-## Warten auf ein Vorkommen)?
+## Wie sein Arbeitsschritt abläuft (TASK_PHASE).
+func phase() -> Phase:
+	return TASK_PHASE[task]
+
+
+## Worum es in seinem Arbeitsschritt geht (TASK_GOAL).
+func goal() -> Goal:
+	return TASK_GOAL[task]
+
+
+## Ist er in seiner Arbeitsstätte und damit nicht zu sehen (TASKS_INSIDE)?
 func is_inside_building() -> bool:
-	return not is_moving() and (task == Task.PROCESSING or task == Task.WAITING_FOR_DEPOSIT)
+	return not is_moving() and task in TASKS_INSIDE
+
+
+## Hat er eine Wartezeit (timer) vor sich – in einem Warteschritt oder nach versperrtem Weg?
+## Unterwegs heißt das: Nach der Ankunft wartet er erst, statt den nächsten Schritt zu beginnen.
+func is_waiting() -> bool:
+	return timer > 0 and phase() != Phase.WORK
 
 
 ## Steht er, obwohl er unterwegs sein will, weil sein Ziel nicht erreichbar war? Dann
-## versucht er es nach der Wartezeit (timer) erneut.
+## versucht er es nach der Wartezeit erneut.
 func is_blocked() -> bool:
-	return not is_moving() and timer > 0 \
-			and task in [Task.TO_WORKPLACE, Task.TO_DEPOSIT, Task.RETURNING, Task.TO_STORAGE]
+	return not is_moving() and is_waiting() and phase() == Phase.WALK
 
 
 ## Geht er zum Vorkommen auf dieser Kachel oder baut es ab? Bei exklusiven Vorkommen
 ## (Bäumen) ist es damit für andere reserviert.
 func is_targeting_deposit(target: Vector2i) -> bool:
-	return (task == Task.TO_DEPOSIT or task == Task.MINING) and deposit_tile == target
+	return goal() == Goal.DEPOSIT and phase() != Phase.WAIT and deposit_tile == target
 
 
 ## Vergisst den Arbeitsablauf samt getragener Ware (z. B. beim Abriss der Arbeitsstätte).
