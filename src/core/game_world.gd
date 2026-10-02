@@ -455,21 +455,29 @@ func _found(origin: Vector2i) -> String:
 ## Kacheln zuerst, bei gleichem Abstand im Uhrzeigersinn ab „oben“ (kleineres y). Passen
 ## nicht alle auf die Karte, entstehen nur so viele, wie Platz haben.
 func _add_start_residents(campfire: Building) -> void:
-	var placed := 0
-	# Erst nahe Kacheln, bei Bedarf weiter hinaus (Radius verdoppeln, Reihenfolge wie
-	# vorher); schon Besetzte zählen dann als belegt.
+	# Nicht auf Eingänge oder das Lagerfeuer selbst, obwohl begehbar; schon Besetzte zählen
+	# als belegt.
+	var is_free := func(tile: Vector2i) -> bool:
+		return is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
+				and get_residents_at(tile).is_empty()
+	for _i in _start_residents:
+		var found := _search_outward(campfire.origin, is_free)
+		if found.is_empty():
+			return
+		_add_resident(found[0], Resident.Level.GROUND)
+
+
+## Die erste Kachel um center, für die accept (Kachel → bool) gilt, als [Kachel], sonst
+## leer. Erst nahe Kacheln, bei Bedarf weiter hinaus (Radius verdoppeln, bis über die
+## Kartengröße), Reihenfolge wie am Lagerfeuer (_offsets_within()).
+func _search_outward(center: Vector2i, accept: Callable) -> Array[Vector2i]:
 	var radius := 2
-	while placed < _start_residents and radius <= 2 * maxi(map.width, map.height):
+	while radius <= 2 * maxi(map.width, map.height):
 		for offset in _offsets_within(radius):
-			if placed == _start_residents:
-				break
-			var tile := campfire.origin + offset
-			# Nicht auf Eingänge oder das Lagerfeuer selbst, obwohl begehbar.
-			if is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
-					and get_residents_at(tile).is_empty():
-				_add_resident(tile, Resident.Level.GROUND)
-				placed += 1
+			if accept.call(center + offset):
+				return [center + offset]
 		radius *= 2
+	return []
 
 
 ## Alle Versätze bis zum Abstand radius (ohne (0, 0)): nächste zuerst, bei gleichem
@@ -527,21 +535,31 @@ func _assign_workers() -> void:
 ## höchstens einmal je Bewohner und Takt, wenn sich Tätigkeit, Ware oder Laufen geändert hat.
 func _update_residents() -> void:
 	for resident: Resident in _residents.values():
-		var before := _visible_state(resident)
-		if resident.is_targeting_deposit(resident.deposit_tile) \
-				and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
-			# Das angesteuerte Vorkommen ist weg (erschöpft, ersetzt): gleich ein neues suchen.
-			_seek_deposit(resident, get_building(resident.workplace_id))
-		if resident.is_moving() and not _is_walkable_position(resident.path[0]):
-			_reroute(resident)
-		if resident.is_moving():
-			# Wer nach versperrtem Weg auf einen neuen Versuch wartet, kommt nirgends an.
-			if resident.advance() and resident.timer == 0:
-				_arrive(resident)
-		else:
-			_work(resident)
-		if _visible_state(resident) != before:
-			resident_changed.emit(resident.id)
+		_report_change(resident, _update_resident.bind(resident))
+
+
+func _update_resident(resident: Resident) -> void:
+	if resident.is_targeting_deposit(resident.deposit_tile) \
+			and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
+		# Das angesteuerte Vorkommen ist weg (erschöpft, ersetzt): gleich ein neues suchen.
+		_seek_deposit(resident, get_building(resident.workplace_id))
+	if resident.is_moving() and not _is_walkable_position(resident.path[0]):
+		_reroute(resident)
+	if resident.is_moving():
+		# Wer eine Wartezeit vor sich hat, wartet nach der Ankunft erst (_work()).
+		if resident.advance() and not resident.is_waiting():
+			_arrive(resident)
+	else:
+		_work(resident)
+
+
+## Führt change aus und meldet resident_changed, wenn sich dabei von außen Sichtbares am
+## Bewohner geändert hat (_visible_state()).
+func _report_change(resident: Resident, change: Callable) -> void:
+	var before := _visible_state(resident)
+	change.call()
+	if _visible_state(resident) != before:
+		resident_changed.emit(resident.id)
 
 
 ## Was sich an einem Bewohner von außen sehen lässt (für resident_changed).
@@ -599,12 +617,12 @@ func _resume(resident: Resident) -> void:
 	if workplace == null:
 		_send_to_campfire(resident)
 		return
-	match resident.task:
-		Resident.Task.TO_DEPOSIT, Resident.Task.WAITING_FOR_DEPOSIT:
+	match resident.goal():
+		Resident.Goal.DEPOSIT:
 			_seek_deposit(resident, workplace)
-		Resident.Task.TO_STORAGE, Resident.Task.WAITING_FOR_STORAGE:
+		Resident.Goal.STORAGE:
 			_seek_storage(resident, workplace)
-		_:
+		Resident.Goal.WORKPLACE:
 			_go(resident, workplace.entrance(), resident.task)
 
 
@@ -765,16 +783,12 @@ func _send_to_campfire(resident: Resident) -> void:
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 		return
-	var radius := 2
-	while radius <= 2 * maxi(map.width, map.height):
-		for offset in _offsets_within(radius):
-			var tile := campfire.origin + offset
-			if not taken.has(tile) and is_walkable(tile, ground) and get_building_at(tile) == null \
-					and _route_to(resident, Resident.ground(tile)):
-				return
-		radius *= 2
-	resident.stop()
-	resident.timer = Resident.retry_ticks()
+	var routed := _search_outward(campfire.origin, func(tile: Vector2i) -> bool:
+		return not taken.has(tile) and is_walkable(tile, ground) and get_building_at(tile) == null \
+				and _route_to(resident, Resident.ground(tile)))
+	if routed.is_empty():
+		resident.stop()
+		resident.timer = Resident.retry_ticks()
 
 
 ## Das Lagerfeuer (entsteht bei der Gründung).
@@ -820,18 +834,16 @@ func _make_way(building: Building) -> void:
 	var size := Building.size_of(building.type)
 	var reach := ceili(Vector2(size).length())
 	for resident: Resident in _residents.values():
-		var before := _visible_state(resident)
-		if not is_walkable(resident.tile, resident.level):
-			resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach)
-			resident.step_progress = 0
-			if resident.is_moving():
-				_reroute(resident)
-			elif resident.task == Resident.Task.MINING:
-				_seek_deposit(resident, get_building(resident.workplace_id))
-		elif resident.is_moving() and _crosses(resident, building):
-			_reroute(resident)
-		if _visible_state(resident) != before:
-			resident_changed.emit(resident.id)
+		_report_change(resident, func() -> void:
+			if not is_walkable(resident.tile, resident.level):
+				resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach)
+				resident.step_progress = 0
+				if resident.is_moving():
+					_reroute(resident)
+				elif resident.task == Resident.Task.MINING:
+					_seek_deposit(resident, get_building(resident.workplace_id))
+			elif resident.is_moving() and _crosses(resident, building):
+				_reroute(resident))
 
 
 ## Führt der restliche Weg des Bewohners über die Grundfläche des Gebäudes (außer dem Eingang)?
@@ -854,33 +866,24 @@ func _anchor_of(resident: Resident) -> Vector3i:
 
 
 ## Die nächste begehbare Kachel am Boden, von der aus anchor erreichbar ist: Suche nach
-## außen, Reihenfolge wie am Lagerfeuer (_offsets_within()), bis zum Abstand reach.
-## Abgeschlossene Taschen werden so übersprungen; ist anchor in der Nähe von keiner aus
-## erreichbar, die nächste begehbare, gibt es gar keine, die Kachel selbst.
+## außen (_search_outward()) bis zum Abstand reach. Abgeschlossene Taschen werden so
+## übersprungen; ist anchor in der Nähe von keiner aus erreichbar, die nächste begehbare,
+## gibt es gar keine, die Kachel selbst.
 func _nearest_reachable(tile: Vector2i, anchor: Vector3i, reach: int) -> Vector2i:
-	var nearest := tile
-	var found := false
+	var nearest := _search_outward(tile, func(candidate: Vector2i) -> bool:
+		return is_walkable(candidate, Resident.Level.GROUND))
+	if nearest.is_empty():
+		return tile
 	# Meist erreicht schon die nächste begehbare Kachel den Anker (ein Weg). Sonst wird
 	# einmal alles gemessen, was vom Anker aus erreichbar ist (selten, aber die ganze Burg).
-	var reachable: Dictionary[Vector3i, float] = {}
-	var radius := 2
-	while radius <= 2 * maxi(map.width, map.height):
-		for offset in _offsets_within(radius):
-			var candidate := tile + offset
-			if not is_walkable(candidate, Resident.Level.GROUND):
-				continue
-			if not found:
-				found = true
-				nearest = candidate
-				if not Pathfinder.find_path(Resident.ground(candidate), anchor, _is_walkable_position).is_empty():
-					return candidate
-				reachable = Pathfinder.distances(anchor, _is_walkable_position)
-			elif offset.length_squared() <= reach * reach and reachable.has(Resident.ground(candidate)):
-				return candidate
-		if found and radius >= reach:
-			return nearest
-		radius *= 2
-	return nearest
+	if not Pathfinder.find_path(Resident.ground(nearest[0]), anchor, _is_walkable_position).is_empty():
+		return nearest[0]
+	var reachable := Pathfinder.distances(anchor, _is_walkable_position)
+	for offset in _offsets_within(reach):
+		var candidate := tile + offset
+		if is_walkable(candidate, Resident.Level.GROUND) and reachable.has(Resident.ground(candidate)):
+			return candidate
+	return nearest[0]
 
 
 func _demolish(id: int) -> String:
@@ -895,10 +898,7 @@ func _demolish(id: int) -> String:
 	# Wer Ware zu diesem Lager trägt, sucht gleich ein anderes.
 	for resident: Resident in _residents.values():
 		if resident.task == Resident.Task.TO_STORAGE and resident.storage_id == id:
-			var before := _visible_state(resident)
-			_seek_storage(resident, get_building(resident.workplace_id))
-			if _visible_state(resident) != before:
-				resident_changed.emit(resident.id)
+			_report_change(resident, _seek_storage.bind(resident, get_building(resident.workplace_id)))
 	# Die Arbeiter werden wieder Untätige und gehen zum Lagerfeuer.
 	for worker in get_workers(id):
 		worker.workplace_id = 0

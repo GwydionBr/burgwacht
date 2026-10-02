@@ -130,3 +130,24 @@ func test_residents_survive_save_and_load() -> void:
 	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
 	assert_eq(loaded.get_residents().size(), 4, "Bewohner nach dem Laden:")
 	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+
+
+## Ein neuer Arbeitsschritt braucht seine Bedeutung an der einen Stelle in Resident.
+func test_every_task_has_phase_and_goal() -> void:
+	for task: Resident.Task in Resident.Task.values():
+		assert_true(Resident.TASK_PHASE.has(task), "Phase für %s" % Resident.Task.find_key(task))
+		assert_true(Resident.TASK_GOAL.has(task), "Ziel für %s" % Resident.Task.find_key(task))
+
+
+func test_blocked_and_waiting_follow_from_phase() -> void:
+	var resident := Resident.create(1, Vector2i(3, 3), Resident.Level.GROUND)
+	resident.timer = 5
+	resident.task = Resident.Task.TO_STORAGE
+	assert_true(resident.is_waiting() and resident.is_blocked(), "Laufschritt mit Wartezeit: Weg versperrt")
+	resident.task = Resident.Task.WAITING_FOR_STORAGE
+	assert_true(resident.is_waiting() and not resident.is_blocked(), "Warten auf Lagerplatz: nicht versperrt")
+	resident.task = Resident.Task.MINING
+	assert_true(not resident.is_waiting() and not resident.is_blocked(), "Abbau ist kein Warten")
+	resident.task = Resident.Task.TO_STORAGE
+	resident.path.append(Vector3i(4, 3, 0))
+	assert_true(resident.is_waiting() and not resident.is_blocked(), "Unterwegs wartet er erst nach der Ankunft")
