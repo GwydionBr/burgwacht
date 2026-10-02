@@ -128,9 +128,14 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	var stock: Dictionary[String, int] = {}
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
+	var factors: Array[Dictionary] = []
+	for factor in world.get_factors():
+		factors.append(factor.to_data())
 	return {
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
 		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
+		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
+		"factors": factors,
 	}
 
 
