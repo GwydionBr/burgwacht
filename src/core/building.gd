@@ -66,6 +66,21 @@ static func footprint(type_id: String, origin_tile: Vector2i) -> Array[Vector2i]
 	return result
 
 
+## Die Kacheln, die an die Grundfläche grenzen: direkt daneben, mit gemeinsamer Kante.
+## Schräg an einer Ecke zählt nicht. Zeilenweise; kann außerhalb der Karte liegen.
+static func adjacent_tiles(type_id: String, origin_tile: Vector2i) -> Array[Vector2i]:
+	var size := size_of(type_id)
+	var result: Array[Vector2i] = []
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			var inside_x := x >= 0 and x < size.x
+			var inside_y := y >= 0 and y < size.y
+			# Genau eine Achse innerhalb: daneben, nicht darin und nicht an der Ecke.
+			if inside_x != inside_y:
+				result.append(origin_tile + Vector2i(x, y))
+	return result
+
+
 ## Die Eingangskachel (innerhalb der Grundfläche).
 static func entrance_of(type_id: String, origin_tile: Vector2i) -> Vector2i:
 	return origin_tile + _vec(GameDefs.get_instance().buildings[type_id]["entrance"])

@@ -148,7 +148,8 @@ func placement_error(type_id: String, origin: Vector2i) -> String:
 
 
 ## Darf der Befehl „Gebäude bauen“ jetzt Typ type_id mit diesem Ursprung bauen? Leer oder
-## der Grund. Erst placement_error(), als letzte Prüfung „genug Waren“ (Kosten aus den Daten).
+## der Grund. Erst placement_error(), dann die Bauregeln des Typs, als letzte
+## Prüfung „genug Waren“ (Kosten aus den Daten).
 func build_error(type_id: String, origin: Vector2i) -> String:
 	if _founding:
 		return FOUNDING_FIRST
@@ -159,6 +160,9 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 	var placement := placement_error(type_id, origin)
 	if placement != "":
 		return placement
+	var rules := _rules_error(type_id, origin)
+	if rules != "":
+		return rules
 	var cost := _cost_of(type_id)
 	for good: String in cost:
 		if get_stock(good) < int(cost[good]):
@@ -445,6 +449,42 @@ func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictiona
 			or _occupied.has(front) or extra_blocked.has(front):
 		return "Eingang ist versperrt"
 	return ""
+
+
+## Die Bauregeln eines Gebäudetyps ("rules" in buildings.json) in Datenreihenfolge:
+## leer, wenn alle gelten, sonst der Grund ("reason") der ersten verletzten.
+func _rules_error(type_id: String, origin: Vector2i) -> String:
+	var rules: Array = GameDefs.get_instance().buildings[type_id].get("rules", [])
+	for rule: Dictionary in rules:
+		if not _rule_holds(type_id, origin, rule):
+			return str(rule["reason"])
+	return ""
+
+
+## Gilt eine Bauregel für ein Gebäude dieses Typs an diesem Ursprung? „Grenzen“ heißt:
+## auf einer Kachel direkt neben der Grundfläche (Building.adjacent_tiles(), nicht schräg).
+func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
+	var kind := str(rule["kind"])
+	var neighbors := Building.adjacent_tiles(type_id, origin)
+	if kind == "next_to_same_storage":
+		# Gibt es gerade kein Lager dieser Lagerart, darf das neue überall stehen.
+		var storage_type := str(GameDefs.get_instance().buildings[type_id]["storage"])
+		if _storages(storage_type).is_empty():
+			return true
+		for tile in neighbors:
+			var other := get_building_at(tile)
+			if other != null and other.is_storage() and other.storage_type() == storage_type:
+				return true
+		return false
+	if kind == "next_to_deposit":
+		var deposit_type := str(rule["deposit"])
+		for tile in neighbors:
+			var deposit := map.get_deposit(tile)
+			if deposit != null and deposit.type == deposit_type:
+				return true
+		return false
+	assert(false, "Unbekannte Bauregel „%s“ bei „%s“" % [kind, type_id])
+	return false
 
 
 func _founding_storage_def() -> Dictionary:

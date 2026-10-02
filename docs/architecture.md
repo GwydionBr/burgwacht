@@ -12,7 +12,7 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `scenario.gd` – lädt und prüft ein Szenario aus `data/scenarios/<id>.json` (Fehler als deutscher Text in `error`)
   - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator, Gebäude und Lager; entsteht nur aus einem Szenario. Befehle über `execute()`, rein lesende Abfragen `placement_error()`/`founding_error()`/`build_error()`/`demolish_error()` (gemeinsam für Vorschau und Befehl), `buildable_types()` für die Bauleiste. Regeln: Vorkommen mit `spread` in `deposits.json` (Bäume) breiten sich auf freie, bebaubare Nachbarkacheln aus, nicht aber in Grundflächen und vor Eingänge. `to_data()`/`from_data()` für den Spielstand
   - `command.gd` – ein Befehl (Gründen, Bauen, Abreißen) für `GameWorld.execute()`
-  - `building.gd` – ein Gebäude (ID, Typ, Ursprung, bei Lagern der Inhalt); Grundfläche und Kachel vor dem Eingang aus `buildings.json`
+  - `building.gd` – ein Gebäude (ID, Typ, Ursprung, bei Lagern der Inhalt); Grundfläche, angrenzende Kacheln und Kachel vor dem Eingang aus `buildings.json`
 - `src/view/` – zeichnet den Zustand (alles prozedural mit `_draw`, noch keine Bilddateien). Objekte (Vorkommen, Gebäudeblöcke) liegen im y-sortierten `Objects`-Node; `placement_preview.gd` zeigt die Bauvorschau und hebt beim Abriss das Gebäude unter der Maus hervor.
 - `src/ui/` – Oberfläche (HUD mit Titelleiste und Bauleiste), im Code aufgebaut.
 - `src/game_clock.gd` – treibt die Spielwelt an (Pause, 1×/2×/4×, begrenzte Takte pro Frame); steht während der Gründung.
@@ -31,8 +31,9 @@ Siehe `docs/adr/0001` bis `0004`. Kurz:
 - Der Zustand ist serialisierbar (Verweise über IDs). Jedes neue Zustandsstück bekommt einen Test „speichern → laden → gleicher Verlauf“.
 - Gebäude: Werte in `data/buildings.json`, Ablauf über ein Verhalten aus einer festen Menge im Code. Jede Ware hat in `goods.json` ihre Lagerart (`storage`); Lager haben Lagerart und Fassungsvermögen.
 - **Gründung**: Eine neue Spielwelt ist in Gründung – `step()` lässt keine Takte vergehen, nur der Gründungsbefehl ist erlaubt. Er setzt den Bergfried und das erste Warenlager (Lage aus `first_storage` des Bergfrieds) und legt die Startwaren des Szenarios (`start_goods`) hinein; Überschuss verfällt.
-- **Befehle** wirken sofort, auch ohne Takt; Ergebnis ist leer (Erfolg) oder ein deutscher Grund, ein abgelehnter Befehl ändert nichts. Prüfreihenfolge beim Platzieren: auf der Karte → Gelände bebaubar → keine Vorkommen → keine Gebäude → Kachel vor dem Eingang begehbar und frei; beim Bauen zuletzt genug Waren.
+- **Befehle** wirken sofort, auch ohne Takt; Ergebnis ist leer (Erfolg) oder ein deutscher Grund, ein abgelehnter Befehl ändert nichts. Prüfreihenfolge beim Platzieren: auf der Karte → Gelände bebaubar → keine Vorkommen → keine Gebäude → Kachel vor dem Eingang begehbar und frei; beim Bauen danach die Bauregeln des Typs und zuletzt genug Waren.
 - **Bauen**: Baubar sind Typen mit `hotkey` in `buildings.json` (nicht der Bergfried). Kosten werden sofort aus den Lagern der passenden Lagerart entnommen, ältestes (kleinste ID) zuerst; der Bestand ist die Summe über alle Lager.
+- **Bauregeln**: `rules` beim Gebäudetyp in `buildings.json`, je Regel `kind` und der deutsche Grund `reason`; gilt eine nicht, ist der Grund der ersten verletzten das Ergebnis. Arten: `next_to_same_storage` (grenzt an ein Lager derselben Lagerart – gibt es gerade keins, überall erlaubt) und `next_to_deposit` (grenzt an ein Vorkommen vom Typ `deposit`). „Grenzen“ heißt: Kachel direkt neben der Grundfläche mit gemeinsamer Kante, schräg zählt nicht (`Building.adjacent_tiles()`). Nur beim Bauen, nicht bei der Gründung.
 - **Abriss**: Der Bergfried nie, ein Lager nur leer. Die Hälfte der Baukosten je Ware (abgerundet) kommt in die Lager der passenden Lagerart, ältestes zuerst; was nicht passt, verfällt, der Abriss gelingt trotzdem. IDs werden nicht wiederverwendet.
 
 ## Spielstand

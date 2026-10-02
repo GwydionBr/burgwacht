@@ -56,12 +56,12 @@ func found_castle(world: GameWorld) -> GameWorld:
 	return world
 
 
-## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf;
-## sonst GameWorld.NO_SITE.
-func find_site(world: GameWorld, type_id: String) -> Vector2i:
+## Der erste Ursprung (zeilenweise), an dem ein Gebäude dieses Typs gebaut werden darf –
+## bzw. an dem build_error() genau reason liefert; sonst GameWorld.NO_SITE.
+func find_site(world: GameWorld, type_id: String, reason := "") -> Vector2i:
 	for y in world.map.height:
 		for x in world.map.width:
-			if world.build_error(type_id, Vector2i(x, y)) == "":
+			if world.build_error(type_id, Vector2i(x, y)) == reason:
 				return Vector2i(x, y)
 	return GameWorld.NO_SITE
 
@@ -74,6 +74,11 @@ func put_goods(world: GameWorld, building_id: int, good: String, amount: int) ->
 		contents.erase(good)
 	else:
 		contents[good] = amount
+
+
+## Testvorbereitung: setzt ein Vorkommen dieses Typs auf die Kachel.
+func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
+	world.map.add_deposit(tile, Deposit.create(type_id, RandomNumberGenerator.new()))
 
 
 ## Alles, was eine Spielwelt bisher ausmacht, als vergleichbare Daten

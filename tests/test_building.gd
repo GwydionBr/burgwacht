@@ -8,12 +8,19 @@ const KEEP_ORIGIN := Vector2i(2, 2)
 const SITE := Vector2i(12, 2)
 ## Freie Stelle unter dem ersten Warenlager.
 const SITE_BELOW := Vector2i(7, 8)
+## Freie Stelle direkt rechts neben dem ersten Warenlager (Bauregel des Warenlagers).
+const NEXT_TO_STORAGE := Vector2i(10, 2)
 
 
 func _founded_world() -> GameWorld:
 	var world := empty_world()
 	world.execute(Command.found(KEEP_ORIGIN))
 	return world
+
+
+## Felsen rechts neben einem Steinbruch mit diesem Ursprung (Bauregel des Steinbruchs).
+func _add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:
+	add_deposit(world, origin + Vector2i(3, 1), "stone")
 
 
 func test_woodcutter_is_built_and_costs_wood() -> void:
@@ -30,6 +37,7 @@ func test_woodcutter_is_built_and_costs_wood() -> void:
 
 func test_quarry_costs_twenty_wood() -> void:
 	var world := _founded_world()
+	_add_rock_for_quarry(world, SITE)
 	assert_eq(world.execute(Command.build("quarry", SITE)), "", "Grund:")
 	assert_eq(world.get_stock("wood"), 80, "Holz:")
 	assert_eq(world.get_storage_used("warehouse"), 130, "Belegt:")
@@ -37,7 +45,7 @@ func test_quarry_costs_twenty_wood() -> void:
 
 func test_warehouse_is_free_and_adds_capacity() -> void:
 	var world := _founded_world()
-	assert_eq(world.execute(Command.build("warehouse", SITE)), "", "Grund:")
+	assert_eq(world.execute(Command.build("warehouse", NEXT_TO_STORAGE)), "", "Grund:")
 	assert_eq(world.get_stock("wood"), 100, "Holz:")
 	assert_eq(world.get_storage_capacity("warehouse"), 400, "Fassung über zwei Warenlager:")
 	assert_eq(world.get_storage_used("warehouse"), 150, "Belegt über zwei Warenlager:")
@@ -54,7 +62,7 @@ func test_building_is_reported() -> void:
 
 func test_too_few_goods_is_rejected_and_changes_nothing() -> void:
 	var world := found_castle(new_world("tiny_poor"))
-	var site := find_site(world, "woodcutter")
+	var site := find_site(world, "quarry", "Zu wenig Holz (20 nötig)")
 	var events: Array[String] = []
 	world.building_added.connect(func(id: int) -> void: events.append("Gebäude %d" % id))
 	world.stock_changed.connect(func(id: int) -> void: events.append("Bestand %d" % id))
@@ -118,7 +126,7 @@ func test_buildable_types_come_from_data() -> void:
 
 func test_cost_comes_from_storages_in_ascending_id() -> void:
 	var world := _founded_world()
-	world.execute(Command.build("warehouse", SITE))
+	world.execute(Command.build("warehouse", NEXT_TO_STORAGE))
 	put_goods(world, 2, "wood", 2)
 	put_goods(world, 3, "wood", 10)
 	assert_eq(world.get_stock("wood"), 12, "Bestand ist die Summe über alle Lager:")
@@ -133,10 +141,11 @@ func test_cost_comes_from_storages_in_ascending_id() -> void:
 
 func test_cost_from_oldest_storage_leaves_newer_untouched() -> void:
 	var world := _founded_world()
-	world.execute(Command.build("warehouse", SITE))
+	world.execute(Command.build("warehouse", NEXT_TO_STORAGE))
 	put_goods(world, 3, "wood", 10)
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
+	_add_rock_for_quarry(world, SITE_BELOW)
 	world.execute(Command.build("quarry", SITE_BELOW))
 	assert_eq(world.get_building(2).contents["wood"], 80, "Aus dem ältesten Lager:")
 	assert_eq(world.get_building(3).contents["wood"], 10, "Neueres Lager unberührt:")

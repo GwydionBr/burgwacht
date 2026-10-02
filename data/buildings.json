@@ -17,6 +17,7 @@
     "cost": {},
     "storage": "warehouse",
     "capacity": 200,
+    "rules": [{ "kind": "next_to_same_storage", "reason": "Muss an ein Warenlager grenzen" }],
     "hotkey": "L",
     "color": "#9a7445",
     "height": 22
@@ -37,6 +38,7 @@
     "size": [3, 3],
     "entrance": [1, 2],
     "cost": { "wood": 20 },
+    "rules": [{ "kind": "next_to_deposit", "deposit": "stone", "reason": "Muss an Felsen grenzen" }],
     "hotkey": "B",
     "color": "#9c9a92",
     "height": 18
