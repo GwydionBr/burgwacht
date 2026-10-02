@@ -21,6 +21,21 @@ func is_walkable() -> bool:
 	return bool(GameDefs.get_instance().deposits[type].get("walkable", false))
 
 
+## Darf es nur ein Arbeiter zugleich abbauen ("exclusive", z. B. Bäume)?
+func is_exclusive() -> bool:
+	return bool(GameDefs.get_instance().deposits[type].get("exclusive", false))
+
+
+## Die Ware, die es liefert ("yields").
+func good() -> String:
+	return str(GameDefs.get_instance().deposits[type]["yields"])
+
+
+## Der Name eines Vorkommenstyps, z. B. „Baum“.
+static func name_of(type_id: String) -> String:
+	return str(GameDefs.get_instance().deposits[type_id]["name"])
+
+
 ## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
 func to_data() -> Dictionary:
 	return {"type": type, "amount": amount, "variant": variant}

@@ -108,3 +108,31 @@ func test_same_query_gives_same_path() -> void:
 func test_path_carries_level() -> void:
 	for position in _path(Vector2i(0, 0), Vector2i(3, 2)):
 		assert_eq(position.z, GROUND, "Ebene von %s:" % str(position))
+
+
+func _distances(from: Vector2i, max_length := INF) -> Dictionary[Vector3i, float]:
+	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _walkable, max_length)
+
+
+func test_distances_match_path_lengths() -> void:
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4)])
+	var distances := _distances(Vector2i(1, 1))
+	assert_eq(distances[Vector3i(1, 1, GROUND)], 0.0, "Start:")
+	assert_eq(distances[Vector3i(2, 1, GROUND)], 1.0, "Nachbar:")
+	assert_true(is_equal_approx(distances[Vector3i(2, 2, GROUND)], sqrt(2.0)), "Schräg")
+	var detour := Pathfinder.path_length(_path(Vector2i(1, 1), Vector2i(5, 1)))
+	assert_true(is_equal_approx(distances[Vector3i(5, 1, GROUND)], detour), "Wie die Länge des Umwegs")
+	assert_true(not distances.has(Vector3i(3, 1, GROUND)), "Gesperrte Kachel fehlt")
+
+
+func test_distances_stop_at_max_length() -> void:
+	var distances := _distances(Vector2i(0, 0), 2.0)
+	assert_true(distances.has(Vector3i(2, 0, GROUND)), "Genau 2 entfernt ist dabei")
+	assert_true(distances.has(Vector3i(1, 1, GROUND)), "√2 entfernt ist dabei")
+	assert_true(not distances.has(Vector3i(3, 0, GROUND)), "3 entfernt fehlt")
+	assert_true(not distances.has(Vector3i(2, 1, GROUND)), "1 + √2 entfernt fehlt")
+
+
+func test_distances_skip_unreachable() -> void:
+	_block([Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)])
+	assert_eq(_distances(Vector2i(0, 0)).keys(), [Vector3i(0, 0, GROUND)], "Nur der Start:")

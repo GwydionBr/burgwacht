@@ -160,6 +160,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world = new_world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
+	world.deposit_changed.connect(_on_deposit_changed)
 	world.day_started.connect(_hud.show_day)
 	world.building_added.connect(_on_building_added)
 	world.building_removed.connect(_on_building_removed)
@@ -250,6 +251,11 @@ func _on_deposit_removed(tile: Vector2i) -> void:
 	if _deposit_views.has(tile):
 		_deposit_views[tile].queue_free()
 		_deposit_views.erase(tile)
+	if tile == _hovered:
+		_update_hover()
+
+
+func _on_deposit_changed(tile: Vector2i) -> void:
 	if tile == _hovered:
 		_update_hover()
 

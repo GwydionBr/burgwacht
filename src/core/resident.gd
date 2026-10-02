@@ -3,9 +3,32 @@ extends RefCounted
 ## Ein Bewohner der Burg. Position = Kachel + Ebene (ADR 0004); Verweise über IDs (ADR 0002).
 ## Läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert "ticks_per_tile" Takte
 ## (units.json), ein schräger √2-mal so lange (gerundet).
+## Arbeiter eines Sammlers gehen dazu den Arbeitsablauf in Task durch; die Spielwelt treibt
+## ihn an, hier steht nur der Zustand.
 
 ## Höhenstufe einer Position; bisher gibt es nur den Boden.
 enum Level { GROUND = 0 }
+## Schritt im Arbeitsablauf eines Sammlers. Gewartet und gearbeitet wird erst, wenn er steht.
+enum Task {
+	## Untätig oder noch ohne Auftrag.
+	NONE,
+	## Geht ohne Ware zur Arbeitsstätte.
+	TO_WORKPLACE,
+	## Geht zu einer Kachel neben dem Vorkommen auf deposit_tile.
+	TO_DEPOSIT,
+	## Baut das Vorkommen auf deposit_tile ab (timer).
+	MINING,
+	## Bringt die abgebaute Ware zur Arbeitsstätte.
+	RETURNING,
+	## Verarbeitet die Ware unsichtbar in der Arbeitsstätte (timer).
+	PROCESSING,
+	## Trägt die Ware zum Lager storage_id.
+	TO_STORAGE,
+	## Kein Vorkommen erreichbar: wartet in der Arbeitsstätte (timer).
+	WAITING_FOR_DEPOSIT,
+	## Alle Lager voll: wartet mit der Ware an der Arbeitsstätte (timer).
+	WAITING_FOR_STORAGE,
+}
 
 var id: int
 var tile: Vector2i
@@ -16,6 +39,17 @@ var workplace_id := 0
 var path: Array[Vector3i] = []
 ## Takte, die er schon auf dem Schritt zu path[0] unterwegs ist.
 var step_progress := 0
+var task := Task.NONE
+## Bei TO_DEPOSIT und MINING: Kachel des Vorkommens. Exklusive Vorkommen (Bäume) gelten
+## damit als reserviert.
+var deposit_tile := Vector2i.ZERO
+## Bei TO_STORAGE: ID des Lagers.
+var storage_id := 0
+## Getragene Ware und Menge; leer bzw. 0, wenn er nichts trägt.
+var carried_good := ""
+var carried_amount := 0
+## Restliche Takte für Abbau, Verarbeitung oder Warten.
+var timer := 0
 
 
 static func create(resident_id: int, start_tile: Vector2i, start_level: Level) -> Resident:
@@ -52,6 +86,28 @@ func is_idle() -> bool:
 
 func is_moving() -> bool:
 	return not path.is_empty()
+
+
+## Ist er in seiner Arbeitsstätte und damit nicht zu sehen (beim Verarbeiten und beim
+## Warten auf ein Vorkommen)?
+func is_inside_building() -> bool:
+	return not is_moving() and (task == Task.PROCESSING or task == Task.WAITING_FOR_DEPOSIT)
+
+
+## Geht er zum Vorkommen auf dieser Kachel oder baut es ab? Bei exklusiven Vorkommen
+## (Bäumen) ist es damit für andere reserviert.
+func is_targeting_deposit(target: Vector2i) -> bool:
+	return (task == Task.TO_DEPOSIT or task == Task.MINING) and deposit_tile == target
+
+
+## Vergisst den Arbeitsablauf samt getragener Ware (z. B. beim Abriss der Arbeitsstätte).
+func clear_work() -> void:
+	task = Task.NONE
+	deposit_tile = Vector2i.ZERO
+	storage_id = 0
+	carried_good = ""
+	carried_amount = 0
+	timer = 0
 
 
 ## Aktuelle Position als Kachel + Ebene.
@@ -112,7 +168,9 @@ func to_data() -> Dictionary:
 		path_data.append([step.x, step.y, step.z])
 	return {
 		"id": id, "x": tile.x, "y": tile.y, "level": level, "workplace": workplace_id,
-		"path": path_data, "step_progress": step_progress,
+		"path": path_data, "step_progress": step_progress, "task": task,
+		"deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
+		"good": carried_good, "amount": carried_amount, "timer": timer,
 	}
 
 
@@ -123,4 +181,11 @@ static func from_data(data: Dictionary) -> Resident:
 	for step: Array in data["path"]:
 		resident.path.append(Vector3i(int(step[0]), int(step[1]), int(step[2])))
 	resident.step_progress = int(data["step_progress"])
+	resident.task = int(data["task"]) as Task
+	var deposit: Array = data["deposit"]
+	resident.deposit_tile = Vector2i(int(deposit[0]), int(deposit[1]))
+	resident.storage_id = int(data["storage"])
+	resident.carried_good = str(data["good"])
+	resident.carried_amount = int(data["amount"])
+	resident.timer = int(data["timer"])
 	return resident

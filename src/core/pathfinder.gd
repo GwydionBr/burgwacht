@@ -8,6 +8,8 @@ extends RefCounted
 ## gewinnt die Kachel näher am Ziel, dann die früher gefundene.
 
 const DIAGONAL_COST := sqrt(2.0)
+## Weglängen, die sich um weniger unterscheiden, gelten als gleich (same_length()).
+const LENGTH_EPSILON := 0.0001
 ## Erst gerade (oben, rechts, unten, links), dann schräg im Uhrzeigersinn ab oben rechts.
 const STRAIGHT_STEPS: Array[Vector3i] = [Vector3i(0, -1, 0), Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(-1, 0, 0)]
 const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), Vector3i(-1, 1, 0), Vector3i(-1, -1, 0)]
@@ -54,6 +56,35 @@ static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable) -> Ar
 	path.append(start)
 	path.reverse()
 	return path
+
+
+## Weglänge von start zu jeder erreichbaren Position bis höchstens max_length (Dijkstra,
+## gleiche Schritte und Kosten wie find_path()); der Start selbst hat 0. Für die Suche nach
+## dem nächsten Vorkommen oder Lager.
+static func distances(start: Vector3i, walkable: Callable, max_length := INF) -> Dictionary[Vector3i, float]:
+	var result: Dictionary[Vector3i, float] = {}
+	var cost_so_far: Dictionary[Vector3i, float] = {start: 0.0}
+	var open := _Heap.new()
+	open.push(0.0, 0.0, start)
+	while not open.is_empty():
+		var current := open.pop()
+		if result.has(current):
+			continue
+		result[current] = cost_so_far[current]
+		for next in neighbors(current, walkable):
+			var cost := cost_so_far[current] + step_cost(current, next)
+			if result.has(next) or cost > max_length + LENGTH_EPSILON \
+					or (cost_so_far.has(next) and cost_so_far[next] <= cost):
+				continue
+			cost_so_far[next] = cost
+			open.push(cost, 0.0, next)
+	return result
+
+
+## Sind zwei Weglängen gleich? Summen aus 1 und √2 können je nach Reihenfolge um
+## Rundungsfehler abweichen.
+static func same_length(a: float, b: float) -> bool:
+	return absf(a - b) < LENGTH_EPSILON
 
 
 ## Die begehbaren Nachbarn einer Position in fester Reihenfolge (gerade vor schräg).
