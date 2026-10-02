@@ -373,6 +373,14 @@ func get_idle_count() -> int:
 	return count
 
 
+## Wohnraum der Burg: Grundwohnraum des Bergfrieds plus Summe der Wohnhäuser.
+func get_housing() -> int:
+	var total := 0
+	for building: Building in _buildings.values():
+		total += building.housing()
+	return total
+
+
 ## Kann ein Bewohner auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
 ## (Lagerfeuer).

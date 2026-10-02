@@ -17,7 +17,7 @@ extends Node2D
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
-## Danach wählt die Bauleiste (oder L/G/H/B) ein Gebäude: Vorschau unter der Maus,
+## Danach wählt die Bauleiste (oder L/G/H/B/O) ein Gebäude: Vorschau unter der Maus,
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
@@ -269,6 +269,7 @@ func _add_building_view(id: int) -> void:
 
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
+	_update_residents()
 	_update_hover()
 	_update_preview()
 
@@ -277,6 +278,7 @@ func _on_building_removed(id: int) -> void:
 	if _building_views.has(id):
 		_building_views[id].queue_free()
 		_building_views.erase(id)
+	_update_residents()
 	_update_hover()
 	_update_preview()
 
@@ -403,9 +405,9 @@ func _update_stock() -> void:
 	_hud.show_stock("  ·  ".join(parts))
 
 
-## Titelleiste: Bewohner und Untätige.
+## Titelleiste: Bewohner, Wohnraum und Untätige.
 func _update_residents() -> void:
-	_hud.show_residents(world.get_residents().size(), world.get_idle_count())
+	_hud.show_residents(world.get_residents().size(), world.get_housing(), world.get_idle_count())
 
 
 func _update_hover() -> void:
@@ -429,6 +431,8 @@ func _update_hover() -> void:
 			for good: String in building.contents:
 				stored.append("%d %s" % [building.contents[good], defs.goods[good]["name"]])
 			text += " (%d/%d): %s" % [building.stored(), building.capacity(), ", ".join(stored) if not stored.is_empty() else "leer"]
+		if building.housing() > 0:
+			text += "  ·  Wohnraum +%d" % building.housing()
 		if building.is_workplace():
 			text += "  ·  Arbeiter %d/%d" % [world.get_workers(building.id).size(), building.worker_slots()]
 			if building.unreachable:

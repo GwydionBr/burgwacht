@@ -145,9 +145,9 @@ func show_stock(text: String) -> void:
 	_stock_label.text = text
 
 
-## Bewohnerzahl in der Titelleiste, z. B. „Bewohner 8 (Untätig 4)“.
-func show_residents(total: int, idle: int) -> void:
-	_residents_label.text = "Bewohner %d (Untätig %d)" % [total, idle]
+## Bewohnerzahl und Wohnraum in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“.
+func show_residents(total: int, housing: int, idle: int) -> void:
+	_residents_label.text = "Bewohner %d/%d (Untätig %d)" % [total, housing, idle]
 
 
 ## Hinweis oben in der Mitte (leer = ausblenden); rot, wenn hier nicht gebaut werden darf.
