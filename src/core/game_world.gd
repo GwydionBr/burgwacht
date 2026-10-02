@@ -124,7 +124,7 @@ func step() -> void:
 ## ein abgelehnter Befehl ändert nichts.
 func execute(command: Command) -> String:
 	if command.kind == Command.Kind.FOUND:
-		return _found(command.tile)
+		return _found(command.origin)
 	if _founding:
 		return "Erst die Burg gründen: Bergfried setzen."
 	return "Dieser Befehl wird noch nicht unterstützt."

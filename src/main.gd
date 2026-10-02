@@ -120,7 +120,7 @@ func _show_world(new_world: GameWorld) -> void:
 	_deposit_views.clear()
 	for tile in map.deposits:
 		_add_deposit_view(tile)
-	for view in _building_views.values():
+	for view: BuildingView in _building_views.values():
 		view.queue_free()
 	_building_views.clear()
 	for building in world.get_buildings():

@@ -36,12 +36,9 @@ func _draw() -> void:
 
 ## Umriss des späteren Blocks, damit Größe und Höhe erkennbar sind.
 func _draw_ghost_block(type_id: String, origin: Vector2i, color: Color) -> void:
-	var lift := Vector2(0, -float(GameDefs.get_instance().buildings[type_id]["height"]))
 	var base := BuildingView.footprint_corners(type_id, origin, Vector2.ZERO, BuildingView.INSET)
-	var roof := PackedVector2Array()
-	for corner in base:
-		roof.append(corner + lift)
+	var faces := BuildingView.block_faces(base, float(GameDefs.get_instance().buildings[type_id]["height"]))
 	var faded := Color(color, BLOCK_ALPHA)
-	draw_colored_polygon(PackedVector2Array([base[3], base[2], roof[2], roof[3]]), faded.darkened(0.2))
-	draw_colored_polygon(PackedVector2Array([base[2], base[1], roof[1], roof[2]]), faded.darkened(0.35))
-	draw_colored_polygon(roof, faded)
+	draw_colored_polygon(faces[0], faded.darkened(0.2))
+	draw_colored_polygon(faces[1], faded.darkened(0.35))
+	draw_colored_polygon(faces[2], faded)

@@ -2,8 +2,9 @@ class_name BuildingView
 extends Node2D
 ## Zeichnet ein Gebäude als isometrischen Block über seiner Grundfläche: Farbe und Höhe
 ## aus den Daten, Name als Beschriftung, Eingang als dunkles Tor. Liegt im y-sortierten
-## Objekt-Container; der Ankerpunkt ist die vorderste Kachel, damit Vorkommen davor
-## und dahinter richtig erscheinen.
+## Objekt-Container. Der Sortierpunkt liegt zwischen den Kacheln hinter dem Gebäude und
+## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
+## erscheinen (exakt für quadratische Grundflächen).
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -19,30 +20,38 @@ var _origin: Vector2i
 func setup(building: Building) -> void:
 	_type = building.type
 	_origin = building.origin
-	position = Iso.tile_to_world(_origin + Building.size_of(_type) - Vector2i.ONE)
+	var size := Building.size_of(_type)
+	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
 	queue_redraw()
 
 
 func _draw() -> void:
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	var color := Color(str(def["color"]))
-	var lift := Vector2(0, -float(def["height"]))
 	var base := footprint_corners(_type, _origin, position, INSET)
-	var roof := PackedVector2Array()
-	for corner in base:
-		roof.append(corner + lift)
-	# Sichtbar sind die beiden vorderen Seiten (links: Rand mit größtem y, rechts: mit größtem x).
-	var left_face := PackedVector2Array([base[3], base[2], roof[2], roof[3]])
-	var right_face := PackedVector2Array([base[2], base[1], roof[1], roof[2]])
-	draw_colored_polygon(left_face, color.darkened(0.15))
-	draw_colored_polygon(right_face, color.darkened(0.32))
-	draw_colored_polygon(roof, color.lightened(0.08))
+	var faces := block_faces(base, float(def["height"]))
+	draw_colored_polygon(faces[0], color.darkened(0.15))
+	draw_colored_polygon(faces[1], color.darkened(0.32))
+	draw_colored_polygon(faces[2], color.lightened(0.08))
 	_draw_gate(base)
-	for face in [left_face, right_face, roof]:
-		var outline: PackedVector2Array = face.duplicate()
+	for face: PackedVector2Array in faces:
+		var outline := face.duplicate()
 		outline.append(face[0])
 		draw_polyline(outline, OUTLINE_COLOR, 1.0, true)
-	_draw_label(str(def["name"]), (roof[0] + roof[2]) * 0.5)
+	_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
+
+
+## Die sichtbaren Flächen eines Blocks über den Ecken base (aus footprint_corners()):
+## linke Wand (Rand mit größtem y), rechte Wand (Rand mit größtem x), Dach.
+static func block_faces(base: PackedVector2Array, height: float) -> Array[PackedVector2Array]:
+	var roof := PackedVector2Array()
+	for corner in base:
+		roof.append(corner + Vector2(0, -height))
+	return [
+		PackedVector2Array([base[3], base[2], roof[2], roof[3]]),
+		PackedVector2Array([base[2], base[1], roof[1], roof[2]]),
+		roof,
+	]
 
 
 ## Ecken der Grundfläche (oben, rechts, unten, links) relativ zu anchor, um inset eingerückt.
