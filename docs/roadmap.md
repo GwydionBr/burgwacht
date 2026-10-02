@@ -4,7 +4,7 @@ Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt
 
 1. ✅ **Karte**: Isometrische Karte, Kamera (Tastatur, Trackpad, Maus), Bäume/Felsen/Eisen, Kachel-Info
 2. ✅ **Fundament**: Spielwelt mit festem Takt (10/s), Pause und Zeitraffer, Tag als Zeiteinheit, Partie startet aus einem Szenario, Umbenennung Ressource → Vorkommen, Bäume wachsen nach, Spielwelt lässt sich (intern) speichern und laden
-3. **Bauen**: Befehle; Gebäude aus `buildings.json` mit Verhalten; Bergfried, Lager, Holzfäller, Steinbruch platzieren; Kosten werden sofort abgezogen; Bauvorschau; Abriss (50 % zurück); Lager mit Lagerarten
+3. ✅ **Bauen**: Befehle; Gebäude aus `buildings.json` mit Verhalten; Bergfried, Lager, Holzfäller, Steinbruch platzieren; Kosten werden sofort abgezogen; Bauvorschau; Abriss (50 % zurück); Lager mit Lagerarten
 4. **Bewohner**: Wegfindung mit Ebenen, Gebäude blockieren außer am Eingang; Lagerfeuer mit Untätigen; Arbeiter bauen Vorkommen ab und tragen Waren sichtbar ins Lager
 5. **Nahrung & Bevölkerung**: Apfelplantage, Jäger, Kornspeicher, Wohnhäuser (Wohnraum); Nahrungsverbrauch pro Tag; Beliebtheit aus Faktoren (Nahrungsmenge, Vielfalt, Steuern); Bewohner kommen und gehen
 6. **Produktionsketten & Markt**: Weizen → Mühle → Bäcker; Eisen → Schmied → Waffen; Waffenkammer; Markt mit festen Preisen
