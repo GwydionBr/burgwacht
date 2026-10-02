@@ -120,10 +120,12 @@ func is_moving() -> bool:
 	return not path.is_empty()
 
 
+## Wie sein Arbeitsschritt abläuft (TASK_PHASE).
 func phase() -> Phase:
 	return TASK_PHASE[task]
 
 
+## Worum es in seinem Arbeitsschritt geht (TASK_GOAL).
 func goal() -> Goal:
 	return TASK_GOAL[task]
 
@@ -148,7 +150,7 @@ func is_blocked() -> bool:
 ## Geht er zum Vorkommen auf dieser Kachel oder baut es ab? Bei exklusiven Vorkommen
 ## (Bäumen) ist es damit für andere reserviert.
 func is_targeting_deposit(target: Vector2i) -> bool:
-	return (task == Task.TO_DEPOSIT or task == Task.MINING) and deposit_tile == target
+	return goal() == Goal.DEPOSIT and phase() != Phase.WAIT and deposit_tile == target
 
 
 ## Vergisst den Arbeitsablauf samt getragener Ware (z. B. beim Abriss der Arbeitsstätte).

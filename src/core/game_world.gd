@@ -469,7 +469,7 @@ func _add_start_residents(campfire: Building) -> void:
 
 ## Die erste Kachel um center, für die accept (Kachel → bool) gilt, als [Kachel], sonst
 ## leer. Erst nahe Kacheln, bei Bedarf weiter hinaus (Radius verdoppeln, bis über die
-## Kartengröße), Reihenfolge wie am Lagerfeuer (_offsets_within()).
+## Kartengröße), je Radius in der Reihenfolge von _offsets_within().
 func _search_outward(center: Vector2i, accept: Callable) -> Array[Vector2i]:
 	var radius := 2
 	while radius <= 2 * maxi(map.width, map.height):
@@ -538,6 +538,7 @@ func _update_residents() -> void:
 		_report_change(resident, _update_resident.bind(resident))
 
 
+## Ein Takt für einen Bewohner (siehe _update_residents()).
 func _update_resident(resident: Resident) -> void:
 	if resident.is_targeting_deposit(resident.deposit_tile) \
 			and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
@@ -783,6 +784,7 @@ func _send_to_campfire(resident: Resident) -> void:
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 		return
+	# Die Bedingung schickt ihn schon los, sobald es einen Weg gibt.
 	var routed := _search_outward(campfire.origin, func(tile: Vector2i) -> bool:
 		return not taken.has(tile) and is_walkable(tile, ground) and get_building_at(tile) == null \
 				and _route_to(resident, Resident.ground(tile)))
