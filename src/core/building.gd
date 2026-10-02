@@ -8,6 +8,11 @@ var type: String
 var origin: Vector2i
 ## Nur bei Lagern: Ware → Menge, in der Reihenfolge der Einlagerung.
 var contents: Dictionary[String, int] = {}
+## Nur bei Arbeitsstätten: Fand die letzte Zuteilung keinen Untätigen mit Weg zum Eingang?
+var unreachable := false
+## Nur bei Arbeitsstätten: Vor diesem Takt wird nach einer gescheiterten Zuteilung nicht
+## erneut geprüft.
+var retry_tick := 0
 
 
 static func create(building_id: int, type_id: String, origin_tile: Vector2i) -> Building:
@@ -28,6 +33,21 @@ func is_storage() -> bool:
 
 func is_campfire() -> bool:
 	return def()["behavior"] == "campfire"
+
+
+## Beschäftigt das Gebäude Arbeiter ("workers" in den Daten)?
+func is_workplace() -> bool:
+	return worker_slots() > 0
+
+
+## Wie viele Arbeiter das Gebäude laut Daten beschäftigt.
+func worker_slots() -> int:
+	return int(def().get("workers", 0))
+
+
+## Wie ein Arbeiter dieses Gebäudes heißt, z. B. „Holzfäller“.
+func worker_name() -> String:
+	return str(def().get("worker_name", "Arbeiter"))
 
 
 ## Dürfen Bewohner die ganze Grundfläche betreten (z. B. das Lagerfeuer)?
@@ -133,7 +153,10 @@ static func front_of_entrance(type_id: String, origin_tile: Vector2i) -> Vector2
 
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
-	return {"id": id, "type": type, "x": origin.x, "y": origin.y, "contents": contents.duplicate()}
+	return {
+		"id": id, "type": type, "x": origin.x, "y": origin.y, "contents": contents.duplicate(),
+		"unreachable": unreachable, "retry_tick": retry_tick,
+	}
 
 
 ## Gegenstück zu to_data().
@@ -142,6 +165,8 @@ static func from_data(data: Dictionary) -> Building:
 	var stored_goods: Dictionary = data["contents"]
 	for good: Variant in stored_goods:
 		building.contents[str(good)] = int(stored_goods[good])
+	building.unreachable = bool(data["unreachable"])
+	building.retry_tick = int(data["retry_tick"])
 	return building
 
 

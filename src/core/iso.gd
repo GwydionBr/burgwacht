@@ -8,7 +8,12 @@ const TILE_H := 32.0
 
 ## Mittelpunkt einer Kachel in Weltkoordinaten.
 static func tile_to_world(tile: Vector2i) -> Vector2:
-	return Vector2((tile.x - tile.y) * TILE_W * 0.5, (tile.x + tile.y) * TILE_H * 0.5)
+	return point_to_world(Vector2(tile))
+
+
+## Wie tile_to_world(), aber für Punkte zwischen Kacheln (z. B. laufende Bewohner).
+static func point_to_world(point: Vector2) -> Vector2:
+	return Vector2((point.x - point.y) * TILE_W * 0.5, (point.x + point.y) * TILE_H * 0.5)
 
 
 ## Kachel, auf der ein Weltpunkt liegt.

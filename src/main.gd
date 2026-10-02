@@ -7,6 +7,8 @@ extends Node2D
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
 ##   --days=3              Spielwelt vorab gründen und so viele Tage laufen lassen (für Screenshots)
+##   --place=woodcutter@x,y  nach der Gründung ein Gebäude mit diesem Ursprung bauen (für Screenshots)
+##   --ticks=40            danach so viele Takte laufen lassen (für Screenshots, z. B. laufende Arbeiter)
 ##   --build=woodcutter    nach der Gründung gleich im Baumodus für diesen Typ (für Screenshots)
 ##   --demolish            nach der Gründung gleich mit dem Abriss-Werkzeug (für Screenshots)
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
@@ -62,6 +64,16 @@ func _ready() -> void:
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
 	for i in days * GameWorld.TICKS_PER_DAY:
+		world.step()
+	if args.has("place"):
+		var place := str(args["place"]).split("@")
+		var xy := place[1].split(",") if place.size() == 2 else PackedStringArray()
+		var reason := "Format: --place=typ@x,y"
+		if xy.size() == 2:
+			reason = world.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
+		if reason != "":
+			printerr("--place: ", reason)
+	for i in int(args.get("ticks", 0)):
 		world.step()
 	if args.has("build"):
 		_select_build(str(args["build"]))
@@ -153,6 +165,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.building_removed.connect(_on_building_removed)
 	world.stock_changed.connect(_on_stock_changed)
 	world.resident_added.connect(_on_resident_added)
+	world.resident_changed.connect(_on_resident_changed)
 	world.founded.connect(_on_founded)
 	_clock.world = world
 	_build_type = ""
@@ -264,13 +277,18 @@ func _on_building_removed(id: int) -> void:
 
 func _add_resident_view(id: int) -> void:
 	var view := ResidentView.new()
-	view.setup(world.get_resident(id))
+	view.setup(world.get_resident(id), _clock)
 	_objects.add_child(view)
 	_resident_views[id] = view
 
 
 func _on_resident_added(id: int) -> void:
 	_add_resident_view(id)
+	_update_residents()
+	_update_hover()
+
+
+func _on_resident_changed(_id: int) -> void:
 	_update_residents()
 	_update_hover()
 
@@ -399,11 +417,15 @@ func _update_hover() -> void:
 			for good: String in building.contents:
 				stored.append("%d %s" % [building.contents[good], defs.goods[good]["name"]])
 			text += " (%d/%d): %s" % [building.stored(), building.capacity(), ", ".join(stored) if not stored.is_empty() else "leer"]
+		if building.is_workplace():
+			text += "  ·  Arbeiter %d/%d" % [world.get_workers(building.id).size(), building.worker_slots()]
+			if building.unreachable:
+				text += "  ·  Nicht erreichbar"
 	var activities: PackedStringArray = []
 	for resident in world.get_residents_at(_hovered):
-		activities.append(resident.activity())
+		activities.append(world.activity_of(resident))
 	if not activities.is_empty():
-		text += "  ·  Bewohner: %s" % ", ".join(activities)
+		text += "\nBewohner: %s" % ", ".join(activities)
 	_hud.show_tile_info(text)
 
 

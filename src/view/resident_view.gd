@@ -1,7 +1,8 @@
 class_name ResidentView
 extends Node2D
-## Zeichnet einen Bewohner als einfache Figur (Platzhalter) auf der Mitte seiner Kachel.
-## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand.
+## Zeichnet einen Bewohner als einfache Figur (Platzhalter).
+## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
+## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten.
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.25)
 const OUTLINE_COLOR := Color(0, 0, 0, 0.45)
@@ -9,18 +10,24 @@ const SKIN_COLOR := Color("#e2b48c")
 const LEG_COLOR := Color("#4a3b2a")
 
 var _resident: Resident
+var _clock: GameClock
 var _color: Color
 
 
-func setup(resident: Resident) -> void:
+func setup(resident: Resident, clock: GameClock) -> void:
 	_resident = resident
+	_clock = clock
 	_color = Color(str(GameDefs.get_instance().units["resident"]["color"]))
-	position = Iso.tile_to_world(resident.tile)
+	_update_position()
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	position = Iso.tile_to_world(_resident.tile)
+	_update_position()
+
+
+func _update_position() -> void:
+	position = Iso.point_to_world(_resident.tile_point(_clock.tick_fraction()))
 
 
 func _draw() -> void:

@@ -19,16 +19,9 @@ func _founded_world() -> GameWorld:
 	return world
 
 
-## Baut ein Gebäude und liefert seine ID.
-func _build(world: GameWorld, type_id: String, origin: Vector2i) -> int:
-	var reason := world.execute(Command.build(type_id, origin))
-	assert(reason == "", "Bauen von %s fehlgeschlagen: %s" % [type_id, reason])
-	return world.get_building_at(origin).id
-
-
 func test_demolish_removes_building_and_frees_tiles() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	assert_eq(world.demolish_error(id), "", "Abfrage:")
 	assert_eq(world.execute(Command.demolish(id)), "", "Grund:")
 	assert_eq(world.get_building(id), null, "Gebäude weg:")
@@ -39,7 +32,7 @@ func test_demolish_removes_building_and_frees_tiles() -> void:
 
 func test_refund_is_half_the_cost_rounded_down() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	assert_eq(world.get_stock("wood"), 97, "Holz nach dem Bauen:")
 	world.execute(Command.demolish(id))
 	assert_eq(world.get_stock("wood"), 98, "3 Holz → 1 Holz zurück:")
@@ -48,16 +41,16 @@ func test_refund_is_half_the_cost_rounded_down() -> void:
 func test_refund_of_quarry() -> void:
 	var world := _founded_world()
 	add_rock_for_quarry(world, SITE)
-	var id := _build(world, "quarry", SITE)
+	var id := build(world, "quarry", SITE)
 	world.execute(Command.demolish(id))
 	assert_eq(world.get_stock("wood"), 90, "20 Holz → 10 Holz zurück:")
 
 
 func test_refund_goes_to_storages_in_ascending_id() -> void:
 	var world := _founded_world()
-	_build(world, "warehouse", NEXT_TO_STORAGE)
+	build(world, "warehouse", NEXT_TO_STORAGE)
 	add_rock_for_quarry(world, SITE_BELOW)
-	var quarry := _build(world, "quarry", SITE_BELOW)
+	var quarry := build(world, "quarry", SITE_BELOW)
 	# Erstes Lager bis auf 4 Plätze voll, das zweite leer.
 	put_goods(world, 2, "wood", 146)
 	var changed: Array[int] = []
@@ -71,7 +64,7 @@ func test_refund_goes_to_storages_in_ascending_id() -> void:
 func test_refund_that_does_not_fit_is_lost() -> void:
 	var world := _founded_world()
 	add_rock_for_quarry(world, SITE)
-	var id := _build(world, "quarry", SITE)
+	var id := build(world, "quarry", SITE)
 	put_goods(world, 2, "wood", 145)
 	assert_eq(world.execute(Command.demolish(id)), "", "Abriss gelingt trotzdem:")
 	assert_eq(world.get_stock("wood"), 150, "Nur was passt, kommt zurück:")
@@ -81,7 +74,7 @@ func test_refund_that_does_not_fit_is_lost() -> void:
 
 func test_refund_without_any_storage_space_is_lost() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	put_goods(world, 2, "wood", 150)
 	var changed: Array[int] = []
 	world.stock_changed.connect(func(building_id: int) -> void: changed.append(building_id))
@@ -92,7 +85,7 @@ func test_refund_without_any_storage_space_is_lost() -> void:
 
 func test_demolish_is_reported() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	var events: Array[String] = []
 	world.building_removed.connect(func(building_id: int) -> void: events.append("Gebäude weg %d" % building_id))
 	world.stock_changed.connect(func(building_id: int) -> void: events.append("Bestand %d" % building_id))
@@ -129,7 +122,7 @@ func test_storage_with_goods_cannot_be_demolished() -> void:
 
 func test_empty_storage_can_be_demolished() -> void:
 	var world := _founded_world()
-	var id := _build(world, "warehouse", NEXT_TO_STORAGE)
+	var id := build(world, "warehouse", NEXT_TO_STORAGE)
 	assert_eq(world.execute(Command.demolish(id)), "", "Grund:")
 	assert_eq(world.get_storage_capacity("warehouse"), 200, "Nur noch das erste Lager:")
 	put_goods(world, 2, "wood", 0)
@@ -152,7 +145,7 @@ func test_demolish_before_founding_is_rejected() -> void:
 
 func test_command_gives_same_reason_as_query() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	for building_id: int in [1, 2, 99, id]:
 		var expected: String = world.demolish_error(building_id)
 		assert_eq(world.execute(Command.demolish(building_id)), expected, "Befehl für %d:" % building_id)
@@ -160,14 +153,14 @@ func test_command_gives_same_reason_as_query() -> void:
 
 func test_ids_are_not_reused_after_demolish() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	world.execute(Command.demolish(id))
-	assert_eq(_build(world, "woodcutter", SITE), id + 1, "Neue ID:")
+	assert_eq(build(world, "woodcutter", SITE), id + 1, "Neue ID:")
 
 
 func test_trees_grow_into_demolished_building() -> void:
 	var world := _founded_world()
-	var id := _build(world, "woodcutter", SITE)
+	var id := build(world, "woodcutter", SITE)
 	var spread: Dictionary = GameDefs.get_instance().deposits["tree"]["spread"]
 	var old_chance: float = spread["chance"]
 	spread["chance"] = 1.0
