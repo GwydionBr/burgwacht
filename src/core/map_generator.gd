@@ -6,6 +6,12 @@ extends RefCounted
 const START_CLEAR_RADIUS := 7.0
 ## In diesem Umkreis gibt es garantiert Stein und Eisen.
 const START_DEPOSIT_RADIUS := 22.0
+## Ein Wild-Rudel je so viele Kacheln Kartenfläche (mindestens eins).
+const GAME_PACK_AREA := 900
+## Kacheln je Rudel.
+const GAME_PACK_SIZE := Vector2i(3, 6)
+## So oft wird nach einem Platz am Waldrand gesucht, bevor jede freie Wiese genügt.
+const GAME_SITE_TRIES := 40
 
 
 static func generate(map_seed: int, width: int, height: int) -> MapData:
@@ -31,6 +37,10 @@ static func generate(map_seed: int, width: int, height: int) -> MapData:
 
 	for type in ["stone", "iron"]:
 		_ensure_near_start(map, type, rng)
+	# Eigener Zufall, damit Wild die übrige Karte eines Seeds nicht verändert.
+	var game_rng := RandomNumberGenerator.new()
+	game_rng.seed = map_seed + 3
+	_add_game_packs(map, game_rng)
 	return map
 
 
@@ -82,3 +92,61 @@ static func _ensure_near_start(map: MapData, type: String, rng: RandomNumberGene
 			if map.in_bounds(tile) and map.get_terrain(tile) != "water":
 				map.add_deposit(tile, Deposit.create(type, rng))
 		return
+
+
+## Wild in Rudeln auf freier Wiese, bevorzugt am Waldrand; außerhalb des Startgebiets.
+@warning_ignore("integer_division")
+static func _add_game_packs(map: MapData, rng: RandomNumberGenerator) -> void:
+	for i in maxi(1, map.width * map.height / GAME_PACK_AREA):
+		var site := _game_site(map, rng)
+		if site.x < 0:
+			continue
+		var pack := _grow_pack(map, site, rng.randi_range(GAME_PACK_SIZE.x, GAME_PACK_SIZE.y), rng)
+		if pack.size() < GAME_PACK_SIZE.x:
+			continue
+		for tile in pack:
+			map.add_deposit(tile, Deposit.create("game", rng))
+
+
+## Eine freie Wiese mit einem Baum in der Nähe, sonst irgendeine freie Wiese; (-1, -1), wenn keine gefunden.
+static func _game_site(map: MapData, rng: RandomNumberGenerator) -> Vector2i:
+	var fallback := Vector2i(-1, -1)
+	for attempt in GAME_SITE_TRIES:
+		var tile := Vector2i(rng.randi_range(0, map.width - 1), rng.randi_range(0, map.height - 1))
+		if not _is_free_meadow(map, tile):
+			continue
+		if _is_near_forest(map, tile):
+			return tile
+		if fallback.x < 0:
+			fallback = tile
+	return fallback
+
+
+static func _is_near_forest(map: MapData, tile: Vector2i) -> bool:
+	for y in range(tile.y - 2, tile.y + 3):
+		for x in range(tile.x - 2, tile.x + 3):
+			var near := Vector2i(x, y)
+			if map.in_bounds(near) and map.get_deposit(near) != null and map.get_deposit(near).type == "tree":
+				return true
+	return false
+
+
+static func _is_free_meadow(map: MapData, tile: Vector2i) -> bool:
+	return map.in_bounds(tile) and map.get_terrain(tile) == "grass" and map.get_deposit(tile) == null \
+			and Vector2(tile - map.center()).length() > START_CLEAR_RADIUS
+
+
+## Wächst von site aus über Nachbarn mit gemeinsamer Kante bis zu size Kacheln freier Wiese.
+static func _grow_pack(map: MapData, site: Vector2i, size: int, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	var pack: Array[Vector2i] = [site]
+	while pack.size() < size:
+		var candidates: Array[Vector2i] = []
+		for tile in pack:
+			for offset: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+				var next := tile + offset
+				if _is_free_meadow(map, next) and not pack.has(next) and not candidates.has(next):
+					candidates.append(next)
+		if candidates.is_empty():
+			break
+		pack.append(candidates[rng.randi_range(0, candidates.size() - 1)])
+	return pack

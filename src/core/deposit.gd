@@ -36,6 +36,12 @@ static func name_of(type_id: String) -> String:
 	return str(GameDefs.get_instance().deposits[type_id]["name"])
 
 
+## Was ein Arbeiter beim Abbau tut, z. B. „baut Baum ab“ oder „erlegt Wild“ ("mining_text").
+static func mining_text_of(type_id: String) -> String:
+	var deposit_def: Dictionary = GameDefs.get_instance().deposits[type_id]
+	return str(deposit_def.get("mining_text", "baut %s ab" % deposit_def["name"]))
+
+
 ## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
 func to_data() -> Dictionary:
 	return {"type": type, "amount": amount, "variant": variant}

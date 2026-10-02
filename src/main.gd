@@ -17,7 +17,7 @@ extends Node2D
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
-## Danach wählt die Bauleiste (oder L/G/H/B/O) ein Gebäude: Vorschau unter der Maus,
+## Danach wählt die Bauleiste (oder L/G/H/B/J/O) ein Gebäude: Vorschau unter der Maus,
 ## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.

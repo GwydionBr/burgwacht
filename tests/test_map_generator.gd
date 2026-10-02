@@ -52,3 +52,39 @@ func test_map_has_forests() -> void:
 	var map := MapGenerator.generate(7, SIZE, SIZE)
 	var trees := map.deposits.values().filter(func(deposit: Deposit) -> bool: return deposit.type == "tree")
 	assert_true(trees.size() > 100, "Zu wenige Bäume: %d" % trees.size())
+
+
+func _game_tiles(map: MapData) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	for tile: Vector2i in map.deposits:
+		if map.deposits[tile].type == "game":
+			tiles.append(tile)
+	tiles.sort()
+	return tiles
+
+
+func test_game_only_on_grass() -> void:
+	for map_seed in range(1, 11):
+		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
+		var tiles := _game_tiles(map)
+		assert_true(not tiles.is_empty(), "Seed %d: kein Wild" % map_seed)
+		for tile in tiles:
+			assert_eq(map.get_terrain(tile), "grass", "Seed %d: Wild bei %s auf" % [map_seed, tile])
+
+
+func test_game_comes_in_packs() -> void:
+	for map_seed in range(1, 11):
+		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
+		var tiles := _game_tiles(map)
+		# Rudel aus mindestens 3 Kacheln: Jedes Wild hat ein Wild mit gemeinsamer Kante.
+		for tile in tiles:
+			var neighbours := [tile + Vector2i.LEFT, tile + Vector2i.RIGHT, tile + Vector2i.UP, tile + Vector2i.DOWN]
+			assert_true(neighbours.any(func(other: Vector2i) -> bool: return tiles.has(other)),
+					"Seed %d: Wild bei %s allein" % [map_seed, tile])
+
+
+func test_same_seed_gives_same_game() -> void:
+	assert_eq(_game_tiles(MapGenerator.generate(42, SIZE, SIZE)), _game_tiles(MapGenerator.generate(42, SIZE, SIZE)),
+			"Wild bei gleichem Seed:")
+	assert_true(_game_tiles(MapGenerator.generate(42, SIZE, SIZE)) != _game_tiles(MapGenerator.generate(43, SIZE, SIZE)),
+			"Anderer Seed sollte anderes Wild ergeben")

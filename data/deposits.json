@@ -2,5 +2,8 @@
   "tree":  { "name": "Baum",           "yields": "wood",  "amount": 40, "walkable": false, "exclusive": true,
              "spread": { "interval_ticks": 60, "chance": 0.005 } },
   "stone": { "name": "Felsen",         "yields": "stone", "amount": 120, "walkable": false, "exclusive": false },
-  "iron":  { "name": "Eisenvorkommen", "yields": "iron",  "amount": 80, "walkable": false, "exclusive": false }
+  "iron":  { "name": "Eisenvorkommen", "yields": "iron",  "amount": 80, "walkable": false, "exclusive": false },
+  "game":  { "name": "Wild",           "yields": "meat",  "amount": 6, "walkable": true, "exclusive": true,
+             "mining_text": "erlegt Wild",
+             "spread": { "interval_ticks": 120, "chance": 0.004, "terrain": ["grass"] } }
 }
