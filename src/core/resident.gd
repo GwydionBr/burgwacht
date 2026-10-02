@@ -94,6 +94,13 @@ func is_inside_building() -> bool:
 	return not is_moving() and (task == Task.PROCESSING or task == Task.WAITING_FOR_DEPOSIT)
 
 
+## Steht er, obwohl er unterwegs sein will, weil sein Ziel nicht erreichbar war? Dann
+## versucht er es nach der Wartezeit (timer) erneut.
+func is_blocked() -> bool:
+	return not is_moving() and timer > 0 \
+			and task in [Task.TO_WORKPLACE, Task.TO_DEPOSIT, Task.RETURNING, Task.TO_STORAGE]
+
+
 ## Geht er zum Vorkommen auf dieser Kachel oder baut es ab? Bei exklusiven Vorkommen
 ## (Bäumen) ist es damit für andere reserviert.
 func is_targeting_deposit(target: Vector2i) -> bool:
