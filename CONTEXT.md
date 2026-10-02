@@ -40,6 +40,10 @@ Eine prüfbare Aussage über die Spielwelt (z. B. „50 Brot im Kornspeicher“)
 Die Datenbeschreibung, aus der eine Partie startet: Karte, Startwaren, Startbewohner, Wellenplan, Ziele und Aufträge. Das freie Spiel ist ein Szenario ohne Ziel.
 _Avoid_: Level, Mission, Karte
 
+**Gründung**:
+Der Beginn einer Partie: Die Zeit steht still, bis der Spieler den Bergfried gesetzt hat; mit ihm entsteht das erste Warenlager mit den Startwaren.
+_Avoid_: Aufbauphase, Start
+
 **Tag**:
 Feste Anzahl Takte, im Rhythmus derer Steuern, Beliebtheit, Nahrungsverbrauch und Wellen abgerechnet werden.
 _Avoid_: Runde, Zyklus
@@ -75,18 +79,35 @@ _Avoid_: Gut, Item, Ressource
 **Rohstoff**:
 Eine Ware, die direkt aus einem Vorkommen gewonnen wird (Holz, Stein, Eisen). Eigenschaft einer Ware, kein eigener Typ.
 _Avoid_: Ressource
+
 **Lager**:
-Ein Gebäude, in dem Waren einer bestimmten Lagerart physisch liegen; ist es voll, kann dorthin nichts mehr geliefert werden.
+Oberbegriff für ein Gebäude, in dem Waren einer bestimmten Lagerart physisch liegen; ist es voll, kann dorthin nichts mehr geliefert werden.
 _Avoid_: Speicher (allein), Inventar, Bestand
 
 **Lagerart**:
-Die Sorte Lager, in die eine Ware gehört (Lager, Kornspeicher, Waffenkammer); jede Ware hat genau eine.
+Die Sorte Lager, in die eine Ware gehört (Warenlager, Kornspeicher, Waffenkammer); jede Ware hat genau eine.
+
+**Warenlager**:
+Das Lager für Rohstoffe und andere Waren, die weder Nahrung noch Waffen sind.
+_Avoid_: Lager (für dieses konkrete Gebäude), Stockpile
+
+**Schatz**:
+Das Gold der Burg; liegt im Bergfried und ist keine Ware.
+_Avoid_: Gold als Ware, Kasse
 
 ### Gebäude und Bewohner
 
 **Gebäude**:
 Ein vom Spieler platziertes Bauwerk, das eine oder mehrere Kacheln belegt.
 _Avoid_: Building, Haus (allgemein)
+
+**Grundfläche**:
+Das Rechteck aus Kacheln, das ein Gebäude belegt; Gebäude werden nicht gedreht.
+_Avoid_: Footprint, Fläche
+
+**Abriss**:
+Das Entfernen eines Gebäudes durch den Spieler; die Hälfte der Baukosten kommt zurück.
+_Avoid_: Abbau (das ist das Gewinnen von Rohstoffen), Löschen
 
 **Bergfried**:
 Das zentrale Gebäude der Burg; fällt es, ist die Partie verloren.
