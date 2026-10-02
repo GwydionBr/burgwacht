@@ -28,7 +28,7 @@ func is_storage() -> bool:
 
 ## Lagerart bei Lagern, sonst leer.
 func storage_type() -> String:
-	return str(def().get("storage", ""))
+	return storage_type_of(type)
 
 
 func capacity() -> int:
@@ -51,6 +51,11 @@ func entrance_front() -> Vector2i:
 	return front_of_entrance(type, origin)
 
 
+## Lagerart eines Gebäudetyps, wenn er ein Lager ist, sonst leer.
+static func storage_type_of(type_id: String) -> String:
+	return str(GameDefs.get_instance().buildings[type_id].get("storage", ""))
+
+
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.
 static func size_of(type_id: String) -> Vector2i:
 	return _vec(GameDefs.get_instance().buildings[type_id]["size"])
@@ -63,6 +68,21 @@ static func footprint(type_id: String, origin_tile: Vector2i) -> Array[Vector2i]
 	for y in size.y:
 		for x in size.x:
 			result.append(origin_tile + Vector2i(x, y))
+	return result
+
+
+## Die Kacheln, die an die Grundfläche grenzen: direkt daneben, mit gemeinsamer Kante.
+## Schräg an einer Ecke zählt nicht. Zeilenweise; kann außerhalb der Karte liegen.
+static func adjacent_tiles(type_id: String, origin_tile: Vector2i) -> Array[Vector2i]:
+	var size := size_of(type_id)
+	var result: Array[Vector2i] = []
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			var inside_x := x >= 0 and x < size.x
+			var inside_y := y >= 0 and y < size.y
+			# Genau eine Achse innerhalb: daneben, nicht darin und nicht an der Ecke.
+			if inside_x != inside_y:
+				result.append(origin_tile + Vector2i(x, y))
 	return result
 
 

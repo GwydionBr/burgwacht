@@ -8,6 +8,8 @@ const KEEP_ORIGIN := Vector2i(2, 2)
 const SITE := Vector2i(12, 2)
 ## Freie Stelle unter dem ersten Warenlager.
 const SITE_BELOW := Vector2i(7, 8)
+## Freie Stelle direkt rechts neben dem ersten Warenlager (Bauregel des Warenlagers).
+const NEXT_TO_STORAGE := Vector2i(10, 2)
 
 
 func _founded_world() -> GameWorld:
@@ -44,6 +46,7 @@ func test_refund_is_half_the_cost_rounded_down() -> void:
 
 func test_refund_of_quarry() -> void:
 	var world := _founded_world()
+	add_rock_for_quarry(world, SITE)
 	var id := _build(world, "quarry", SITE)
 	world.execute(Command.demolish(id))
 	assert_eq(world.get_stock("wood"), 90, "20 Holz → 10 Holz zurück:")
@@ -51,7 +54,8 @@ func test_refund_of_quarry() -> void:
 
 func test_refund_goes_to_storages_in_ascending_id() -> void:
 	var world := _founded_world()
-	_build(world, "warehouse", SITE)
+	_build(world, "warehouse", NEXT_TO_STORAGE)
+	add_rock_for_quarry(world, SITE_BELOW)
 	var quarry := _build(world, "quarry", SITE_BELOW)
 	# Erstes Lager bis auf 4 Plätze voll, das zweite leer.
 	put_goods(world, 2, "wood", 146)
@@ -65,6 +69,7 @@ func test_refund_goes_to_storages_in_ascending_id() -> void:
 
 func test_refund_that_does_not_fit_is_lost() -> void:
 	var world := _founded_world()
+	add_rock_for_quarry(world, SITE)
 	var id := _build(world, "quarry", SITE)
 	put_goods(world, 2, "wood", 145)
 	assert_eq(world.execute(Command.demolish(id)), "", "Abriss gelingt trotzdem:")
@@ -114,7 +119,7 @@ func test_storage_with_goods_cannot_be_demolished() -> void:
 
 func test_empty_storage_can_be_demolished() -> void:
 	var world := _founded_world()
-	var id := _build(world, "warehouse", SITE)
+	var id := _build(world, "warehouse", NEXT_TO_STORAGE)
 	assert_eq(world.execute(Command.demolish(id)), "", "Grund:")
 	assert_eq(world.get_storage_capacity("warehouse"), 200, "Nur noch das erste Lager:")
 	put_goods(world, 2, "wood", 0)
