@@ -1,0 +1,6 @@
+{
+  "name": "Kleine Testkarte mit knappen Startwaren",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 10, "stone": 5 }
+}

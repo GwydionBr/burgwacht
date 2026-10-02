@@ -1,7 +1,11 @@
 class_name Hud
 extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit und Bestand, Steuerungshinweise,
-## Info zur Kachel unter der Maus und ein Hinweis zum Bauen (z. B. Grund für rote Vorschau).
+## Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
+## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten.
+
+## Ein Knopf der Bauleiste wurde gedrückt.
+signal build_selected(type_id: String)
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -22,6 +26,9 @@ var _info_panel: PanelContainer
 var _stock_label: Label
 var _build_label: Label
 var _build_panel: PanelContainer
+var _build_bar: PanelContainer
+## Gebäudetyp → Knopf der Bauleiste.
+var _build_buttons: Dictionary[String, Button] = {}
 
 
 func _ready() -> void:
@@ -49,8 +56,10 @@ func _ready() -> void:
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
-		"Linksklick: gründen  ·  WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
-		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte  ·  F5/F9: speichern/laden  ·  F: Vollbild",
+		"Linksklick: gründen/bauen  ·  Rechtsklick/Esc: Baumodus beenden\n"
+		+ "WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
+		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
+		+ "F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))
 	add_child(help_panel)
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
@@ -72,6 +81,19 @@ func _ready() -> void:
 	_build_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, BUILD_HINT_TOP)
 	_build_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_panel.visible = false
+
+	_build_bar = _make_panel()
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 8)
+	_build_bar.add_child(buttons)
+	for type_id in GameWorld.buildable_types():
+		var button := _make_build_button(type_id)
+		buttons.add_child(button)
+		_build_buttons[type_id] = button
+	add_child(_build_bar)
+	_build_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
+	_build_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_build_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 
 func set_seed(map_seed: int) -> void:
@@ -109,6 +131,37 @@ func show_build_hint(text: String, allowed: bool) -> void:
 	_build_label.add_theme_color_override("font_color", TEXT_COLOR if allowed else BLOCKED_COLOR)
 	_build_panel.visible = text != ""
 	_build_panel.reset_size()
+
+
+## Bauleiste sperren (während der Gründung) oder freigeben.
+func set_build_bar_enabled(enabled: bool) -> void:
+	for button: Button in _build_buttons.values():
+		button.disabled = not enabled
+
+
+## Hebt den Knopf des gewählten Gebäudetyps hervor (leer = kein Baumodus).
+func show_build_mode(type_id: String) -> void:
+	for button_type: String in _build_buttons:
+		_build_buttons[button_type].set_pressed_no_signal(button_type == type_id)
+
+
+## Knopf mit Name, Taste und Kosten, z. B. „Holzfäller [H]“ über „3 Holz“.
+func _make_build_button(type_id: String) -> Button:
+	var defs := GameDefs.get_instance()
+	var def: Dictionary = defs.buildings[type_id]
+	var cost: Dictionary = def["cost"]
+	var cost_parts: PackedStringArray = []
+	for good: String in cost:
+		cost_parts.append("%d %s" % [int(cost[good]), defs.goods[good]["name"]])
+	var button := Button.new()
+	button.text = "%s [%s]\n%s" % [def["name"], def["hotkey"], ", ".join(cost_parts) if not cost_parts.is_empty() else "kostenlos"]
+	button.toggle_mode = true
+	# Kein Tastaturfokus, sonst löst die Leertaste (Pause) den Knopf aus.
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 14)
+	button.custom_minimum_size = Vector2(120, 0)
+	button.pressed.connect(func() -> void: build_selected.emit(type_id))
+	return button
 
 
 func _make_panel() -> PanelContainer:

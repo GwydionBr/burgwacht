@@ -7,11 +7,15 @@ extends Node2D
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
 ##   --days=3              Spielwelt vorab gründen und so viele Tage laufen lassen (für Screenshots)
+##   --build=woodcutter    nach der Gründung gleich im Baumodus für diesen Typ (für Screenshots)
+##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried und erstem
 ## Warenlager unter der Maus, Linksklick schickt den Gründungsbefehl.
+## Danach wählt die Bauleiste (oder L/H/B) ein Gebäude: Vorschau unter der Maus,
+## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -22,6 +26,8 @@ var _scenario: Scenario
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
 var _hovered := Vector2i(-1, -1)
+## Gewählter Gebäudetyp im Baumodus, leer = kein Baumodus.
+var _build_type := ""
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
@@ -43,16 +49,22 @@ func _ready() -> void:
 		return
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
+	_hud.build_selected.connect(_select_build)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
 	for i in days * GameWorld.TICKS_PER_DAY:
 		world.step()
+	if args.has("build"):
+		_select_build(str(args["build"]))
 	if args.has("screenshot"):
-		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte.
+		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
 		_hovered = world.map.center()
+		var hover := str(args.get("hover", "")).split(",")
+		if hover.size() == 2:
+			_hovered = Vector2i(int(hover[0]), int(hover[1]))
 		_update_hover()
 		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
@@ -68,12 +80,21 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var button := event as InputEventMouseButton
-	if button == null or not button.pressed or button.button_index != MOUSE_BUTTON_LEFT:
+	if button == null or not button.pressed:
 		return
+	if button.button_index == MOUSE_BUTTON_RIGHT:
+		# Nicht als behandelt markieren: Die Kamera zieht weiterhin mit der rechten Taste.
+		_select_build("")
+		return
+	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var reason := ""
 	if world.is_founding():
-		var reason := world.execute(Command.found(_founding_origin()))
-		if reason != "":
-			_hud.show_message(reason)
+		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
+	elif _build_type != "":
+		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
+	if reason != "":
+		_hud.show_message(reason)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -92,9 +113,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_quick_save()
 		KEY_F9:
 			_quick_load()
+		KEY_ESCAPE:
+			_select_build("")
 		KEY_F:
 			var window := get_window()
 			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		_:
+			for type_id in GameWorld.buildable_types():
+				if OS.find_keycode_from_string(str(GameDefs.get_instance().buildings[type_id]["hotkey"])) == key.keycode:
+					_select_build(type_id)
 
 
 func _new_world(world_seed: int) -> void:
@@ -112,6 +139,9 @@ func _show_world(new_world: GameWorld) -> void:
 	world.stock_changed.connect(_on_stock_changed)
 	world.founded.connect(_on_founded)
 	_clock.world = world
+	_build_type = ""
+	_hud.show_build_mode("")
+	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
 	_terrain.show_map(map)
 
@@ -198,6 +228,7 @@ func _add_building_view(id: int) -> void:
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
 	_update_hover()
+	_update_preview()
 
 
 func _on_building_removed(id: int) -> void:
@@ -210,25 +241,36 @@ func _on_building_removed(id: int) -> void:
 func _on_stock_changed(_building_id: int) -> void:
 	_update_stock()
 	_update_hover()
+	_update_preview()
 
 
 func _on_founded() -> void:
+	_hud.set_build_bar_enabled(true)
 	_update_preview()
 	_hud.show_message("Burg gegründet – Leertaste startet die Zeit")
 
 
-## Bergfried so, dass seine Grundfläche mittig unter der Maus liegt.
+## Ursprung eines Gebäudes dieses Typs, dessen Grundfläche mittig unter der Maus liegt.
 @warning_ignore("integer_division")
-func _founding_origin() -> Vector2i:
-	return _hovered - Building.size_of(GameWorld.FOUNDING_TYPE) / 2
+func _origin_under_mouse(type_id: String) -> Vector2i:
+	return _hovered - Building.size_of(type_id) / 2
+
+
+## Baumodus für einen Gebäudetyp beginnen (leer = beenden); in der Gründung gesperrt.
+func _select_build(type_id: String) -> void:
+	if type_id != "" and world.is_founding():
+		_hud.show_message(GameWorld.FOUNDING_FIRST)
+		type_id = ""
+	_build_type = type_id
+	_hud.show_build_mode(type_id)
+	_update_preview()
 
 
 func _update_preview() -> void:
 	if not world.is_founding():
-		_preview.visible = false
-		_hud.show_build_hint("", true)
+		_update_build_preview()
 		return
-	var origin := _founding_origin()
+	var origin := _origin_under_mouse(GameWorld.FOUNDING_TYPE)
 	var reason := world.founding_error(origin)
 	var parts: Array[Array] = [
 		[GameWorld.FOUNDING_TYPE, origin],
@@ -239,6 +281,21 @@ func _update_preview() -> void:
 		_hud.show_build_hint("Gründung: Bergfried und Warenlager setzen (Linksklick)", true)
 	else:
 		_hud.show_build_hint("Gründung: %s" % reason, false)
+
+
+func _update_build_preview() -> void:
+	if _build_type == "":
+		_preview.visible = false
+		_hud.show_build_hint("", true)
+		return
+	var origin := _origin_under_mouse(_build_type)
+	var reason := world.build_error(_build_type, origin)
+	_preview.show_parts([[_build_type, origin]] as Array[Array], reason == "")
+	var building_name: String = GameDefs.get_instance().buildings[_build_type]["name"]
+	if reason == "":
+		_hud.show_build_hint("%s setzen (Linksklick)  ·  Rechtsklick/Esc: beenden" % building_name, true)
+	else:
+		_hud.show_build_hint("%s: %s" % [building_name, reason], false)
 
 
 ## Titelleiste: Bestand je Ware der Lagerart Warenlager und Belegung.

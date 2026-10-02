@@ -17,7 +17,28 @@
     "cost": {},
     "storage": "warehouse",
     "capacity": 200,
+    "hotkey": "L",
     "color": "#9a7445",
     "height": 22
+  },
+  "woodcutter": {
+    "name": "Holzfäller",
+    "behavior": "gather",
+    "size": [2, 2],
+    "entrance": [0, 1],
+    "cost": { "wood": 3 },
+    "hotkey": "H",
+    "color": "#5f7a3a",
+    "height": 30
+  },
+  "quarry": {
+    "name": "Steinbruch",
+    "behavior": "gather",
+    "size": [3, 3],
+    "entrance": [1, 2],
+    "cost": { "wood": 20 },
+    "hotkey": "B",
+    "color": "#9c9a92",
+    "height": 18
   }
 }
