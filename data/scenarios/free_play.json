@@ -1,0 +1,5 @@
+{
+  "name": "Freies Spiel",
+  "map": { "width": 80, "height": 80 },
+  "seed": "random"
+}

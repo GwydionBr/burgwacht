@@ -1,0 +1,5 @@
+{
+  "name": "Kleine Testkarte mit Zufallsseed",
+  "map": { "width": 20, "height": 16 },
+  "seed": "random"
+}
