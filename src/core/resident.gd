@@ -3,12 +3,12 @@ extends RefCounted
 ## Ein Bewohner der Burg. Position = Kachel + Ebene (ADR 0004); Verweise über IDs (ADR 0002).
 ## Läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert "ticks_per_tile" Takte
 ## (units.json), ein schräger √2-mal so lange (gerundet).
-## Arbeiter eines Sammlers gehen dazu den Arbeitsablauf in Task durch; die Spielwelt treibt
-## ihn an, hier steht nur der Zustand.
+## Arbeiter eines Sammlers oder Hofs gehen dazu den Arbeitsablauf in Task durch; die
+## Spielwelt treibt ihn an, hier steht nur der Zustand.
 
 ## Höhenstufe einer Position; bisher gibt es nur den Boden.
 enum Level { GROUND = 0 }
-## Schritt im Arbeitsablauf eines Sammlers. Gewartet und gearbeitet wird erst, wenn er steht.
+## Schritt im Arbeitsablauf eines Sammlers bzw. Hofs. Gewartet und gearbeitet wird erst, wenn er steht.
 enum Task {
 	## Untätig oder noch ohne Auftrag.
 	NONE,
@@ -29,6 +29,8 @@ enum Task {
 	WAITING_FOR_DEPOSIT,
 	## Alle Lager voll: wartet mit der Ware an der Arbeitsstätte (timer).
 	WAITING_FOR_STORAGE,
+	## Hof: arbeitet unsichtbar in der Arbeitsstätte (timer), danach trägt er die Ware heraus.
+	FARMING,
 }
 ## Wie ein Arbeitsschritt abläuft: unterwegs, Arbeit vor Ort oder Warten (beides mit timer).
 enum Phase { NONE, WALK, WORK, WAIT }
@@ -48,6 +50,7 @@ const TASK_PHASE: Dictionary[Task, Phase] = {
 	Task.TO_STORAGE: Phase.WALK,
 	Task.WAITING_FOR_DEPOSIT: Phase.WAIT,
 	Task.WAITING_FOR_STORAGE: Phase.WAIT,
+	Task.FARMING: Phase.WORK,
 }
 const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.NONE: Goal.WORKPLACE,
@@ -59,9 +62,10 @@ const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.TO_STORAGE: Goal.STORAGE,
 	Task.WAITING_FOR_DEPOSIT: Goal.DEPOSIT,
 	Task.WAITING_FOR_STORAGE: Goal.STORAGE,
+	Task.FARMING: Goal.WORKPLACE,
 }
 ## Bei diesen Schritten ist er im Stehen unsichtbar in seiner Arbeitsstätte.
-const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT]
+const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING]
 
 var id: int
 var tile: Vector2i

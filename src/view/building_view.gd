@@ -5,7 +5,8 @@ extends Node2D
 ## Objekt-Container. Der Sortierpunkt liegt zwischen den Kacheln hinter dem Gebäude und
 ## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
 ## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
-## ein Steinkreis mit Flamme (Platzhalter).
+## ein Steinkreis mit Flamme (Platzhalter). Gebäude mit "decor": "trees" (Apfelplantage)
+## tragen auf jeder Kachel ein kleines Obstbäumchen.
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -17,6 +18,8 @@ const LOG_COLOR := Color("#5b3d24")
 const FIRE_STONE_COLOR := Color("#77736b")
 const FLAME_OUTER_COLOR := Color("#e0702a")
 const FLAME_INNER_COLOR := Color("#ffd166")
+const CROWN_COLOR := Color("#3f6b2a")
+const FRUIT_COLOR := Color("#c0392b")
 
 var _type: String
 var _origin: Vector2i
@@ -48,6 +51,8 @@ func _draw() -> void:
 		var outline := face.duplicate()
 		outline.append(face[0])
 		draw_polyline(outline, OUTLINE_COLOR, 1.0, true)
+	if str(def.get("decor", "")) == "trees":
+		_draw_small_trees(float(def["height"]))
 	_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
 
 
@@ -95,6 +100,22 @@ func _draw_campfire() -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-3, 0), Vector2(-1, -6), Vector2(1, -10), Vector2(3, -4), Vector2(3, 0),
 	]), FLAME_INNER_COLOR)
+
+
+## Ein kleines Obstbäumchen mitten auf jeder Kachel der Grundfläche, hinten zuerst.
+func _draw_small_trees(height: float) -> void:
+	var tiles := Building.footprint(_type, _origin)
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
+	for tile in tiles:
+		var foot := Iso.tile_to_world(tile) - position + Vector2(0, -height)
+		draw_set_transform(foot, 0.0, Vector2(1.0, 0.5))
+		draw_circle(Vector2(3, 0), 7.0, Color(0, 0, 0, 0.22))
+		draw_set_transform(Vector2.ZERO)
+		draw_rect(Rect2(foot + Vector2(-1.5, -7), Vector2(3, 7)), LOG_COLOR)
+		draw_circle(foot + Vector2(0, -12), 7.0, CROWN_COLOR)
+		draw_circle(foot + Vector2(-2, -14), 3.5, CROWN_COLOR.lightened(0.15))
+		for spot: Vector2 in [Vector2(-3, -10), Vector2(3, -13), Vector2(1, -8)]:
+			draw_circle(foot + spot, 1.6, FRUIT_COLOR)
 
 
 ## Tor auf der vorderen Seite, an der der Eingang liegt.
