@@ -11,11 +11,7 @@ func _campfire(world: GameWorld) -> Vector2i:
 
 ## Leere Welt aus einem Test-Szenario, bei ORIGIN gegründet.
 func _founded(scenario_id := "tiny") -> GameWorld:
-	var world := new_world(scenario_id)
-	world.map.deposits.clear()
-	for y in world.map.height:
-		for x in world.map.width:
-			world.map.set_terrain(Vector2i(x, y), "grass")
+	var world := empty_world(scenario_id)
 	assert_eq(world.execute(Command.found(ORIGIN)), "", "Gründung:")
 	return world
 
@@ -69,11 +65,7 @@ func test_ring_fills_nearest_tiles_first_then_further_out() -> void:
 
 
 func test_residents_skip_blocked_tiles() -> void:
-	var world := new_world("tiny")
-	world.map.deposits.clear()
-	for y in world.map.height:
-		for x in world.map.width:
-			world.map.set_terrain(Vector2i(x, y), "grass")
+	var world := empty_world()
 	var campfire := founding_origin(world, "campfire", ORIGIN)
 	add_deposit(world, campfire + Vector2i(0, -1), "tree")
 	world.map.set_terrain(campfire + Vector2i(1, 0), "water")

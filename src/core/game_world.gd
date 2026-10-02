@@ -324,7 +324,7 @@ func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
 	if level != Resident.Level.GROUND or not map.is_walkable(tile):
 		return false
 	var deposit := map.get_deposit(tile)
-	if deposit != null and not GameDefs.get_instance().deposits[deposit.type]["walkable"]:
+	if deposit != null and not deposit.is_walkable():
 		return false
 	var building := get_building_at(tile)
 	if building == null:
@@ -392,6 +392,7 @@ func _found(origin: Vector2i) -> String:
 		if amount > 0:
 			storage.contents[good] = storage.contents.get(good, 0) + amount
 	stock_changed.emit(storage.id)
+	assert(campfire != null, "Unter den Begleitgebäuden des Bergfrieds fehlt das Lagerfeuer")
 	_add_start_residents(campfire)
 	_founding = false
 	founded.emit()
@@ -403,13 +404,15 @@ func _found(origin: Vector2i) -> String:
 ## nicht alle auf die Karte, entstehen nur so viele, wie Platz haben.
 func _add_start_residents(campfire: Building) -> void:
 	var placed := 0
-	# Erst nahe Kacheln, bei Bedarf weiter hinaus; schon Besetzte zählen dann als belegt.
+	# Erst nahe Kacheln, bei Bedarf weiter hinaus (Radius verdoppeln, Reihenfolge wie
+	# vorher); schon Besetzte zählen dann als belegt.
 	var radius := 2
 	while placed < _start_residents and radius <= 2 * maxi(map.width, map.height):
 		for offset in _offsets_within(radius):
 			if placed == _start_residents:
 				break
 			var tile := campfire.origin + offset
+			# Nicht auf Eingänge oder das Lagerfeuer selbst, obwohl begehbar.
 			if is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
 					and get_residents_at(tile).is_empty():
 				_add_resident(tile, Resident.Level.GROUND)

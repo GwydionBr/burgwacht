@@ -52,7 +52,7 @@ Neues Zustandsstück:
 
 - Einzeltests für reine Logik (z. B. `Iso`, Kartengenerator).
 - **Simulationstests** über die Spielwelt: Mini-Szenario laden, Befehle geben, N Takte laufen lassen, Ergebnis prüfen. Das ist die bevorzugte Teststelle. Die Mini-Szenarien liegen in `tests/scenarios/` (z. B. `tiny`: 20×16, Seed 7, 4 Startbewohner); `run_scenario("tiny", ticks)` bzw. `run_scenario_with_seed("tiny", ticks, seed)` aus `TestCase` laden eins, erzeugen die Spielwelt und lassen sie N Takte laufen.
-- Neue Spielwelten aus `run_scenario…` sind schon gegründet (`found_castle()`: Stelle nächst der Kartenmitte); `new_world()` liefert eine in Gründung, `empty_world()` eine leergeräumte (nur Wiese) in Gründung; `founding_origin()` nennt den Ursprung eines Gebäudes der Gründung.
+- Neue Spielwelten aus `run_scenario…` sind schon gegründet (`found_castle()`: Stelle nächst der Kartenmitte); `new_world()` liefert eine in Gründung, `empty_world([szenario])` eine leergeräumte (nur Wiese) in Gründung; `founding_origin()` nennt den Ursprung eines Gebäudes der Gründung.
 - Einzelne Testdateien: `tools/test.sh test_founding` (Teil des Dateinamens).
 - Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage] [--found]`; mit Tagen wird gegründet und die Spielwelt läuft vorher so lange, sonst zeigt das Bild die Gründungsvorschau über der Kartenmitte).
 

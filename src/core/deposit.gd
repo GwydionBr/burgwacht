@@ -16,6 +16,11 @@ static func create(type_id: String, rng: RandomNumberGenerator) -> Deposit:
 	return deposit
 
 
+## Dürfen Bewohner die Kachel dieses Vorkommens betreten?
+func is_walkable() -> bool:
+	return bool(GameDefs.get_instance().deposits[type].get("walkable", false))
+
+
 ## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
 func to_data() -> Dictionary:
 	return {"type": type, "amount": amount, "variant": variant}

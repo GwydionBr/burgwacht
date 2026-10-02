@@ -38,9 +38,10 @@ func new_world(scenario_id: String) -> GameWorld:
 	return GameWorld.create(scenario, scenario.resolve_seed(TEST_RANDOM_SEED))
 
 
-## Tiny-Welt in Gründung, aber leergeräumt: nur Wiese, keine Vorkommen.
-func empty_world() -> GameWorld:
-	var world := new_world("tiny")
+## Welt aus einem Test-Szenario (Standard: tiny) in Gründung, aber leergeräumt: nur Wiese,
+## keine Vorkommen.
+func empty_world(scenario_id := "tiny") -> GameWorld:
+	var world := new_world(scenario_id)
 	world.map.deposits.clear()
 	for y in world.map.height:
 		for x in world.map.width:

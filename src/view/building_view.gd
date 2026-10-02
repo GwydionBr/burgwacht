@@ -20,21 +20,23 @@ const FLAME_INNER_COLOR := Color("#ffd166")
 
 var _type: String
 var _origin: Vector2i
+var _campfire := false
 
 
 func setup(building: Building) -> void:
 	_type = building.type
 	_origin = building.origin
+	_campfire = building.is_campfire()
 	var size := Building.size_of(_type)
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
 	queue_redraw()
 
 
 func _draw() -> void:
-	var def: Dictionary = GameDefs.get_instance().buildings[_type]
-	if def["behavior"] == "campfire":
+	if _campfire:
 		_draw_campfire()
 		return
+	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	var color := Color(str(def["color"]))
 	var base := footprint_corners(_type, _origin, position, INSET)
 	var faces := block_faces(base, float(def["height"]))
