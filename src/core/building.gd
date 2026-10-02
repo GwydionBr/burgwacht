@@ -82,7 +82,7 @@ func product() -> String:
 
 ## Hof: Tätigkeitstext während der Arbeit, z. B. „arbeitet in der Plantage“ ("work_text").
 func work_text() -> String:
-	return str(def().get("work_text", "arbeitet"))
+	return str(def()["work_text"])
 
 
 ## Sammler und Hof: so viel trägt ein Arbeiter je Gang höchstens ("load"); beim Sammler

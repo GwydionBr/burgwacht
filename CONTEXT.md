@@ -181,8 +181,12 @@ _Avoid_: Zufriedenheit, Stimmung, Ansehen
 Ein Beitrag zur täglichen Änderung der Beliebtheit, z. B. Ration, Vielfalt der Nahrung, Steuersatz.
 _Avoid_: Modifikator, Einfluss
 
+**Hof**:
+Eine Arbeitsstätte, deren Arbeiter darin arbeitet und die Ware selbst erzeugt, ohne Vorkommen (Verhalten `farm`), z. B. die Apfelplantage.
+_Avoid_: Farm, Bauernhof
+
 **Apfelplantage**:
-Eine Arbeitsstätte auf Wiese, deren Arbeiter darin Äpfel anbaut und sie zum nächsten Kornspeicher trägt; braucht kein Vorkommen.
+Ein Hof auf Wiese, dessen Arbeiter darin Äpfel anbaut und sie zum nächsten Kornspeicher trägt; braucht kein Vorkommen.
 _Avoid_: Obstgarten, Farm
 
 **Wohnhaus**:

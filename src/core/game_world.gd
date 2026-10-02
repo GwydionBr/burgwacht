@@ -582,7 +582,7 @@ func _visible_state(resident: Resident) -> Array:
 ## Am Hof arbeitet er in der Arbeitsstätte, beim Sammler sucht er ein Vorkommen.
 func _arrive(resident: Resident) -> void:
 	var workplace := get_building(resident.workplace_id)
-	if workplace == null or (workplace.deposit_type() == "" and not workplace.is_farm()):
+	if workplace == null or not workplace.is_workplace():
 		return
 	match resident.task:
 		Resident.Task.TO_WORKPLACE:
