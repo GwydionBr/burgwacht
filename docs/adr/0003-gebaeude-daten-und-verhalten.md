@@ -1,0 +1,3 @@
+# Gebäude = Daten + Verhalten aus fester Menge
+
+Gebäudetypen stehen in `data/buildings.json` (Fläche, Baukosten, Arbeiterzahl, Ein-/Ausgangswaren, Arbeitsdauer, Lagerart …), ihr Ablauf aber kommt aus einer kleinen, festen Menge von Verhalten im Code (`gather`, `produce`, `farm`, `storage`, `housing`, `defense`). Ein neuer Herstellungsbetrieb wie der Bäcker ist damit reines JSON; nur eine grundsätzlich neue Art zu arbeiten erfordert Code. Weder alles im Code (jedes Gebäude eine Klasse) noch eine Skriptsprache in JSON – beides wäre schwerer zu pflegen.

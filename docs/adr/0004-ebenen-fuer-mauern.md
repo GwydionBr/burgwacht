@@ -1,0 +1,3 @@
+# Positionen haben eine Ebene (begehbare Mauern)
+
+Soldaten sollen wie bei Stronghold auf Mauern und Türmen stehen und dort Reichweite und Schutz gewinnen. Deshalb ist eine Position in der Spielwelt nicht nur eine Kachel, sondern Kachel + Ebene (Boden oder erhöht), und die Wegfindung kennt Übergänge zwischen Ebenen (Treppen, Türme). Die Ebene wird bereits mit den ersten Bewohnern im Modell angelegt, obwohl Mauern erst später kommen – sie nachträglich in Position, Wegfindung und Sortierung der Darstellung einzuziehen wäre deutlich teurer. Verworfene Alternative: Mauern blockieren nur, Türme schießen selbst.
