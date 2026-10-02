@@ -18,6 +18,8 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 |---|---|
 | Kamera bewegen | WASD / Pfeiltasten, zwei Finger auf dem Trackpad, rechte Maustaste ziehen |
 | Zoomen | Pinch auf dem Trackpad, Mausrad |
+| Pause / weiter | Leertaste |
+| Geschwindigkeit 1× / 2× / 4× | 1 / 2 / 3 |
 | Neue Karte | N |
 | Vollbild | F (im Vollbild auch Scrollen am Bildschirmrand) |
 

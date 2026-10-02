@@ -1,6 +1,7 @@
 class_name Hud
 extends CanvasLayer
-## Bedienoberfläche: Titelleiste mit Steuerungshinweisen und Info zur Kachel unter der Maus.
+## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit und Steuerungshinweisen
+## sowie Info zur Kachel unter der Maus.
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -8,6 +9,8 @@ const HINT_COLOR := Color("#a89c80")
 
 var _info_label: Label
 var _seed_label: Label
+var _day_label: Label
+var _speed_label: Label
 var _info_panel: PanelContainer
 
 
@@ -20,11 +23,16 @@ func _ready() -> void:
 	row.add_child(_make_label("Burgwacht", TEXT_COLOR, 20))
 	_seed_label = _make_label("", HINT_COLOR, 14)
 	row.add_child(_seed_label)
+	_day_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_day_label)
+	_speed_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_speed_label)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	row.add_child(_make_label(
-		"WASD/Pfeile oder zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen  ·  N: neue Karte  ·  F: Vollbild",
+		"WASD/Pfeile oder zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen  ·  Leertaste: Pause  ·  1/2/3: Tempo"
+		+ "  ·  N: neue Karte  ·  F: Vollbild",
 		HINT_COLOR, 14))
 	add_child(bar)
 
@@ -39,6 +47,14 @@ func _ready() -> void:
 
 func set_seed(map_seed: int) -> void:
 	_seed_label.text = "Karte #%d" % map_seed
+
+
+func show_day(day: int) -> void:
+	_day_label.text = "Tag %d" % day
+
+
+func show_speed(speed: int, paused: bool) -> void:
+	_speed_label.text = "Pause" if paused else "%d×" % speed
 
 
 func show_tile_info(text: String) -> void:

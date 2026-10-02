@@ -9,9 +9,11 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `game_defs.gd` – lädt die Inhalte aus `data/*.json` (Singleton über `GameDefs.get_instance()`)
   - `map_data.gd` – Karte: Gelände pro Kachel, Vorkommen; meldet Änderungen per Signal
   - `map_generator.gd` – erzeugt Karten deterministisch aus einem Seed
+  - `game_world.gd` – die Spielwelt: Wurzel des Zustands, Takt und Tag, einziger Zufallsgenerator
 - `src/view/` – zeichnet den Zustand (alles prozedural mit `_draw`, noch keine Bilddateien). Objekte liegen im y-sortierten `Objects`-Node.
 - `src/ui/` – Oberfläche (HUD), im Code aufgebaut.
-- `src/main.gd` – verbindet Logik und Darstellung, Startparameter.
+- `src/game_clock.gd` – treibt die Spielwelt an (Pause, 1×/2×/4×, begrenzte Takte pro Frame).
+- `src/main.gd` – erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe, Startparameter. Keine Spiellogik.
 - `data/` – Spielinhalte als JSON.
 - `tests/` – eigener kleiner Testrunner; jede `test_*.gd` erweitert `TestCase`, Methoden mit `test_`-Präfix laufen automatisch.
 
