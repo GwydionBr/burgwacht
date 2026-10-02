@@ -16,6 +16,7 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 
 | Aktion | Tasten |
 |---|---|
+| Burg gründen (zu Beginn) | Linksklick |
 | Kamera bewegen | WASD / Pfeiltasten, zwei Finger auf dem Trackpad, rechte Maustaste ziehen |
 | Zoomen | Pinch auf dem Trackpad, Mausrad |
 | Pause / weiter | Leertaste |

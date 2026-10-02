@@ -5,10 +5,13 @@ extends Node2D
 ## Startparameter (nach "--"):
 ##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
-##   --days=3              Spielwelt vorab so viele Tage laufen lassen (für Screenshots)
+##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
+##   --days=3              Spielwelt vorab gründen und so viele Tage laufen lassen (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
+## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried und erstem
+## Warenlager unter der Maus, Linksklick schickt den Gründungsbefehl.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -17,12 +20,14 @@ var world: GameWorld
 var _scenario: Scenario
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
+var _building_views: Dictionary[int, BuildingView] = {}
 var _hovered := Vector2i(-1, -1)
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
 @onready var _objects: Node2D = $Objects
 @onready var _highlight: TileHighlight = $Highlight
+@onready var _preview: PlacementPreview = $Preview
 @onready var _camera: CameraController = $Camera
 @onready var _hud: Hud = $HUD
 
@@ -39,9 +44,17 @@ func _ready() -> void:
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
-	for i in int(args.get("days", 0)) * GameWorld.TICKS_PER_DAY:
+	var days := int(args.get("days", 0))
+	if args.has("found") or days > 0:
+		world.execute(Command.found(world.find_founding_site()))
+	for i in days * GameWorld.TICKS_PER_DAY:
 		world.step()
 	if args.has("screenshot"):
+		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte.
+		set_process(false)
+		_hovered = world.map.center()
+		_update_hover()
+		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
 
 
@@ -50,6 +63,17 @@ func _process(_delta: float) -> void:
 	if tile != _hovered:
 		_hovered = tile
 		_update_hover()
+		_update_preview()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var button := event as InputEventMouseButton
+	if button == null or not button.pressed or button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if world.is_founding():
+		var reason := world.execute(Command.found(_founding_origin()))
+		if reason != "":
+			_hud.show_message(reason)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -83,6 +107,10 @@ func _show_world(new_world: GameWorld) -> void:
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.day_started.connect(_hud.show_day)
+	world.building_added.connect(_on_building_added)
+	world.building_removed.connect(_on_building_removed)
+	world.stock_changed.connect(_on_stock_changed)
+	world.founded.connect(_on_founded)
 	_clock.world = world
 	var map := world.map
 	_terrain.show_map(map)
@@ -92,12 +120,19 @@ func _show_world(new_world: GameWorld) -> void:
 	_deposit_views.clear()
 	for tile in map.deposits:
 		_add_deposit_view(tile)
+	for view in _building_views.values():
+		view.queue_free()
+	_building_views.clear()
+	for building in world.get_buildings():
+		_add_building_view(building.id)
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
 	_hud.set_seed(world.get_seed())
 	_hud.show_day(world.get_day())
+	_update_stock()
 	_update_hover()
+	_update_preview()
 
 
 func _quick_save() -> void:
@@ -153,6 +188,70 @@ func _on_deposit_removed(tile: Vector2i) -> void:
 		_update_hover()
 
 
+func _add_building_view(id: int) -> void:
+	var view := BuildingView.new()
+	view.setup(world.get_building(id))
+	_objects.add_child(view)
+	_building_views[id] = view
+
+
+func _on_building_added(id: int) -> void:
+	_add_building_view(id)
+	_update_hover()
+
+
+func _on_building_removed(id: int) -> void:
+	if _building_views.has(id):
+		_building_views[id].queue_free()
+		_building_views.erase(id)
+	_update_hover()
+
+
+func _on_stock_changed(_building_id: int) -> void:
+	_update_stock()
+	_update_hover()
+
+
+func _on_founded() -> void:
+	_update_preview()
+	_hud.show_message("Burg gegründet – Leertaste startet die Zeit")
+
+
+## Bergfried so, dass seine Grundfläche mittig unter der Maus liegt.
+@warning_ignore("integer_division")
+func _founding_origin() -> Vector2i:
+	return _hovered - Building.size_of(GameWorld.FOUNDING_TYPE) / 2
+
+
+func _update_preview() -> void:
+	if not world.is_founding():
+		_preview.visible = false
+		_hud.show_build_hint("", true)
+		return
+	var origin := _founding_origin()
+	var reason := world.founding_error(origin)
+	var parts: Array[Array] = [
+		[GameWorld.FOUNDING_TYPE, origin],
+		[world.founding_storage_type(), world.founding_storage_origin(origin)],
+	]
+	_preview.show_parts(parts, reason == "")
+	if reason == "":
+		_hud.show_build_hint("Gründung: Bergfried und Warenlager setzen (Linksklick)", true)
+	else:
+		_hud.show_build_hint("Gründung: %s" % reason, false)
+
+
+## Titelleiste: Bestand je Ware der Lagerart Warenlager und Belegung.
+func _update_stock() -> void:
+	var defs := GameDefs.get_instance()
+	var parts: PackedStringArray = []
+	for good: String in defs.goods:
+		if defs.goods[good]["storage"] == "warehouse":
+			parts.append("%s %d" % [defs.goods[good]["name"], world.get_stock(good)])
+	parts.append("Lager %d/%d" % [world.get_storage_used("warehouse"), world.get_storage_capacity("warehouse")])
+	_hud.show_stock("  ·  ".join(parts))
+
+
 func _update_hover() -> void:
 	var map := world.map
 	if not map.in_bounds(_hovered):
@@ -166,6 +265,14 @@ func _update_hover() -> void:
 	if deposit != null:
 		var deposit_def: Dictionary = defs.deposits[deposit.type]
 		text += "  ·  %s: %d %s" % [deposit_def["name"], deposit.amount, defs.goods[deposit_def["yields"]]["name"]]
+	var building := world.get_building_at(_hovered)
+	if building != null:
+		text += "  ·  %s" % building.def()["name"]
+		if building.is_storage():
+			var stored: PackedStringArray = []
+			for good: String in building.contents:
+				stored.append("%d %s" % [building.contents[good], defs.goods[good]["name"]])
+			text += " (%d/%d): %s" % [building.stored(), building.capacity(), ", ".join(stored) if not stored.is_empty() else "leer"]
 	_hud.show_tile_info(text)
 
 
