@@ -510,6 +510,8 @@ func _assign_workers() -> void:
 				if _route_to(resident, Resident.ground(building.entrance())):
 					resident.workplace_id = building.id
 					resident.task = Resident.Task.TO_WORKPLACE
+					# Ein Untätiger kann noch auf einen neuen Versuch zum Lagerfeuer warten.
+					resident.timer = 0
 					resident_changed.emit(resident.id)
 					assigned = true
 					break
@@ -750,7 +752,7 @@ func _route_to(resident: Resident, goal: Vector3i) -> bool:
 
 ## Schickt einen Untätigen zu einer freien Kachel am Lagerfeuer (Reihenfolge wie bei den
 ## Startbewohnern); frei heißt: niemand steht dort oder ist dorthin unterwegs. Ist keine
-## erreichbar, bleibt er, wo er ist.
+## erreichbar, bleibt er, wo er ist, und versucht es nach der Wartezeit erneut (_work()).
 func _send_to_campfire(resident: Resident) -> void:
 	var campfire := _campfire()
 	var taken: Dictionary[Vector2i, bool] = {}
@@ -761,6 +763,7 @@ func _send_to_campfire(resident: Resident) -> void:
 	# Erreicht er das Lagerfeuer gar nicht, braucht er die Kacheln drumherum nicht zu prüfen.
 	if Pathfinder.find_path(resident.plan_start(), Resident.ground(campfire.origin), _is_walkable_position).is_empty():
 		resident.stop()
+		resident.timer = Resident.retry_ticks()
 		return
 	var radius := 2
 	while radius <= 2 * maxi(map.width, map.height):
@@ -771,6 +774,7 @@ func _send_to_campfire(resident: Resident) -> void:
 				return
 		radius *= 2
 	resident.stop()
+	resident.timer = Resident.retry_ticks()
 
 
 ## Das Lagerfeuer (entsteht bei der Gründung).

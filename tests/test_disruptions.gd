@@ -279,6 +279,51 @@ func test_cut_off_from_workplace_without_deposit_waits_visibly() -> void:
 	assert_eq(worker.task, Resident.Task.WAITING_FOR_DEPOSIT, "Wartet dort auf einen Baum:")
 
 
+## Holzfäller am WOODCUTTER_SITE, Arbeiter angekommen, dann Felsen rund um ihn und Abriss:
+## Der neue Untätige kommt nicht zum Lagerfeuer. Liefert die Felsen.
+func _idle_walled_in(world: GameWorld) -> Array[Vector2i]:
+	var id := build(world, "woodcutter", WOODCUTTER_SITE)
+	var worker := world.get_resident(1)
+	_until(world, func() -> bool: return worker.workplace_id == id and not worker.is_moving(), "Ankunft")
+	var rocks: Array[Vector2i] = []
+	for y in range(-1, 2):
+		for x in range(-1, 2):
+			if x != 0 or y != 0:
+				rocks.append(worker.tile + Vector2i(x, y))
+				add_deposit(world, worker.tile + Vector2i(x, y), "stone")
+	assert_eq(world.execute(Command.demolish(id)), "", "Abriss:")
+	assert_true(worker.is_idle() and not worker.is_moving(), "Untätig, kommt nicht weg")
+	return rocks
+
+
+func test_blocked_idle_retries_way_to_campfire() -> void:
+	var world := _founded()
+	var rocks := _idle_walled_in(world)
+	var idle := world.get_resident(1)
+	for tile in rocks:
+		world.map.remove_deposit(tile)
+	_steps(world, Resident.retry_ticks())
+	assert_true(idle.is_moving(), "Nach der Wartezeit unterwegs zum Lagerfeuer")
+	_until(world, func() -> bool: return not idle.is_moving(), "Ankunft am Lagerfeuer")
+	var offset := idle.tile - world.get_building(CAMPFIRE).origin
+	assert_true(offset.length_squared() <= 2, "Am Lagerfeuer: Versatz %s" % str(offset))
+
+
+func test_blocked_idle_can_be_assigned_at_once() -> void:
+	var world := _founded()
+	var rocks := _idle_walled_in(world)
+	var idle := world.get_resident(1)
+	for tile in rocks:
+		world.map.remove_deposit(tile)
+	var id := build(world, "woodcutter", Vector2i(15, 2))
+	world.step()
+	assert_eq(idle.workplace_id, id, "Eingeteilt:")
+	_until(world, func() -> bool: return not idle.is_moving(), "Ankunft")
+	assert_eq(idle.tile, world.get_building(id).entrance(), "An der neuen Arbeitsstätte:")
+	_steps(world, 1)
+	assert_eq(idle.task, Resident.Task.WAITING_FOR_DEPOSIT, "Arbeitet dort weiter:")
+
+
 func test_save_while_waiting_for_blocked_way_gives_same_course() -> void:
 	var world := _founded()
 	_walking_to_far_site(world)
