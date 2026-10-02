@@ -1,5 +1,7 @@
 {
   "wood":  { "name": "Holz",  "storage": "warehouse", "color": "#8b5a2b" },
   "stone": { "name": "Stein", "storage": "warehouse", "color": "#a8a59c" },
-  "iron":  { "name": "Eisen", "storage": "warehouse", "color": "#5e6268" }
+  "iron":  { "name": "Eisen", "storage": "warehouse", "color": "#5e6268" },
+  "apples": { "name": "Äpfel", "storage": "granary", "food": true, "color": "#c0392b" },
+  "meat":   { "name": "Fleisch", "storage": "granary", "food": true, "color": "#9e3b3b" }
 }

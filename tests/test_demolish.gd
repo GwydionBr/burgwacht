@@ -1,14 +1,14 @@
 extends TestCase
 ## Simulationstests: Gebäude abreißen, die Hälfte der Baukosten kommt zurück.
 ## Leere Karte (nur Wiese); Bergfried (ID 1) bei (2, 2), das erste Warenlager (ID 2) daneben,
-## davor das Lagerfeuer (ID 3),
+## davor das Lagerfeuer (ID 3), unter dem Warenlager der erste Kornspeicher (ID 4),
 ## darin die Startwaren des Testszenarios (100 Holz, 50 Stein).
 
 const KEEP_ORIGIN := Vector2i(2, 2)
 ## Freie Stelle rechts vom ersten Warenlager.
 const SITE := Vector2i(12, 2)
-## Freie Stelle unter dem ersten Warenlager.
-const SITE_BELOW := Vector2i(7, 8)
+## Freie Stelle unter dem ersten Kornspeicher.
+const SITE_BELOW := Vector2i(7, 11)
 ## Freie Stelle direkt rechts neben dem ersten Warenlager (Bauregel des Warenlagers).
 const NEXT_TO_STORAGE := Vector2i(10, 2)
 
@@ -57,8 +57,8 @@ func test_refund_goes_to_storages_in_ascending_id() -> void:
 	world.stock_changed.connect(func(id: int) -> void: changed.append(id))
 	assert_eq(world.execute(Command.demolish(quarry)), "", "Grund:")
 	assert_eq(world.get_building(2).contents["wood"], 150, "Ältestes Lager zuerst aufgefüllt:")
-	assert_eq(world.get_building(4).contents, {"wood": 6} as Dictionary[String, int], "Rest ins nächste Lager:")
-	assert_eq(changed, [2, 4] as Array[int], "Gemeldete Lager:")
+	assert_eq(world.get_building(5).contents, {"wood": 6} as Dictionary[String, int], "Rest ins nächste Lager:")
+	assert_eq(changed, [2, 5] as Array[int], "Gemeldete Lager:")
 
 
 func test_refund_that_does_not_fit_is_lost() -> void:

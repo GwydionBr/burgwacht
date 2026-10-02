@@ -79,9 +79,9 @@ func test_start_goods_are_read() -> void:
 	assert_eq(scenario.start_goods, {"wood": 100, "stone": 50} as Dictionary[String, int], "Startwaren:")
 
 
-func test_free_play_starts_with_wood_and_stone() -> void:
+func test_free_play_starts_with_wood_stone_and_apples() -> void:
 	var scenario := Scenario.load_named(Scenario.DEFAULT)
-	assert_eq(scenario.start_goods, {"wood": 100, "stone": 50} as Dictionary[String, int], "Startwaren:")
+	assert_eq(scenario.start_goods, {"wood": 100, "stone": 50, "apples": 40} as Dictionary[String, int], "Startwaren:")
 
 
 func test_missing_start_goods_means_none() -> void:

@@ -6,8 +6,9 @@ extends RefCounted
 ## Spielereingaben kommen als Befehl über execute() hinein und wirken sofort, auch ohne Takt.
 ##
 ## Eine neue Spielwelt ist in Gründung: Es vergehen keine Takte und nur der Gründungsbefehl
-## ist erlaubt. Er setzt den Bergfried mit seinen Begleitgebäuden (erstes Warenlager mit den
-## Startwaren, Lagerfeuer mit den Startbewohnern als Untätige drumherum).
+## ist erlaubt. Er setzt den Bergfried mit seinen Begleitgebäuden (erstes Warenlager und
+## erster Kornspeicher mit den Startwaren ihrer Lagerart, Lagerfeuer mit den Startbewohnern
+## als Untätige drumherum).
 ##
 ## In jedem Takt bekommen Arbeitsstätten mit freien Stellen Untätige zugeteilt, dann laufen
 ## und arbeiten die Bewohner in ID-Reihenfolge einen Takt weiter: Arbeiter eines Sammlers
@@ -48,7 +49,7 @@ var _seed: int
 var _tick := 0
 var _rng := RandomNumberGenerator.new()
 var _founding := true
-## Ware → Menge; kommt bei der Gründung ins erste Warenlager.
+## Ware → Menge; kommt bei der Gründung ins erste Lager ihrer Lagerart.
 var _start_goods: Dictionary[String, int] = {}
 ## So viele Untätige entstehen bei der Gründung am Lagerfeuer.
 var _start_residents := 0
@@ -253,7 +254,8 @@ func founding_error(origin: Vector2i) -> String:
 
 ## Die Gebäude, die bei einer Gründung mit dem Bergfried bei keep_origin entstehen, als
 ## Paare [Gebäudetyp, Ursprung]: zuerst der Bergfried, dann seine Begleitgebäude
-## ("companions" in den Daten, z. B. erstes Warenlager und Lagerfeuer) mit festem Versatz.
+## ("companions" in den Daten, z. B. erstes Warenlager, Lagerfeuer und erster Kornspeicher)
+## mit festem Versatz.
 func founding_buildings(keep_origin: Vector2i) -> Array[Array]:
 	var result: Array[Array] = [[FOUNDING_TYPE, keep_origin]]
 	var companions: Array = GameDefs.get_instance().buildings[FOUNDING_TYPE]["companions"]
@@ -432,18 +434,16 @@ func _found(origin: Vector2i) -> String:
 	var error := founding_error(origin)
 	if error != "":
 		return error
-	var storage: Building = null
 	var campfire: Building = null
 	for part in founding_buildings(origin):
 		var building := _add_building(part[0], part[1])
-		if storage == null and building.is_storage():
-			storage = building
 		if campfire == null and building.is_campfire():
 			campfire = building
-	# Was nicht ins erste Lager passt, verfällt.
+	# Startwaren ins Lager ihrer Lagerart; was nicht passt, verfällt.
+	var changed: Dictionary[int, bool] = {}
 	for good: String in _start_goods:
-		storage.store(good, _start_goods[good])
-	stock_changed.emit(storage.id)
+		_store_goods(good, _start_goods[good], changed)
+	_emit_stock_changed(changed)
 	assert(campfire != null, "Unter den Begleitgebäuden des Bergfrieds fehlt das Lagerfeuer")
 	_add_start_residents(campfire)
 	_founding = false
