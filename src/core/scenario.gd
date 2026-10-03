@@ -4,7 +4,8 @@ extends RefCounted
 ## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
 ## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
-## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50).
+## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
+## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -25,6 +26,8 @@ var start_goods: Dictionary[String, int] = {}
 ## Bewohner, die bei der Gründung als Untätige am Lagerfeuer entstehen.
 var start_residents := 0
 var start_popularity := DEFAULT_POPULARITY
+## Gold im Schatz zu Beginn.
+var start_gold := 0
 var error := ""
 
 
@@ -82,6 +85,12 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		scenario.start_popularity = int(popularity_value)
 	else:
 		problems.append("„start_popularity“ muss eine ganze Zahl von 0 bis 100 sein")
+
+	var gold_value: Variant = data.get("start_gold", 0)
+	if _is_whole_number(gold_value) and int(gold_value) >= 0:
+		scenario.start_gold = int(gold_value)
+	else:
+		problems.append("„start_gold“ muss eine ganze Zahl ab 0 sein")
 
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]

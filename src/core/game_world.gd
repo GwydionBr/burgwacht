@@ -16,8 +16,9 @@ extends RefCounted
 ## Ändert sich die Burg unter ihnen (Bau, Abriss, neue oder verschwundene Vorkommen),
 ## weichen sie aus bzw. planen neu.
 ##
-## Zu Beginn jedes Tags essen die Bewohner gemäß der Ration aus den Kornspeichern, und die
-## Beliebtheit ändert sich um die Summe der Faktoren (Ration, Vielfalt).
+## Zu Beginn jedes Tags essen die Bewohner gemäß der Ration aus den Kornspeichern, zahlen gemäß
+## dem Steuersatz Gold in den Schatz, und die Beliebtheit ändert sich um die Summe der Faktoren
+## (Ration, Vielfalt, Steuersatz).
 ##
 ## Nach der Beliebtheit kommen und gehen Bewohner: Liegt sie über dem Gleichgewicht
 ## (population.json), kommt in regelmäßigem Abstand ein neuer vom Kartenrand zum Lagerfeuer,
@@ -42,9 +43,11 @@ signal resident_changed(id: int)
 signal founded()
 ## Die Beliebtheit hat sich geändert.
 signal popularity_changed()
+## Das Gold im Schatz hat sich geändert.
+signal treasury_changed()
 ## Die Faktoren haben sich geändert (zu Tagesbeginn).
 signal factors_changed()
-## Eine Einstellung des Spielers (Ration) hat sich geändert.
+## Eine Einstellung des Spielers (Ration, Steuersatz) hat sich geändert.
 signal settings_changed()
 ## Eine Meldung für den Spieler, z. B. bei Nahrungsmangel.
 signal notice(text: String)
@@ -52,7 +55,9 @@ signal notice(text: String)
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
+## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
+const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -85,6 +90,10 @@ var _next_resident_id := 1
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
 var _ration := ""
+## Der eingestellte Steuersatz (population.json).
+var _tax_rate := ""
+## Gold im Schatz; keine Ware, liegt in keinem Lager.
+var _treasury := 0
 ## Die am letzten Tag tatsächlich gegessene Ration; leer vor dem ersten Tag.
 var _eaten_ration := ""
 ## War sie am letzten Tag wegen Mangels kleiner als die damals eingestellte?
@@ -114,6 +123,8 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._start_residents = scenario.start_residents
 	world._popularity = scenario.start_popularity
 	world._ration = Population.default_ration()
+	world._tax_rate = Population.default_tax_rate()
+	world._treasury = scenario.start_gold
 	world._set_map(MapGenerator.generate(world_seed, scenario.map_size.x, scenario.map_size.y))
 	# Eigener Zufall, getrennt von dem der Kartenerzeugung.
 	world._rng.seed = hash([world_seed, "world"])
@@ -139,6 +150,8 @@ func to_data() -> Dictionary:
 		"residents": _residents.values().map(func(resident: Resident) -> Dictionary: return resident.to_data()),
 		"popularity": _popularity,
 		"ration": _ration,
+		"tax_rate": _tax_rate,
+		"treasury": _treasury,
 		"eaten_ration": _eaten_ration,
 		"short_of_food": _short_of_food,
 		"factors": _factors.map(func(factor: Factor) -> Dictionary: return factor.to_data()),
@@ -184,6 +197,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 		world._residents[resident.id] = resident
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
+	world._tax_rate = str(data["tax_rate"])
+	world._treasury = int(data["treasury"])
 	world._eaten_ration = str(data["eaten_ration"])
 	world._short_of_food = bool(data["short_of_food"])
 	for entry: Dictionary in data["factors"]:
@@ -218,6 +233,8 @@ func execute(command: Command) -> String:
 		return _demolish(command.building_id)
 	if command.kind == Command.Kind.SET_RATION:
 		return _set_ration(command.ration)
+	if command.kind == Command.Kind.SET_TAX_RATE:
+		return _set_tax_rate(command.tax_rate)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -509,6 +526,16 @@ func get_ration() -> String:
 	return _ration
 
 
+## Der eingestellte Steuersatz.
+func get_tax_rate() -> String:
+	return _tax_rate
+
+
+## Gold im Schatz.
+func get_treasury() -> int:
+	return _treasury
+
+
 ## Die tatsächlich gegessene Ration des letzten Tags – bei Mangel kleiner als die
 ## eingestellte; vor dem ersten Tag die Vorschau aus Einstellung und Vorrat.
 func get_eaten_ration() -> String:
@@ -523,7 +550,7 @@ func is_short_of_food() -> bool:
 	return _is_lower_ration(_plan_meal().ration, _ration)
 
 
-## Die Faktoren der Beliebtheit (Ration, Vielfalt) des letzten Tags; vor dem ersten Tag eine
+## Die Faktoren der Beliebtheit (Ration, Vielfalt, Steuersatz) des letzten Tags; vor dem ersten Tag eine
 ## Vorschau aus Einstellung und Vorrat.
 func get_factors() -> Array[Factor]:
 	return _factors.duplicate() if not _factors.is_empty() else _factors_of(_plan_meal())
@@ -563,9 +590,17 @@ func _set_ration(ration_id: String) -> String:
 	return ""
 
 
+func _set_tax_rate(tax_rate_id: String) -> String:
+	if not Population.has_tax_rate(tax_rate_id):
+		return "Unbekannter Steuersatz „%s“" % tax_rate_id
+	_tax_rate = tax_rate_id
+	settings_changed.emit()
+	return ""
+
+
 ## Tagesbeginn: Die Bewohner essen (_plan_meal()) aus den Kornspeichern in ID-Reihenfolge,
-## bei Mangel mit Meldung; danach ändert sich die Beliebtheit um die Summe der Faktoren,
-## begrenzt auf 0–100.
+## bei Mangel mit Meldung; dann zahlen sie Steuern in den Schatz; danach ändert sich die
+## Beliebtheit um die Summe der Faktoren, begrenzt auf 0–100.
 func _start_day() -> void:
 	var meal := _plan_meal()
 	var changed: Dictionary[int, bool] = {}
@@ -576,6 +611,10 @@ func _start_day() -> void:
 	_short_of_food = _is_lower_ration(meal.ration, _ration)
 	if _short_of_food:
 		notice.emit("Nicht genug Nahrung – Ration: %s" % Population.ration_name(meal.ration))
+	var taxes := _daily_taxes()
+	if taxes > 0:
+		_treasury += taxes
+		treasury_changed.emit()
 	_factors = _factors_of(meal)
 	factors_changed.emit()
 	var popularity := clampi(_popularity + get_factor_sum(), 0, 100)
@@ -614,17 +653,23 @@ func _plan_meal() -> Meal:
 	return meal
 
 
+## Steuern eines Tags: abgerundet Bewohner × Gold des Steuersatzes.
+func _daily_taxes() -> int:
+	return floori(get_population() * Population.tax_gold(_tax_rate) + ROUNDING_SLACK)
+
+
 static func _is_lower_ration(ration_id: String, than: String) -> bool:
 	var rations := Population.ration_ids()
 	return rations.find(ration_id) < rations.find(than)
 
 
-## Die Faktoren, die aus einer Mahlzeit folgen: Ration (tatsächliche) und Vielfalt (Zahl der
-## verzehrten Sorten).
+## Die Faktoren eines Tags: aus der Mahlzeit Ration (tatsächliche) und Vielfalt (Zahl der
+## verzehrten Sorten), dazu der eingestellte Steuersatz.
 func _factors_of(meal: Meal) -> Array[Factor]:
 	return [
 		Factor.create(Factor.RATION, Population.ration_factor(meal.ration)),
 		Factor.create(Factor.VARIETY, Population.variety_factor(meal.amounts.size())),
+		Factor.create(Factor.TAX_RATE, Population.tax_factor(_tax_rate)),
 	]
 
 

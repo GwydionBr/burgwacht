@@ -254,6 +254,14 @@ func test_leaving_resident_does_not_eat() -> void:
 	assert_eq(world.get_stock("apples"), 18, "Zwei Bewohner essen normal:")
 
 
+func test_leaving_resident_pays_no_taxes() -> void:
+	var world := _founded("tiny_discontent")
+	assert_eq(world.execute(Command.set_tax_rate("high")), "", "Steuersatz:")
+	_steps(world, GameWorld.TICKS_PER_DAY)
+	assert_eq(_leaving(world), [3] as Array[int], "Bewohner 3 ist noch unterwegs:")
+	assert_eq(world.get_treasury(), 2, "Zwei Bewohner zahlen je 1 Gold:")
+
+
 func test_leaving_without_reachable_edge_disappears_at_once() -> void:
 	var world := empty_world("tiny_unpopular")
 	_moat(world)

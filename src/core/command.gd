@@ -2,7 +2,7 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION }
+enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE }
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes.
@@ -13,6 +13,8 @@ var building_type: String
 var building_id: int
 ## Bei SET_RATION: die Rationsstufe aus population.json.
 var ration: String
+## Bei SET_TAX_RATE: der Steuersatz aus population.json.
+var tax_rate: String
 
 
 ## Burg gründen: Bergfried mit Ursprung keep_origin, dazu das erste Warenlager.
@@ -46,4 +48,12 @@ static func set_ration(ration_id: String) -> Command:
 	var command := Command.new()
 	command.kind = Kind.SET_RATION
 	command.ration = ration_id
+	return command
+
+
+## Steuersatz für alle Bewohner einstellen (auch schon während der Gründung).
+static func set_tax_rate(tax_rate_id: String) -> Command:
+	var command := Command.new()
+	command.kind = Kind.SET_TAX_RATE
+	command.tax_rate = tax_rate_id
 	return command
