@@ -1604,12 +1604,12 @@ func _can_stand(position: Vector3i, walker: Walker) -> bool:
 
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
-	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker))
+	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable)
 
 
 ## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
-	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
+	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker), _is_steppable)
 
 
 ## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen und Turmeingänge).
@@ -1637,6 +1637,32 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 	return result
 
 
+## Darf man von from auf die benachbarte Position to treten? Einen Eingang am Boden betritt und
+## verlässt man nur über die Kachel davor – oder über den Ebenenwechsel derselben Kachel am
+## Turmeingang. Sonst käme man an einem Eingang an der Ecke seitlich vorbei, etwa an einer
+## schrägen Mauer, die dort ansetzt.
+func _is_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _passes_entrance(from, to) and _passes_entrance(to, from)
+
+
+## Erlaubt der Eingang auf position (falls dort einer am Boden ist) den Schritt von bzw. nach other?
+func _passes_entrance(position: Vector3i, other: Vector3i) -> bool:
+	if position.z != Resident.Level.GROUND:
+		return true
+	var tile := Vector2i(position.x, position.y)
+	var building := get_building_at(tile)
+	if building == null or building.is_walkable() or not building.has_entrance() or building.entrance() != tile:
+		return true
+	var other_tile := Vector2i(other.x, other.y)
+	return other_tile == building.entrance_front() or other_tile == tile
+
+
+## Ist der nächste Schritt eines Kämpfers am Boden (noch) offen: Position begehbar und, an
+## einem Eingang, von vorn (_is_steppable())?
+func _is_next_step_open(figure: Figure) -> bool:
+	return _is_walkable_position(figure.path[0]) and _is_steppable(figure.position(), figure.path[0])
+
+
 ## Steht auf der Kachel eine Treppe?
 func _is_stairs(tile: Vector2i) -> bool:
 	var building := get_building_at(tile)
@@ -1644,10 +1670,11 @@ func _is_stairs(tile: Vector2i) -> bool:
 
 
 ## Kann der Bewohner den nächsten Schritt seines Weges (noch) gehen? Die Position muss für ihn
-## begehbar sein, ein Wechsel der Ebene braucht eine Treppe.
+## begehbar sein, ein Wechsel der Ebene braucht eine Treppe, einen Eingang betritt er nur von vorn
+## (_is_steppable()).
 func _can_step(resident: Resident) -> bool:
 	var next: Vector3i = resident.path[0]
-	if not _can_stand(next, _walker_of(resident)):
+	if not _can_stand(next, _walker_of(resident)) or not _is_steppable(resident.position(), next):
 		return false
 	return next.z == resident.level or _ascents(resident.position()).has(next)
 
@@ -1918,7 +1945,7 @@ func _fight(figure: Figure, target: Figure) -> bool:
 			if figure.cooldown == 0:
 				_hit(figure, target)
 			return true
-		if not figure.is_moving() or figure.path.back() != target.position() or not _is_walkable_position(figure.path[0]):
+		if not figure.is_moving() or figure.path.back() != target.position() or not _is_next_step_open(figure):
 			if not _route_to(figure, target.position()):
 				figure.path.clear()
 				return false
@@ -2342,7 +2369,7 @@ func _update_enemy(enemy: Enemy) -> void:
 		if not _fight(enemy, target):
 			_drop_enemy_target(enemy)
 		return
-	if enemy.is_moving() and enemy.step_progress == 0 and not _is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and enemy.step_progress == 0 and not _is_next_step_open(enemy):
 		_send_enemy_to_keep(enemy)
 	enemy.advance()
 
@@ -2380,7 +2407,7 @@ func _drop_enemy_target(enemy: Enemy) -> void:
 ## Schickt einen Feind zur erreichbaren Kachel, die dem Bergfried am nächsten liegt
 ## (_keep_goal()); steht er schon dort oder gibt es keine, bleibt er stehen und wartet.
 func _send_enemy_to_keep(enemy: Enemy) -> void:
-	if enemy.is_moving() and not _is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and not _is_next_step_open(enemy):
 		# Die Kachel, auf die er gerade tritt, ist versperrt: zurück auf seine.
 		enemy.step_progress = 0
 	var goal := _keep_goal(enemy.plan_start())

@@ -136,3 +136,20 @@ func test_distances_stop_at_max_length() -> void:
 func test_distances_skip_unreachable() -> void:
 	_block([Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)])
 	assert_eq(_distances(Vector2i(0, 0)).keys(), [Vector3i(0, 0, GROUND)], "Nur der Start:")
+
+
+## Kachel (3, 1) wie ein Eingang: nur von (3, 2) aus zu betreten und nur dorthin zu verlassen.
+func _steppable(from: Vector3i, to: Vector3i) -> bool:
+	var entrance := Vector3i(3, 1, GROUND)
+	var front := Vector3i(3, 2, GROUND)
+	return (from != entrance or to == front) and (to != entrance or from == front)
+
+
+func test_steppable_forbids_single_steps() -> void:
+	var path := Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(4, 1, GROUND), _walkable, Callable(), _steppable)
+	assert_true(not _tiles(path).has(Vector2i(3, 1)), "Nicht seitlich durch den Eingang: %s" % str(_tiles(path)))
+	path = Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(3, 1, GROUND), _walkable, Callable(), _steppable)
+	assert_eq(path[path.size() - 2], Vector3i(3, 2, GROUND), "Hinein nur von vorn:")
+	var distances := Pathfinder.distances(Vector3i(2, 1, GROUND), _walkable, INF, Callable(), _steppable)
+	assert_true(is_equal_approx(distances[Vector3i(3, 1, GROUND)], 1.0 + sqrt(2.0)), "Über die Kachel davor")
+	assert_true(is_equal_approx(distances[Vector3i(4, 1, GROUND)], 2.0 * sqrt(2.0)), "Außen herum")
