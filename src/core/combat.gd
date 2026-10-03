@@ -78,7 +78,7 @@ func _fight(figure: Figure, target: Figure) -> bool:
 				_hit(figure, target)
 			return true
 		if not figure.is_moving() or figure.path.back() != target.position() \
-				or not _world._is_walkable_position(figure.path[0]):
+				or not _world._is_next_step_open(figure):
 			if not _world._route_to(figure, target.position()):
 				figure.path.clear()
 				return false
@@ -150,7 +150,7 @@ func _update_enemy(enemy: Enemy) -> void:
 		if not _fight(enemy, target):
 			_drop_enemy_target(enemy)
 		return
-	if enemy.is_moving() and enemy.step_progress == 0 and not _world._is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and enemy.step_progress == 0 and not _world._is_next_step_open(enemy):
 		_send_enemy_to_keep(enemy)
 	enemy.advance()
 
@@ -188,7 +188,7 @@ func _drop_enemy_target(enemy: Enemy) -> void:
 ## Schickt einen Feind zur erreichbaren Kachel, die dem Bergfried am nächsten liegt
 ## (_keep_goal()); steht er schon dort oder gibt es keine, bleibt er stehen und wartet.
 func _send_enemy_to_keep(enemy: Enemy) -> void:
-	if enemy.is_moving() and not _world._is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and not _world._is_next_step_open(enemy):
 		# Die Kachel, auf die er gerade tritt, ist versperrt: zurück auf seine.
 		enemy.step_progress = 0
 	var goal := _keep_goal(enemy.plan_start())

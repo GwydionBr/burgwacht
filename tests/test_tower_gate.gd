@@ -204,3 +204,52 @@ func test_workers_leave_the_walls_through_a_gate() -> void:
 	var worker := _worker_of(world, woodcutter)
 	assert_true(worker != null, "Arbeiter zugeteilt")
 	assert_true(crossed, "Durch das Tor gegangen")
+
+
+## Gebäude des Typs (2×2, Eingang an der Ecke unten links) bei (14, 10): Eingang (14, 11), davor
+## (14, 12). Von der Eingangsecke führt eine schräge Mauer nach unten links an den Kartenrand,
+## rechts vom Gebäude eine gerade Mauer an den rechten Rand. Dahinter (unten rechts) ein Holzfäller.
+## Ohne Eckregel am Eingang käme man über (13, 11) → Eingang → (14, 12) hinein.
+func _cornered_world(type_id: String) -> Array:
+	var world := empty_world("tiny_production")
+	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	put_goods(world, WAREHOUSE, "stone", 100)
+	put_goods(world, WAREHOUSE, "wood", 20)
+	build(world, type_id, Vector2i(14, 10))
+	_wall(world, Vector2i(13, 12), Vector2i(10, 15))
+	_wall(world, Vector2i(16, 11), Vector2i(19, 11))
+	var woodcutter := build(world, "woodcutter", Vector2i(17, 13))
+	return [world, woodcutter]
+
+
+## Arbeiter kommen nicht am Eingang vorbei hinter die Mauer, erst ein Tor lässt sie durch.
+func _assert_only_gate_leads_past(type_id: String) -> void:
+	var setup := _cornered_world(type_id)
+	var world: GameWorld = setup[0]
+	var woodcutter: int = setup[1]
+	for i in 50:
+		world.step()
+	assert_true(_worker_of(world, woodcutter) == null, "Kein Arbeiter ohne Tor (%s)" % type_id)
+	assert_true(world.get_building(woodcutter).unreachable, "Holzfäller nicht erreichbar (%s)" % type_id)
+	var gate := Vector2i(18, 11)
+	assert_eq(world.execute(Command.demolish(world.get_building_at(gate).id)), "", "Abriss:")
+	build(world, "gate", gate)
+	var crossed := false
+	var entered := false
+	for i in MAX_TICKS:
+		world.step()
+		var worker := _worker_of(world, woodcutter)
+		if worker != null:
+			entered = entered or worker.tile == Vector2i(14, 11)
+			crossed = crossed or worker.tile == gate
+	assert_true(_worker_of(world, woodcutter) != null, "Arbeiter zugeteilt (%s)" % type_id)
+	assert_true(not entered, "Nicht über den Eingang (%s)" % type_id)
+	assert_true(crossed, "Durch das Tor gegangen (%s)" % type_id)
+
+
+func test_workers_do_not_slip_past_a_diagonal_wall_at_the_tower_entrance() -> void:
+	_assert_only_gate_leads_past("tower")
+
+
+func test_workers_do_not_slip_past_a_diagonal_wall_at_a_corner_entrance() -> void:
+	_assert_only_gate_leads_past("house")

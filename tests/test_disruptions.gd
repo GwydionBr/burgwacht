@@ -312,17 +312,20 @@ func test_cut_off_from_workplace_without_deposit_waits_visibly() -> void:
 	assert_eq(worker.task, Resident.Task.WAITING_FOR_DEPOSIT, "Wartet dort auf einen Baum:")
 
 
-## Holzfäller am WOODCUTTER_SITE, Arbeiter mit Holz auf dem Weg ins Warenlager; dann ist
-## das Lager voll und der Eingang des Holzfällers versperrt. Liefert die Felsen.
+## Holzfäller am WOODCUTTER_SITE, Arbeiter mit Holz auf dem Weg ins Warenlager und schon an der
+## Kachel vor dem Eingang vorbei; dann ist das Lager voll und der Eingang des Holzfällers versperrt
+## (ein Felsen vor dem Eingang genügt). Liefert die Felsen.
 func _full_storage_and_cut_off(world: GameWorld) -> Array[Vector2i]:
 	add_deposit(world, TREE, "tree")
-	build(world, "woodcutter", WOODCUTTER_SITE)
+	var woodcutter := world.get_building(build(world, "woodcutter", WOODCUTTER_SITE))
 	var worker := world.get_resident(1)
-	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE, "Unterwegs zum Lager")
+	var at_entrance: Array[Vector2i] = [woodcutter.entrance(), woodcutter.entrance_front()]
+	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE and not at_entrance.has(worker.tile),
+			"Unterwegs zum Lager")
 	var warehouse := world.get_building(WAREHOUSE)
 	# Mit Stein bis unters Dach auffüllen.
 	put_goods(world, WAREHOUSE, "stone", warehouse.capacity() - warehouse.stored() + warehouse.contents.get("stone", 0))
-	var blockers: Array[Vector2i] = [Vector2i(11, 3), Vector2i(12, 4)]
+	var blockers: Array[Vector2i] = [woodcutter.entrance_front()]
 	for tile in blockers:
 		add_deposit(world, tile, "stone")
 	return blockers

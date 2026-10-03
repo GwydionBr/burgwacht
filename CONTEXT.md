@@ -166,7 +166,7 @@ Das zentrale Gebäude der Burg; fällt es, ist die Partie verloren.
 _Avoid_: Burg, Hauptgebäude, Keep
 
 **Eingang**:
-Die Kachel, über die ein Gebäude betreten und beliefert wird.
+Die Kachel, über die ein Gebäude betreten und beliefert wird. Am Boden betritt und verlässt man sie nur über die Kachel davor (am Turm auch hinauf auf den Wehrgang).
 _Avoid_: Tür, Zugang
 
 **Verhalten**:
