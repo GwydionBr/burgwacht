@@ -72,7 +72,7 @@ signal notice(text: String)
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 11
+const SAVE_VERSION := 12
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -84,9 +84,10 @@ const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
 ## Schlüssel in den Baukosten für Gold aus dem Schatz (keine Ware).
 const GOLD := "gold"
 
-## Wer geht; davon hängt ab, welche Ebenen er betreten darf: Bewohner und Feinde nur den Boden,
-## Soldaten auch den Wehrgang, den sie über Treppen und Turmeingänge erreichen.
-enum Walker { GROUND_ONLY, SOLDIER }
+## Wer geht; davon hängt ab, welche Ebenen er betreten darf: Bewohner nur den Boden, Soldaten auch
+## den Wehrgang, den sie über Treppen und Turmeingänge erreichen. Feinde nehmen Treppen, aber
+## betreten am Boden keine Kachel mit Wehrgang darüber – weder Tor noch Turmeingang.
+enum Walker { GROUND_ONLY, SOLDIER, ENEMY }
 
 var map: MapData
 
@@ -1236,6 +1237,8 @@ func _update_resident(resident: Resident) -> void:
 	if resident.target_id != 0:
 		_combat().update_attacker(resident)
 		return
+	if resident.is_soldier() and not resident.is_moving() and _combat().defend(resident):
+		return
 	if resident.is_targeting_deposit(resident.deposit_tile) \
 			and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
 		# Das angesteuerte Vorkommen ist weg (erschöpft, ersetzt): gleich ein neues suchen.
@@ -1628,28 +1631,41 @@ func _is_walkable_position(position: Vector3i) -> bool:
 
 ## Wer die Figur beim Gehen ist (Walker).
 static func _walker_of(figure: Figure) -> Walker:
+	if figure is Enemy:
+		return Walker.ENEMY
 	var resident := figure as Resident
-	return Walker.SOLDIER if resident != null and resident.is_soldier() else Walker.GROUND_ONLY
+	return Walker.SOLDIER if resident.is_soldier() else Walker.GROUND_ONLY
 
 
-## Darf walker auf dieser Position stehen? Bewohner nur am Boden, Soldaten auch auf dem Wehrgang.
+## Darf walker auf dieser Position stehen? Bewohner nur am Boden, Soldaten auch auf dem Wehrgang,
+## Feinde ebenso, aber am Boden nicht unter einem Wehrgang (Tor, Turmeingang).
 func _can_stand(position: Vector3i, walker: Walker) -> bool:
-	return (walker == Walker.SOLDIER or position.z == Figure.Level.GROUND) and _is_walkable_position(position)
+	if not _is_walkable_position(position):
+		return false
+	match walker:
+		Walker.GROUND_ONLY:
+			return position.z == Figure.Level.GROUND
+		Walker.ENEMY:
+			var below := get_building_at(Vector2i(position.x, position.y))
+			return position.z == Figure.Level.WALL_WALK or below == null or not below.has_walkway()
+	return true
 
 
-## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen und Turmeingänge.
+## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten und Feinde nehmen dabei Treppen und
+## Soldaten Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
 	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable)
 
 
-## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen und Turmeingänge.
+## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
 	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker), _is_steppable)
 
 
-## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen und Turmeingänge).
+## Die Ebenenwechsel für walker: Bewohner wechseln die Ebene nie. Turmeingänge kann ein Feind
+## nicht nehmen, weil er am Boden nicht auf ihnen stehen darf (_can_stand()).
 func _ascents_for(walker: Walker) -> Callable:
-	return _ascents if walker == Walker.SOLDIER else Callable()
+	return Callable() if walker == Walker.GROUND_ONLY else _ascents
 
 
 ## Die Positionen auf der anderen Ebene, die man von position aus mit einem geraden Schritt
@@ -1692,26 +1708,20 @@ func _passes_entrance(position: Vector3i, other: Vector3i) -> bool:
 	return other_tile == building.entrance_front() or other_tile == tile
 
 
-## Ist der nächste Schritt eines Kämpfers am Boden (noch) offen: Position begehbar und, an
-## einem Eingang, von vorn (_is_steppable())?
-func _is_next_step_open(figure: Figure) -> bool:
-	return _is_walkable_position(figure.path[0]) and _is_steppable(figure.position(), figure.path[0])
-
-
 ## Steht auf der Kachel eine Treppe?
 func _is_stairs(tile: Vector2i) -> bool:
 	var building := get_building_at(tile)
 	return building != null and building.is_stairs()
 
 
-## Kann der Bewohner den nächsten Schritt seines Weges (noch) gehen? Die Position muss für ihn
-## begehbar sein, ein Wechsel der Ebene braucht eine Treppe, einen Eingang betritt er nur von vorn
-## (_is_steppable()).
-func _can_step(resident: Resident) -> bool:
-	var next: Vector3i = resident.path[0]
-	if not _can_stand(next, _walker_of(resident)) or not _is_steppable(resident.position(), next):
+## Kann die Figur den nächsten Schritt ihres Weges (noch) gehen? Die Position muss für sie
+## begehbar sein, ein Wechsel der Ebene braucht eine Treppe bzw. einen Turmeingang, einen Eingang
+## betritt sie nur von vorn (_is_steppable()).
+func _can_step(figure: Figure) -> bool:
+	var next: Vector3i = figure.path[0]
+	if not _can_stand(next, _walker_of(figure)) or not _is_steppable(figure.position(), next):
 		return false
-	return next.z == resident.level or _ascents(resident.position()).has(next)
+	return next.z == figure.level or _ascents(figure.position()).has(next)
 
 
 func _add_resident(tile: Vector2i, level: Figure.Level, task := Resident.Task.NONE) -> Resident:
@@ -1957,6 +1967,7 @@ func _move(soldier_ids: Array[int], target: Vector3i) -> String:
 		soldier.task = Resident.Task.ON_DUTY
 		# Ein laufender Kampf bricht ab.
 		soldier.target_id = 0
+		soldier.defending = false
 		_send_to_post(soldier)
 		resident_changed.emit(soldier.id)
 	return ""

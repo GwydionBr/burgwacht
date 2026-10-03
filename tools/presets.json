@@ -30,5 +30,9 @@
 	"walls": {
 		"name": "Mauer mit Tor und Turm, Soldaten oben",
 		"args": ["--setup=walls", "--focus=8,10"]
+	},
+	"defense": {
+		"name": "Soldaten verteidigen sich an der Mauer",
+		"args": ["--setup=defense", "--focus=8,11"]
 	}
 }

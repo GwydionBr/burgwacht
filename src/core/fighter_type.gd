@@ -2,8 +2,10 @@ class_name FighterType
 extends RefCounted
 ## Kampfwerte aus data/units.json, gemeinsam für Soldatentypen ("kind": "soldier") und Feinde
 ## ("kind": "enemy"): Name, Lebenspunkte "hp", Schaden "damage" je Angriff, Angriffsdauer
-## "attack_ticks" (Takte zwischen zwei Angriffen), Nahkampf "melee" oder Reichweite "range",
-## Sichtweite "sight", Gehgeschwindigkeit "ticks_per_tile" und Farbe der Figur.
+## "attack_ticks" (Takte zwischen zwei Angriffen), Nahkampf "melee" oder Reichweite "range" (dazu
+## auf dem Wehrgang "wall_walk_range_bonus"), Sichtweite "sight", Leine "leash" (wie weit ein
+## Nahkämpfer beim selbstständigen Verteidigen vom Posten weg verfolgt), Gehgeschwindigkeit
+## "ticks_per_tile" und Farbe der Figur.
 
 const ENEMY_KIND := "enemy"
 
@@ -61,6 +63,17 @@ static func is_melee(type_id: String) -> bool:
 ## Reichweite eines Fernkämpfers in Kacheln (Abstand der Kachelmitten); 0 im Nahkampf.
 static func range_of(type_id: String) -> int:
 	return int(_def(type_id).get("range", 0))
+
+
+## Zusätzliche Reichweite eines Fernkämpfers auf dem Wehrgang; 0, wenn keine.
+static func wall_walk_range_bonus(type_id: String) -> int:
+	return int(_def(type_id).get("wall_walk_range_bonus", 0))
+
+
+## Wie weit ein Nahkämpfer beim selbstständigen Verteidigen höchstens verfolgt, in Kacheln vom
+## Posten (Abstand der Kachelmitten); 0, wenn er dabei nicht losläuft.
+static func leash_of(type_id: String) -> int:
+	return int(_def(type_id).get("leash", 0))
 
 
 ## Wie weit er Gegner sieht, in Kacheln (Abstand der Kachelmitten).

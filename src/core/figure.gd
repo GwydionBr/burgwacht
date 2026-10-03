@@ -53,13 +53,14 @@ func is_wounded() -> bool:
 
 
 ## Ist target in seiner Reichweite? Nahkampf: Nachbarkachel (auch schräg) auf derselben Ebene;
-## Fernkampf: Abstand der Kachelmitten höchstens die Reichweite, auch über Ebenen hinweg.
-func in_reach(target: Figure) -> bool:
+## Fernkampf: Abstand der Kachelmitten höchstens die Reichweite samt range_bonus, auch über
+## Ebenen hinweg. Den Bonus von Wehrgang und Gebäude liefert Combat.
+func in_reach(target: Figure, range_bonus := 0) -> bool:
 	var type := fighter_type()
 	if FighterType.is_melee(type):
 		var offset := (target.tile - tile).abs()
 		return level == target.level and maxi(offset.x, offset.y) <= 1
-	return distance_to(target) <= FighterType.range_of(type) + DISTANCE_SLACK
+	return distance_to(target) <= FighterType.range_of(type) + range_bonus + DISTANCE_SLACK
 
 
 ## Abstand der Kachelmitten zu einer anderen Figur.
