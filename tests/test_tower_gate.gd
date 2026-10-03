@@ -51,7 +51,7 @@ func _until_settled(world: GameWorld) -> Array[Vector3i]:
 	var visited: Array[Vector3i] = []
 	for i in MAX_TICKS:
 		var moving := false
-		for resident in world.get_residents():
+		for resident: Resident in world.get_residents():
 			moving = moving or resident.is_soldier() and resident.is_moving()
 		var soldier := world.get_resident(1)
 		if soldier != null and (visited.is_empty() or visited.back() != soldier.position()):
@@ -77,7 +77,7 @@ func test_tower_is_a_defense_building_with_range_bonus() -> void:
 func test_whole_tower_is_wall_walk() -> void:
 	var world := _soldiers(0)
 	build(world, "tower", TOWER_SITE)
-	for tile in Building.footprint("tower", TOWER_SITE):
+	for tile: Vector2i in Building.footprint("tower", TOWER_SITE):
 		assert_true(world.is_walkable(tile, WALL_WALK), "Wehrgang auf %s" % str(tile))
 	# Am Boden nur der Eingang.
 	assert_true(world.is_walkable(TOWER_ENTRANCE, Resident.Level.GROUND), "Eingang am Boden")
@@ -115,7 +115,7 @@ func test_tower_wall_walk_continues_onto_walls_also_diagonally() -> void:
 	var visited := _until_settled(world)
 	assert_eq(world.get_resident(1).position(), _on_wall(Vector2i(3, 9)), "Schräg vom Turm auf die Mauer:")
 	assert_true(visited.has(_on_wall(TOWER_SITE)) and visited.has(_on_wall(Vector2i(5, 11))), "Oben entlang: %s" % str(visited))
-	for position in visited:
+	for position: Vector3i in visited:
 		assert_true(position.z == WALL_WALK, "Unterwegs nicht hinab: %s" % str(visited))
 
 
@@ -168,7 +168,7 @@ func _split_world() -> Array:
 
 
 func _worker_of(world: GameWorld, workplace: int) -> Resident:
-	for resident in world.get_residents():
+	for resident: Resident in world.get_residents():
 		if resident.workplace_id == workplace:
 			return resident
 	return null

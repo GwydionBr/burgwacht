@@ -1,7 +1,7 @@
 class_name BuildingView
 extends Node2D
 ## Zeichnet ein Gebäude als isometrischen Block über seiner Grundfläche: Farbe und Höhe
-## aus den Daten, Name als Beschriftung, Eingang als dunkles Tor. Liegt im y-sortierten
+## aus den Daten, Name als Beschriftung, Eingang als dunkle Tür. Liegt im y-sortierten
 ## Objekt-Container. Der Sortierpunkt liegt zwischen den Kacheln hinter dem Gebäude und
 ## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
 ## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
@@ -14,11 +14,11 @@ extends Node2D
 ## Wehrgang (Tor) zeigt auf beiden sichtbaren Wänden einen dunklen Durchgang.
 
 const INSET := 3.0
-const GATE_COLOR := Color("#2a1d12")
+const DOOR_COLOR := Color("#2a1d12")
 const OUTLINE_COLOR := Color(0, 0, 0, 0.35)
 const LABEL_COLOR := Color("#f4ead2")
 const LABEL_SIZE := 13
-const GATE_HEIGHT := 18.0
+const DOOR_HEIGHT := 18.0
 ## Anteil der Kachel, den ein Ecktürmchen eines Turms einnimmt.
 const TURRET_SIZE := 0.4
 const LOG_COLOR := Color("#5b3d24")
@@ -60,7 +60,7 @@ func _draw() -> void:
 	# Der Block eines Turms endet auf dem Wehrgang; darüber ragen nur die Ecktürmchen.
 	var block_height := minf(height, FigureView.wall_walk_height()) if _walkway else height
 	var faces := _draw_block(base, block_height, color)
-	_draw_gate(base)
+	_draw_entrance(base)
 	if _passage:
 		_draw_passage(base)
 	if height > block_height:
@@ -108,13 +108,12 @@ func _draw_turrets(height: float, floor_height: float, color: Color) -> void:
 
 ## Dunkler Durchgang unten in beiden sichtbaren Wänden (Tor).
 func _draw_passage(base: PackedVector2Array) -> void:
-	var up := Vector2(0, -GATE_HEIGHT)
-	for edge: Array in [[base[3], base[2]], [base[2], base[1]]]:
-		var from: Vector2 = edge[0]
-		var to: Vector2 = edge[1]
-		var a := from.lerp(to, 0.25)
-		var b := from.lerp(to, 0.75)
-		draw_colored_polygon(PackedVector2Array([a, b, b + up * 0.8, (a + b) * 0.5 + up, a + up * 0.8]), GATE_COLOR)
+	var up := Vector2(0, -DOOR_HEIGHT)
+	# Linke Wand (base[3] → base[2]) und rechte Wand (base[2] → base[1]).
+	for i: int in [3, 2]:
+		var a := base[i].lerp(base[i - 1], 0.25)
+		var b := base[i].lerp(base[i - 1], 0.75)
+		draw_colored_polygon(PackedVector2Array([a, b, b + up * 0.8, (a + b) * 0.5 + up, a + up * 0.8]), DOOR_COLOR)
 
 
 ## Die sichtbaren Flächen eines Blocks über den Ecken base (aus footprint_corners()):
@@ -176,8 +175,8 @@ func _draw_small_trees(height: float) -> void:
 			draw_circle(foot + spot, 1.6, FRUIT_COLOR)
 
 
-## Tor auf der vorderen Seite, an der der Eingang liegt.
-func _draw_gate(base: PackedVector2Array) -> void:
+## Eingang als dunkle Tür auf der vorderen Seite, an der er liegt.
+func _draw_entrance(base: PackedVector2Array) -> void:
 	if not Building.has_entrance_type(_type):
 		return
 	var size := Building.size_of(_type)
@@ -200,8 +199,8 @@ func _draw_gate(base: PackedVector2Array) -> void:
 		return
 	var a := from.lerp(to, (index + 0.25) / steps)
 	var b := from.lerp(to, (index + 0.75) / steps)
-	var up := Vector2(0, -GATE_HEIGHT)
-	draw_colored_polygon(PackedVector2Array([a, b, b + up, a + up]), GATE_COLOR)
+	var up := Vector2(0, -DOOR_HEIGHT)
+	draw_colored_polygon(PackedVector2Array([a, b, b + up, a + up]), DOOR_COLOR)
 
 
 func _draw_label(text: String, center: Vector2) -> void:
