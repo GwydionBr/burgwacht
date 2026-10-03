@@ -1470,14 +1470,14 @@ func _deliver(resident: Resident, workplace: Building) -> void:
 
 ## Plant den kürzesten Weg einer Figur zu goal und schickt ihn los; false (und nichts
 ## ändert sich), wenn es keinen Weg gibt. Mitten im Schritt geht er den erst zu Ende.
-func _route_to(unit: Unit, goal: Vector3i) -> bool:
-	var start := unit.plan_start()
+func _route_to(figure: Figure, goal: Vector3i) -> bool:
+	var start := figure.plan_start()
 	var path := Pathfinder.find_path(start, goal, _is_walkable_position)
 	if path.is_empty():
 		return false
-	if unit.step_progress == 0:
+	if figure.step_progress == 0:
 		path.pop_front()
-	unit.path = path
+	figure.path = path
 	return true
 
 
@@ -1731,44 +1731,44 @@ func _end_attack(soldier: Resident) -> void:
 ## Reichweite (_in_reach()), bleibt er stehen und greift an, sobald die Angriffsdauer seit dem
 ## letzten Angriff um ist (_hit()); sonst läuft er zu dessen Kachel und plant neu, wenn das Ziel
 ## weitergezogen oder der Weg versperrt ist. false, wenn es keinen Weg zum Ziel gibt (er steht dann).
-func _fight(unit: Unit, target: Unit) -> bool:
-	if unit.step_progress == 0:
-		if _in_reach(unit, target):
-			unit.path.clear()
-			if unit.cooldown == 0:
-				_hit(unit, target)
+func _fight(figure: Figure, target: Figure) -> bool:
+	if figure.step_progress == 0:
+		if _in_reach(figure, target):
+			figure.path.clear()
+			if figure.cooldown == 0:
+				_hit(figure, target)
 			return true
-		if not unit.is_moving() or unit.path.back() != target.position() or not _is_walkable_position(unit.path[0]):
-			if not _route_to(unit, target.position()):
-				unit.path.clear()
+		if not figure.is_moving() or figure.path.back() != target.position() or not _is_walkable_position(figure.path[0]):
+			if not _route_to(figure, target.position()):
+				figure.path.clear()
 				return false
-	unit.advance()
+	figure.advance()
 	return true
 
 
-## Ist target in Reichweite von unit? Nahkampf: Nachbarkachel (auch schräg) auf derselben Ebene;
+## Ist target in Reichweite von figure? Nahkampf: Nachbarkachel (auch schräg) auf derselben Ebene;
 ## Fernkampf: Abstand der Kachelmitten höchstens die Reichweite, auch über Ebenen hinweg.
-func _in_reach(unit: Unit, target: Unit) -> bool:
-	var type := unit.fighter_type()
+func _in_reach(figure: Figure, target: Figure) -> bool:
+	var type := figure.fighter_type()
 	if FighterType.is_melee(type):
-		var offset := (target.tile - unit.tile).abs()
-		return unit.level == target.level and maxi(offset.x, offset.y) <= 1
-	return _distance(unit, target) <= FighterType.range_of(type) + DISTANCE_SLACK
+		var offset := (target.tile - figure.tile).abs()
+		return figure.level == target.level and maxi(offset.x, offset.y) <= 1
+	return _distance(figure, target) <= FighterType.range_of(type) + DISTANCE_SLACK
 
 
 ## Abstand der Kachelmitten zweier Figuren.
-static func _distance(a: Unit, b: Unit) -> float:
+static func _distance(a: Figure, b: Figure) -> float:
 	return Vector2(a.tile - b.tile).length()
 
 
 ## Ein Angriff trifft sofort und ohne Zufall: Schaden abziehen, Angriffsdauer beginnt von vorn.
 ## Fernkämpfer melden den Schuss für die Darstellung. Bei 0 Lebenspunkten stirbt das Ziel.
-func _hit(unit: Unit, target: Unit) -> void:
-	var type := unit.fighter_type()
-	unit.cooldown = FighterType.attack_ticks(type)
+func _hit(figure: Figure, target: Figure) -> void:
+	var type := figure.fighter_type()
+	figure.cooldown = FighterType.attack_ticks(type)
 	target.hp = maxi(target.hp - FighterType.damage_of(type), 0)
 	if not FighterType.is_melee(type):
-		shot_fired.emit(unit.position(), target.position())
+		shot_fired.emit(figure.position(), target.position())
 	if target.hp == 0:
 		_kill(target)
 	elif target is Resident:
@@ -1780,19 +1780,19 @@ func _hit(unit: Unit, target: Unit) -> void:
 ## Ein Kämpfer stirbt. Ein Soldat ist kein Bewohner mehr (seine Waffe ist verloren); Feinde, die
 ## ihn angegriffen haben, laufen weiter zum Bergfried. Ein Feind verschwindet; Soldaten, die ihn
 ## angegriffen haben, bleiben stehen (_end_attack()).
-func _kill(unit: Unit) -> void:
-	if unit is Resident:
-		var soldier := unit as Resident
+func _kill(figure: Figure) -> void:
+	if figure is Resident:
+		var soldier := figure as Resident
 		_remove_resident(soldier)
 		notice.emit("Ein %s ist gefallen" % FighterType.name_of(soldier.soldier_type))
 		for enemy: Enemy in _enemies.values():
 			if enemy.target_id == soldier.id:
 				_drop_enemy_target(enemy)
 		return
-	_enemies.erase(unit.id)
-	enemy_removed.emit(unit.id)
+	_enemies.erase(figure.id)
+	enemy_removed.emit(figure.id)
 	for resident: Resident in _residents.values():
-		if resident.target_id == unit.id:
+		if resident.target_id == figure.id:
 			_end_attack(resident)
 
 
@@ -2305,7 +2305,7 @@ func _replan_enemies() -> void:
 				return is_walkable(tile, Resident.Level.GROUND))
 			if not found.is_empty():
 				enemy.tile = found[0]
-				enemy.level = Unit.Level.GROUND
+				enemy.level = Figure.Level.GROUND
 				enemy.step_progress = 0
 				enemy.path.clear()
 		if enemy.target_id == 0:

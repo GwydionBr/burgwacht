@@ -1,7 +1,7 @@
 class_name Enemy
-extends Unit
+extends Figure
 ## Ein Feind, z. B. der Räuber: gehört nicht zur Burg und ist kein Bewohner. Typ und Kampfwerte
-## aus units.json ("kind": "enemy", FighterType); Bewegung und Kampfzustand: Unit.
+## aus units.json ("kind": "enemy", FighterType); Bewegung und Kampfzustand: Figure.
 ## Er läuft zum Bergfried und greift Soldaten in Sichtweite an, die er erreichen kann.
 
 ## Feindtyp aus units.json, z. B. "bandit".
@@ -27,7 +27,7 @@ func fighter_type() -> String:
 
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
-	var data := _unit_data()
+	var data := _figure_data()
 	data["type"] = type
 	return data
 
@@ -35,6 +35,6 @@ func to_data() -> Dictionary:
 ## Gegenstück zu to_data().
 static func from_data(data: Dictionary) -> Enemy:
 	var enemy := Enemy.new()
-	enemy._read_unit_data(data)
+	enemy._read_figure_data(data)
 	enemy.type = str(data["type"])
 	return enemy

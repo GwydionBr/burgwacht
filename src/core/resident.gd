@@ -1,6 +1,6 @@
 class_name Resident
-extends Unit
-## Ein Bewohner der Burg (Bewegung und Kampfwerte: Unit). Ein gerader Schritt dauert
+extends Figure
+## Ein Bewohner der Burg (Bewegung und Kampfwerte: Figure). Ein gerader Schritt dauert
 ## "ticks_per_tile" Takte (units.json, beim Soldaten die seines Soldatentyps).
 ## Ein Soldat ist weiter Bewohner, arbeitet aber nicht: Er geht zu seinem Posten und steht dort
 ## bzw. greift den befohlenen Feind an.
@@ -213,7 +213,7 @@ func post_tile() -> Vector2i:
 
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
-	var data := _unit_data()
+	var data := _figure_data()
 	data.merge({
 		"workplace": workplace_id, "task": task, "deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
 		"good": carried_good, "amount": carried_amount, "timer": timer,
@@ -225,7 +225,7 @@ func to_data() -> Dictionary:
 ## Gegenstück zu to_data().
 static func from_data(data: Dictionary) -> Resident:
 	var resident := Resident.new()
-	resident._read_unit_data(data)
+	resident._read_figure_data(data)
 	resident.workplace_id = int(data["workplace"])
 	resident.task = int(data["task"]) as Task
 	var deposit: Array = data["deposit"]

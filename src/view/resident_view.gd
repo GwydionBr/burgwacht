@@ -1,6 +1,6 @@
 class_name ResidentView
-extends UnitView
-## Zeichnet einen Bewohner (Figur, Ring und Lebensbalken: UnitView). Getragene Ware als Bündel
+extends FigureView
+## Zeichnet einen Bewohner (Figur, Ring und Lebensbalken: FigureView). Getragene Ware als Bündel
 ## auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
 ## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen).
 
@@ -15,9 +15,9 @@ const WOOD_COLOR := Color("#6b4423")
 var _resident: Resident
 
 
-func setup(unit: Unit, clock: GameClock) -> void:
-	_resident = unit as Resident
-	super.setup(unit, clock)
+func setup(figure: Figure, clock: GameClock) -> void:
+	_resident = figure as Resident
+	super.setup(figure, clock)
 
 
 func _update_position() -> void:

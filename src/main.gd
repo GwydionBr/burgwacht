@@ -816,8 +816,8 @@ func _update_hover() -> void:
 
 
 ## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
-static func _health_text(unit: Unit) -> String:
-	return " (%d/%d LP)" % [unit.hp, FighterType.max_hp(unit.fighter_type())]
+static func _health_text(figure: Figure) -> String:
+	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
 
 
 func _parse_user_args() -> Dictionary:

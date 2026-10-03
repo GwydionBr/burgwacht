@@ -1,4 +1,4 @@
-class_name UnitView
+class_name FigureView
 extends Node2D
 ## Zeichnet eine Figur (Bewohner oder Feind) als einfache Platzhalter-Figur.
 ## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
@@ -26,12 +26,12 @@ var selected := false:
 		selected = value
 		queue_redraw()
 
-var _unit: Unit
+var _figure: Figure
 var _clock: GameClock
 
 
-func setup(unit: Unit, clock: GameClock) -> void:
-	_unit = unit
+func setup(figure: Figure, clock: GameClock) -> void:
+	_figure = figure
 	_clock = clock
 	_update_position()
 	queue_redraw()
@@ -47,7 +47,7 @@ func hit_rect() -> Rect2:
 
 
 func _update_position() -> void:
-	position = Iso.point_to_world(_unit.tile_point(_clock.tick_fraction()))
+	position = Iso.point_to_world(_figure.tile_point(_clock.tick_fraction()))
 	queue_redraw()
 
 
@@ -82,13 +82,13 @@ func _draw() -> void:
 	draw_circle(Vector2(0, -22), 4.0, SKIN_COLOR)
 	draw_arc(Vector2(0, -22), 4.0, 0, TAU, 16, OUTLINE_COLOR, 1.0, true)
 	_draw_extras()
-	if _unit.is_fighter() and (_unit.is_wounded() or selected):
+	if _figure.is_fighter() and (_figure.is_wounded() or selected):
 		_draw_health()
 
 
 ## Lebensbalken: grün bei viel, rot bei wenig Rest.
 func _draw_health() -> void:
-	var share := clampf(float(_unit.hp) / FighterType.max_hp(_unit.fighter_type()), 0.0, 1.0)
+	var share := clampf(float(_figure.hp) / FighterType.max_hp(_figure.fighter_type()), 0.0, 1.0)
 	draw_rect(HEALTH_RECT.grow(1.0), HEALTH_BACK_COLOR)
 	var filled := Rect2(HEALTH_RECT.position, Vector2(HEALTH_RECT.size.x * share, HEALTH_RECT.size.y))
 	draw_rect(filled, HEALTH_LOW_COLOR.lerp(HEALTH_HIGH_COLOR, share))

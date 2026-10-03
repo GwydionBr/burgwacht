@@ -1,6 +1,6 @@
 class_name EnemyView
-extends UnitView
-## Zeichnet einen Feind (Figur und Lebensbalken: UnitView) in der Farbe seines Typs aus
+extends FigureView
+## Zeichnet einen Feind (Figur und Lebensbalken: FigureView) in der Farbe seines Typs aus
 ## units.json, mit Kapuze und Knüppel.
 
 const CLUB_COLOR := Color("#5a3a1e")
@@ -9,9 +9,9 @@ const HOOD_COLOR := Color(0.12, 0.08, 0.14, 0.85)
 var _enemy: Enemy
 
 
-func setup(unit: Unit, clock: GameClock) -> void:
-	_enemy = unit as Enemy
-	super.setup(unit, clock)
+func setup(figure: Figure, clock: GameClock) -> void:
+	_enemy = figure as Enemy
+	super.setup(figure, clock)
 
 
 func _body_color() -> Color:

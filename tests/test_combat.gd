@@ -43,8 +43,8 @@ func _until(world: GameWorld, condition: Callable, what: String) -> void:
 	assert_true(false, "%s nach %d Takten nicht eingetreten" % [what, MAX_TICKS])
 
 
-func _until_still(world: GameWorld, unit: Unit) -> void:
-	_until(world, func() -> bool: return not unit.is_moving(), "Stehen")
+func _until_still(world: GameWorld, figure: Figure) -> void:
+	_until(world, func() -> bool: return not figure.is_moving(), "Stehen")
 
 
 ## Abstand einer Kachel zur Grundfläche des Bergfrieds (0 auf ihr).
@@ -190,7 +190,7 @@ func test_swordsman_hunts_down_the_bandit_every_attack_duration() -> void:
 func test_bandit_kills_a_soldier_in_sight() -> void:
 	var world := _with_soldiers(["swordsman"] as Array[String])
 	var soldier := world.get_resident(1)
-	world.execute(Command.move([1] as Array[int], Unit.ground(Vector2i(7, 0))))
+	world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(7, 0))))
 	_until_still(world, soldier)
 	var removed: Array[int] = []
 	world.resident_removed.connect(func(id: int) -> void: removed.append(id))
@@ -209,6 +209,30 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 	assert_eq(bandit.target_id, 0, "Räuber ohne Ziel:")
 	_until_still(world, bandit)
 	assert_eq(_keep_distance(bandit.tile), 1.0, "Weiter zum Bergfried:")
+
+
+## Zwei Schwertkämpfer (IDs 1 und 2) stehen auf diesen Kacheln, dann erscheint ein Räuber bei
+## SPAWN_TILE; liefert die ID seines ersten Ziels.
+func _first_bandit_target(first: Vector2i, second: Vector2i) -> int:
+	var world := _with_soldiers(["swordsman", "swordsman"] as Array[String])
+	world.execute(Command.move([1] as Array[int], Figure.ground(first)))
+	world.execute(Command.move([2] as Array[int], Figure.ground(second)))
+	_until_still(world, world.get_resident(1))
+	_until_still(world, world.get_resident(2))
+	world.execute(Command.spawn_enemy("bandit"))
+	world.step()
+	return world.get_enemy(1).target_id
+
+
+func test_bandit_attacks_the_nearest_soldier() -> void:
+	# Abstand von SPAWN_TILE (2, 0): 5 bzw. 4.
+	assert_eq(_first_bandit_target(Vector2i(7, 0), Vector2i(6, 0)), 2, "Der nähere, trotz größerer ID:")
+
+
+func test_bandit_breaks_ties_by_smaller_id() -> void:
+	# Abstand von SPAWN_TILE (2, 0): beide 5.
+	assert_eq(_first_bandit_target(Vector2i(6, 3), Vector2i(7, 0)), 1, "Gleichstand:")
+	assert_eq(_first_bandit_target(Vector2i(7, 0), Vector2i(6, 3)), 1, "Gleichstand, vertauscht:")
 
 
 func test_bandit_ignores_soldiers_out_of_sight() -> void:
@@ -242,7 +266,7 @@ func test_move_cancels_the_attack() -> void:
 	var world := _with_soldiers(["swordsman"] as Array[String])
 	world.execute(Command.spawn_enemy("bandit"))
 	world.execute(Command.attack([1] as Array[int], 1))
-	world.execute(Command.move([1] as Array[int], Unit.ground(Vector2i(15, 12))))
+	world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(15, 12))))
 	assert_eq(world.get_resident(1).target_id, 0, "Kein Ziel mehr:")
 
 

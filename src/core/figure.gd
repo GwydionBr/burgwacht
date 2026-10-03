@@ -1,4 +1,4 @@
-class_name Unit
+class_name Figure
 extends RefCounted
 ## Eine Figur auf der Karte: Bewohner (Resident) oder Feind (Enemy). Position = Kachel + Ebene
 ## (ADR 0004); läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert
@@ -110,7 +110,7 @@ func tile_point(fraction: float) -> Vector2:
 
 
 ## Der gemeinsame Teil von to_data() der Unterklassen.
-func _unit_data() -> Dictionary:
+func _figure_data() -> Dictionary:
 	var path_data: Array[Array] = []
 	for step in path:
 		path_data.append([step.x, step.y, step.z])
@@ -120,8 +120,8 @@ func _unit_data() -> Dictionary:
 	}
 
 
-## Gegenstück zu _unit_data().
-func _read_unit_data(data: Dictionary) -> void:
+## Gegenstück zu _figure_data().
+func _read_figure_data(data: Dictionary) -> void:
 	id = int(data["id"])
 	tile = Vector2i(int(data["x"]), int(data["y"]))
 	level = int(data["level"]) as Level
