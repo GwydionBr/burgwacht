@@ -70,7 +70,7 @@ Neues Zustandsstück:
 - Einzelne Testdateien: `tools/test.sh test_founding` (Teil des Dateinamens).
 - Ein Test schlägt fehl, wenn eine Prüfung nicht stimmt, wenn er einen Fehler auslöst (Skriptfehler, fehlgeschlagenes `assert()`, `push_error()`) oder wenn er keine einzige Prüfung erreicht.
 - `tests/test_structure.gd` prüft die Regeln des Aufbaus: alle Skripte unter `src/` lassen sich laden, `core/` nennt keine Klasse und keinen Pfad aus `view/` oder `ui/`. Fehlende Typangaben sind Fehler (`untyped_declaration` in `project.godot`).
-- **Rauchtest** (`tools/smoke.sh`, läuft am Ende von `tools/test.sh` ohne Filter): startet das Spiel ohne Fenster in mehreren Zuständen (Gründung, Baumodus, Verwaltung, Markt, Abriss) und scheitert an jeder Fehlermeldung. Neue Ansicht oder neuer Startparameter: dort einen Aufruf ergänzen.
+- **Rauchtest** (`tools/smoke.sh`, läuft am Ende von `tools/test.sh` ohne Filter): startet das Spiel ohne Fenster in mehreren Zuständen (Gründung, Baumodus, Verwaltung, Markt, Abriss, Kasernenansicht, Soldatenauswahl mit Rahmen) und scheitert an jeder Fehlermeldung – auch daran, dass ein Startparameter wie `--barracks` oder `--select` nichts bewirkt (`main.gd` meldet dann `--barracks: …`). Für Kaserne und Soldaten schreibt `tests/smoke_save.gd` vorher einen frischen Spielstand, den der Rauchtest mit `--load=` öffnet. Neue Ansicht oder neuer Startparameter: dort einen Aufruf ergänzen.
 - GitHub Actions (`.github/workflows/tests.yml`) führt `tools/test.sh` bei jedem Pull Request aus.
 - Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage] [--found]`; mit Tagen wird gegründet und die Spielwelt läuft vorher so lange, sonst zeigt das Bild die Gründungsvorschau über der Kartenmitte).
 
