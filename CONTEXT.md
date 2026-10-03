@@ -119,6 +119,10 @@ _Avoid_: Handelsposten, Händler
 Ein Kauf oder Verkauf einer festen Menge einer Ware am Markt zu den festen Preisen aus den Warendaten; er gelingt ganz oder gar nicht.
 _Avoid_: Tausch, Transaktion
 
+**Marktansicht**:
+Die Übersicht (Taste M) mit Bestand, Kauf- und Verkaufspreis jeder Ware; zugleich die Bestandsübersicht, auch ohne Markt (dann ohne Handel).
+_Avoid_: Inventar, Handelsfenster
+
 **Wild**:
 Ein Vorkommen aus Tieren, das Fleisch liefert und wie Bäume nachwächst; es bewegt sich nicht.
 _Avoid_: Tiere, Hirsche, Beute

@@ -2,7 +2,7 @@ extends TestCase
 ## Marktdaten: Kauf- und Verkaufspreise je Ware aus goods.json, Lagerarten für die Titelleiste.
 
 ## Startwerte aus der Spezifikation (Meilenstein 6): Ware → [Kauf, Verkauf].
-const PRICES := {
+const PRICES: Dictionary[String, Array] = {
 	"wood": [4, 2],
 	"stone": [8, 4],
 	"iron": [20, 10],
@@ -34,7 +34,7 @@ func test_goods_without_prices_are_not_tradable() -> void:
 
 
 func test_a_trade_is_five_units() -> void:
-	assert_eq(Market.TRADE_AMOUNT, 5, "Einheiten je Handel:")
+	assert_eq(Market.trade_amount(), 5, "Einheiten je Handel:")
 
 
 func test_storage_types_in_goods_order() -> void:

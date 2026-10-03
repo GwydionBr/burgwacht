@@ -442,14 +442,14 @@ func _update_demolish_preview() -> void:
 ## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher); Marktansicht: Bestand je Ware.
 func _update_stock() -> void:
 	var parts: PackedStringArray = []
-	for storage_type in Building.storage_types():
+	for storage_type: String in Building.storage_types():
 		parts.append("%s %d/%d" % [Building.storage_name(storage_type), world.get_storage_used(storage_type),
 				world.get_storage_capacity(storage_type)])
 	_hud.show_storage("  ·  ".join(parts))
 	var stock: Dictionary[String, int] = {}
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
-	_hud.show_market(stock)
+	_hud.show_market_stock(stock)
 
 
 ## Titelleiste: Bewohner, Wohnraum und Untätige.

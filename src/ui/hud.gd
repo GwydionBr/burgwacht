@@ -235,7 +235,7 @@ func is_market_open() -> bool:
 
 
 ## Bestand je Ware in der Marktansicht.
-func show_market(stock: Dictionary[String, int]) -> void:
+func show_market_stock(stock: Dictionary[String, int]) -> void:
 	for good: String in stock:
 		_market_stock_labels[good].text = str(stock[good])
 
@@ -355,9 +355,9 @@ func _make_market_panel() -> PanelContainer:
 		var tradable := Market.is_tradable(good)
 		grid.add_child(_make_number_label(str(Market.buy_price(good)) if tradable else "–"))
 		grid.add_child(_make_number_label(str(Market.sell_price(good)) if tradable else "–"))
-		grid.add_child(_make_trade_button("Kaufen %d" % Market.TRADE_AMOUNT, tradable))
-		grid.add_child(_make_trade_button("Verkaufen %d" % Market.TRADE_AMOUNT, tradable))
-	column.add_child(_make_label("Preise in Gold pro Stück  ·  M/Esc: schließen", HINT_COLOR, 13))
+		grid.add_child(_make_trade_button("Kaufen %d" % Market.trade_amount(), tradable))
+		grid.add_child(_make_trade_button("Verkaufen %d" % Market.trade_amount(), tradable))
+	column.add_child(_make_label("Preise in Gold pro Einheit  ·  M/Esc: schließen", HINT_COLOR, 13))
 	return panel
 
 

@@ -1,10 +1,13 @@
 class_name Market
 extends RefCounted
 ## Handel zu festen Preisen aus data/goods.json: Kaufpreis `buy` und Verkaufspreis `sell`
-## in Gold pro Einheit. Waren ohne beide Preise sind nicht handelbar.
+## in Gold pro Einheit. Waren ohne beide Preise sind nicht handelbar. Die Menge je Handel steht
+## in data/market.json.
+
 
 ## Einheiten je Handel.
-const TRADE_AMOUNT := 5
+static func trade_amount() -> int:
+	return int(GameDefs.get_instance().market["trade_amount"])
 
 
 static func is_tradable(good: String) -> bool:
