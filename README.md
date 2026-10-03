@@ -28,3 +28,7 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 ## Entwicklung
 
 Tests: `tools/test.sh` · Aufbau: `docs/architecture.md` · Fahrplan: `docs/roadmap.md`.
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE).
