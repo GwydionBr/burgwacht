@@ -5,8 +5,9 @@ Burgenbau-Strategiespiel im Stil von Stronghold für macOS. Godot 4.7, GDScript,
 ## Befehle
 
 - `tools/test.sh` – alle Tests headless, danach der Rauchtest (muss vor jedem Commit grün sein)
-- `tools/run.sh` – Spiel starten (`tools/run.sh -- --seed=42` für feste Karte)
-- `tools/screenshot.sh /tmp/bild.png [seed]` – Screenshot, um Grafikänderungen zu prüfen
+- `tools/run.sh` – Spiel starten (`tools/run.sh -- --seed=42` für feste Karte, `tools/run.sh barracks` für einen Testzustand)
+- `tools/screenshot.sh /tmp/bild.png [seed|preset]` – Screenshot, um Grafikänderungen zu prüfen
+- Testzustände (Presets) stehen in `tools/presets.json`; neue Ansicht oder neuer Startparameter → dort ein Preset ergänzen (der Rauchtest prüft alle)
 
 ## Regeln
 

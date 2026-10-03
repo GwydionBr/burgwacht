@@ -16,6 +16,8 @@ extends Node2D
 ##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
 ##   --load=pfad.sav       Spielstand laden statt neuer Partie (für Screenshots)
+##   --setup=name          Spielwelt aus tests/setups/name.gd statt neuer Partie (für Testzustände)
+##   --preset=id           Startparameter des Testzustands aus tools/presets.json (eigene gehen vor)
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
@@ -101,6 +103,13 @@ func _ready() -> void:
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
+	if args.has("setup"):
+		var setup_path := Presets.setup_path(str(args["setup"]))
+		if ResourceLoader.exists(setup_path):
+			var setup: GDScript = load(setup_path)
+			_show_world(setup.call("create"))
+		else:
+			printerr("--setup: ", setup_path, " fehlt")
 	if args.has("load"):
 		var load_error := _load_from(str(args["load"]))
 		if load_error != "":
@@ -884,9 +893,28 @@ static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
 
 
+## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
+## Umgebungsvariable Presets.ENV) zuerst, eigene Parameter überschreiben sie.
 func _parse_user_args() -> Dictionary:
+	var own := _args_to_dict(OS.get_cmdline_user_args())
+	var preset := str(own.get("preset", OS.get_environment(Presets.ENV)))
+	if preset == "":
+		return own
 	var args := {}
-	for arg in OS.get_cmdline_user_args():
+	var presets_error := Presets.error()
+	if presets_error != "":
+		printerr("--preset: ", presets_error)
+	elif not Presets.load_all().has(preset):
+		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(Presets.load_all().keys()), ")")
+	else:
+		args = _args_to_dict(Presets.args_of(preset))
+	args.merge(own, true)
+	return args
+
+
+static func _args_to_dict(list: PackedStringArray) -> Dictionary:
+	var args := {}
+	for arg in list:
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		args[parts[0]] = parts[1] if parts.size() > 1 else ""
 	return args
