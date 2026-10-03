@@ -689,10 +689,7 @@ func get_housing() -> int:
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
 ## (Lagerfeuer).
 func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
-	if level != Resident.Level.GROUND or not map.is_walkable(tile):
-		return false
-	var deposit := map.get_deposit(tile)
-	if deposit != null and not deposit.is_walkable():
+	if not _is_open_ground(Vector3i(tile.x, tile.y, level)):
 		return false
 	var building := get_building_at(tile)
 	if building == null:
@@ -2249,10 +2246,11 @@ func _spawn_enemy(type_id: String) -> String:
 	return ""
 
 
-## Die Randkachel, auf der ein Feind erscheint: die freie, von der aus er den Bergfried erreicht
-## (_reaches_keep()) und die dessen Grundfläche am nächsten liegt; bei Gleichstand die kleinere
-## (zeilenweise). Erreicht keine den Bergfried, die nächste freie. Als [Kachel], leer, wenn es
-## keine freie gibt.
+## Die Randkachel, auf der ein Feind erscheint: die freie, die der Grundfläche des Bergfrieds am
+## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
+## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
+## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
+## nächste freie. Als [Kachel], leer, wenn es keine freie gibt.
 func _spawn_tile() -> Array[Vector2i]:
 	var keep := _keep()
 	var reaching := _reaches_keep()
@@ -2274,15 +2272,25 @@ func _spawn_tile() -> Array[Vector2i]:
 
 
 ## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
-## mit seiner Grundfläche). Je Zusammenhangsgebiet genügt eine Suche.
+## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (_is_open_ground()). Je
+## Zusammenhangsgebiet genügt eine Suche.
 func _reaches_keep() -> Dictionary[Vector3i, float]:
 	var keep := _keep()
 	var result: Dictionary[Vector3i, float] = {}
 	for tile in Building.adjacent_tiles(keep.type, keep.origin):
 		var start := Figure.ground(tile)
-		if _is_walkable_position(start) and not result.has(start):
-			result.merge(Pathfinder.distances(start, _is_walkable_position))
+		if _is_open_ground(start) and not result.has(start):
+			result.merge(Pathfinder.distances(start, _is_open_ground))
 	return result
+
+
+## Begehbar, wenn man Gebäude außer Acht lässt: Gelände und Vorkommen lassen durch.
+func _is_open_ground(position: Vector3i) -> bool:
+	var tile := Vector2i(position.x, position.y)
+	if position.z != Figure.Level.GROUND or not map.is_walkable(tile):
+		return false
+	var deposit := map.get_deposit(tile)
+	return deposit == null or deposit.is_walkable()
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).
