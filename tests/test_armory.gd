@@ -13,6 +13,8 @@ const DISTANT_ARMORY_SITE := Vector2i(16, 2)
 ## Schmied und Bogner (2×2) rechts vom Warenlager.
 const SMITH_SITE := Vector2i(11, 2)
 const BOWYER_SITE := Vector2i(11, 5)
+## Markt (3×3) an derselben Stelle wie der Schmied.
+const MARKET_SITE := Vector2i(11, 2)
 ## Obergrenze für einen ganzen Arbeitsgang.
 const MAX_TICKS := 1500
 
@@ -79,7 +81,7 @@ func test_smith_and_bowyer_data() -> void:
 
 func test_no_armory_at_founding() -> void:
 	var world := _founded()
-	for building in world.get_buildings():
+	for building: Building in world.get_buildings():
 		assert_true(building.type != "armory", "Keine Waffenkammer bei der Gründung")
 	assert_eq([world.get_storage_used("armory"), world.get_storage_capacity("armory")], [0, 0], "Belegung:")
 
@@ -121,23 +123,32 @@ func test_bowyer_makes_a_bow_into_the_armory() -> void:
 	assert_eq(world.get_stock("wood"), wood - 2, "Genau 2 Holz verbraucht:")
 
 
-func test_without_armory_the_smith_waits_with_the_sword() -> void:
-	var world := _founded()
-	var smith := world.get_building(build(world, "smith", SMITH_SITE))
-	put_goods(world, WAREHOUSE, "iron", 2)
-	var worker := world.get_resident(1)
-	_until(world, func() -> bool:
-		return worker.task == Resident.Task.WAITING_FOR_STORAGE and not worker.is_moving(), "Warten mit dem Schwert")
-	assert_eq(worker.tile, smith.entrance(), "An der Schmiede:")
-	assert_eq([worker.carried_good, worker.carried_amount], ["sword", 1], "Behält das Schwert:")
-	assert_eq(world.activity_of(worker), "Schmied – wartet: Lager voll", "Tätigkeit:")
-	build(world, "armory", ARMORY_SITE)
-	_until(world, func() -> bool: return world.get_stock("sword") == 1, "Lieferung nach dem Bau der Waffenkammer")
+func test_without_armory_smith_and_bowyer_wait_with_the_weapon() -> void:
+	var cases := {
+		"smith": [SMITH_SITE, "sword", "Schmied – wartet: Lager voll"],
+		"bowyer": [BOWYER_SITE, "bow", "Bogner – wartet: Lager voll"],
+	}
+	for type_id: String in cases:
+		var site: Vector2i = cases[type_id][0]
+		var weapon: String = cases[type_id][1]
+		var world := _founded()
+		var workplace := world.get_building(build(world, type_id, site))
+		put_goods(world, WAREHOUSE, "iron", 2)
+		var worker := world.get_resident(1)
+		_until(world, func() -> bool:
+			return worker.task == Resident.Task.WAITING_FOR_STORAGE and not worker.is_moving(),
+			"Warten mit der Waffe (%s)" % type_id)
+		assert_eq(worker.tile, workplace.entrance(), "An der Arbeitsstätte (%s):" % type_id)
+		assert_eq([worker.carried_good, worker.carried_amount], [weapon, 1], "Behält die Waffe (%s):" % type_id)
+		assert_eq(world.activity_of(worker), cases[type_id][2], "Tätigkeit (%s):" % type_id)
+		build(world, "armory", ARMORY_SITE)
+		_until(world, func() -> bool: return world.get_stock(weapon) == 1,
+				"Lieferung nach dem Bau der Waffenkammer (%s)" % type_id)
 
 
 func test_buying_weapons_needs_an_armory() -> void:
 	var world := _founded()
-	build(world, "market", Vector2i(11, 2))
+	build(world, "market", MARKET_SITE)
 	assert_eq(world.trade_error("bow", true), "Keine Waffenkammer", "Ohne Waffenkammer:")
 	build(world, "armory", ARMORY_SITE)
 	# 100 Gold − 30 für den Markt reichen nicht für 5 × 30.
