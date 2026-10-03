@@ -284,11 +284,10 @@ func show_tool(build_type: String, demolishing: bool) -> void:
 func _make_build_button(type_id: String) -> Button:
 	var defs := GameDefs.get_instance()
 	var def: Dictionary = defs.buildings[type_id]
-	var cost: Dictionary = def["cost"]
+	var cost := GameWorld.goods_cost_of(type_id)
 	var cost_parts: PackedStringArray = []
 	for good: String in cost:
-		if good != GameWorld.GOLD:
-			cost_parts.append("%d %s" % [int(cost[good]), defs.goods[good]["name"]])
+		cost_parts.append("%d %s" % [cost[good], defs.goods[good]["name"]])
 	var gold := GameWorld.gold_cost_of(type_id)
 	if gold > 0:
 		cost_parts.append("%d Gold" % gold)

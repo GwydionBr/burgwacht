@@ -67,6 +67,17 @@ func test_demolish_refunds_half_the_gold() -> void:
 	assert_eq(signals.size(), 1, "treasury_changed einmal:")
 
 
+func test_gold_refund_is_rounded_down() -> void:
+	var cost: Dictionary = GameDefs.get_instance().buildings["market"]["cost"]
+	var original := int(cost["gold"])
+	cost["gold"] = 31
+	var world := _founded()
+	var id := build(world, "market", SITE)
+	world.execute(Command.demolish(id))
+	cost["gold"] = original
+	assert_eq(world.get_treasury(), 29, "45 − 31 + 15 Gold:")
+
+
 func test_has_market() -> void:
 	var world := _founded()
 	assert_true(not world.has_market(), "Vorher kein Markt")

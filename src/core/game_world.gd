@@ -269,7 +269,7 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 	var rules := _rules_error(type_id, origin)
 	if rules != "":
 		return rules
-	var cost := _goods_cost_of(type_id)
+	var cost := goods_cost_of(type_id)
 	for good: String in cost:
 		if get_stock(good) < cost[good]:
 			return "Zu wenig %s (%d nötig)" % [_good_name(good), cost[good]]
@@ -1227,7 +1227,7 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	var error := build_error(type_id, origin)
 	if error != "":
 		return error
-	var cost := _goods_cost_of(type_id)
+	var cost := goods_cost_of(type_id)
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
 		_take_goods(good, cost[good], changed)
@@ -1320,7 +1320,7 @@ func _demolish(id: int) -> String:
 	# Mit einem Wohnhaus kann Wohnraum fehlen.
 	_send_away_surplus()
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
-	var cost := _goods_cost_of(building.type)
+	var cost := goods_cost_of(building.type)
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
 		@warning_ignore("integer_division")
@@ -1474,7 +1474,7 @@ func _building_name(type_id: String) -> String:
 
 
 ## Baukosten eines Gebäudetyps in Waren: Ware → Menge (ohne Gold).
-func _goods_cost_of(type_id: String) -> Dictionary[String, int]:
+static func goods_cost_of(type_id: String) -> Dictionary[String, int]:
 	var result: Dictionary[String, int] = {}
 	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
 	for good: String in cost:
