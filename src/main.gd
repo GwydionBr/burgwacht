@@ -312,7 +312,7 @@ func _add_building_view(id: int) -> void:
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
 	_update_residents()
-	_update_market()
+	_update_stock()
 	_update_hover()
 	_update_preview()
 
@@ -322,7 +322,7 @@ func _on_building_removed(id: int) -> void:
 		_building_views[id].queue_free()
 		_building_views.erase(id)
 	_update_residents()
-	_update_market()
+	_update_stock()
 	_update_hover()
 	_update_preview()
 
@@ -442,7 +442,7 @@ func _update_demolish_preview() -> void:
 		_hud.show_build_hint("Abriss: %s" % reason, false)
 
 
-## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher); Marktansicht: Bestand je Ware.
+## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher, Waffenkammer); Marktansicht: Bestand je Ware.
 func _update_stock() -> void:
 	var parts: PackedStringArray = []
 	for storage_type: String in Building.storage_types():
