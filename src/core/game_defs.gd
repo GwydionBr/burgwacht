@@ -1,6 +1,6 @@
 class_name GameDefs
 extends RefCounted
-## Spielinhalte (Gelände, Vorkommen, Waren, Gebäude, Einheiten, Bevölkerung) aus den JSON-Dateien in res://data.
+## Spielinhalte (Gelände, Vorkommen, Waren, Gebäude, Einheiten, Bevölkerung, Markt) aus den JSON-Dateien in res://data.
 ## Neue Inhalte werden dort eingetragen, nicht im Code.
 
 const DATA_DIR := "res://data/"
@@ -15,6 +15,8 @@ var buildings: Dictionary = {}
 var units: Dictionary = {}
 ## Regelwerte der Bevölkerung: Rationsstufen, Faktoren, Voreinstellungen.
 var population: Dictionary = {}
+## Regelwerte des Markts: Einheiten je Handel.
+var market: Dictionary = {}
 
 
 static func get_instance() -> GameDefs:
@@ -26,6 +28,7 @@ static func get_instance() -> GameDefs:
 		_instance.buildings = _load_json("buildings.json")
 		_instance.units = _load_json("units.json")
 		_instance.population = _load_json("population.json")
+		_instance.market = _load_json("market.json")
 	return _instance
 
 
