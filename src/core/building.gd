@@ -35,6 +35,10 @@ func is_campfire() -> bool:
 	return def()["behavior"] == "campfire"
 
 
+func is_market() -> bool:
+	return def()["behavior"] == "market"
+
+
 ## Beschäftigt das Gebäude Arbeiter ("workers" in den Daten)?
 func is_workplace() -> bool:
 	return worker_slots() > 0
