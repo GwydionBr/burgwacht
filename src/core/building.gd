@@ -54,6 +54,17 @@ func has_walkway() -> bool:
 	return bool(def().get("walkway", false))
 
 
+## Führt der Eingang am Boden hinauf auf den Wehrgang derselben Kachel? Bei Gebäuden mit
+## Wehrgang und Eingang (Turm).
+func has_ascending_entrance() -> bool:
+	return has_walkway() and has_entrance()
+
+
+## Zusätzliche Reichweite für Fernkämpfer oben auf dem Gebäude ("range_bonus", z. B. Turm).
+func range_bonus() -> int:
+	return int(def().get("range_bonus", 0))
+
+
 ## Beschäftigt das Gebäude Arbeiter ("workers" in den Daten)?
 func is_workplace() -> bool:
 	return worker_slots() > 0

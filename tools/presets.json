@@ -19,8 +19,16 @@
 		"name": "Kaserne mit Soldaten",
 		"args": ["--setup=barracks", "--barracks", "--select"]
 	},
+	"wall": {
+		"name": "Mauerlinie mit Soldaten auf dem Wehrgang",
+		"args": ["--setup=wall", "--build=wall", "--line=4,11", "--hover=8,11", "--focus=8,10", "--select"]
+	},
 	"bandit": {
 		"name": "Räuber am Rand",
 		"args": ["--seed=1", "--days=1", "--spawn"]
+	},
+	"walls": {
+		"name": "Mauer mit Tor und Turm, Soldaten oben",
+		"args": ["--setup=walls", "--focus=8,10"]
 	}
 }

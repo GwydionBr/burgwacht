@@ -93,6 +93,26 @@ func test_moving_again_frees_the_old_posts() -> void:
 	assert_eq(_posts(world, [1, 2]), [TARGET, TARGET + Vector2i(0, -1)] as Array[Vector2i], "Posten:")
 
 
+func test_mixed_selection_keeps_unreachable_soldiers_at_their_old_posts() -> void:
+	var world := _soldiers(2)
+	_until_settled(world)
+	var trapped := world.get_resident(1)
+	var enclosed := Vector2i(4, 13)
+	trapped.place_at(Figure.ground(enclosed))
+	trapped.post = trapped.position()
+	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0),
+			Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+		add_deposit(world, enclosed + offset, "stone")
+	var before := trapped.to_data()
+	assert_eq(world.execute(Command.move([2, 1] as Array[int], Figure.ground(TARGET))), "", "Gemischte Auswahl:")
+	assert_eq(trapped.to_data(), before, "Eingeschlossener Soldat bleibt unverändert:")
+	assert_eq(world.get_resident(2).post, Figure.ground(TARGET), "Erreichbarer Soldat bekommt das Ziel:")
+	_until_settled(world)
+	assert_eq(world.get_resident(2).position(), Figure.ground(TARGET), "Erreichbarer Soldat kommt an:")
+	assert_eq(trapped.position(), Figure.ground(enclosed), "Eingeschlossener bleibt am alten Posten:")
+	assert_true(not trapped.is_blocked(), "Kein unmöglicher Weg zu einem neuen Posten")
+
+
 func test_only_tiles_reachable_from_the_target_count() -> void:
 	var world := _soldiers(2)
 	var old_post := world.get_resident(2).post

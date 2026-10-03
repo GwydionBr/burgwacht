@@ -66,10 +66,10 @@ func _until_settled(world: GameWorld, watched := 1) -> Array[Vector3i]:
 
 func test_stairs_must_border_a_wall() -> void:
 	var world := _soldiers(0)
-	assert_eq(world.build_error("stairs", STAIRS), "Muss an eine Mauer grenzen", "Ohne Mauer:")
+	assert_eq(world.build_error("stairs", STAIRS), "Muss an Mauer, Tor oder Turm grenzen", "Ohne Mauer:")
 	_wall(world, WALL_TOP, WALL_BOTTOM)
 	# Schräg an der Ecke zählt nicht.
-	assert_eq(world.build_error("stairs", WALL_TOP + Vector2i(-1, -1)), "Muss an eine Mauer grenzen", "Schräg:")
+	assert_eq(world.build_error("stairs", WALL_TOP + Vector2i(-1, -1)), "Muss an Mauer, Tor oder Turm grenzen", "Schräg:")
 	assert_eq(world.build_error("stairs", STAIRS), "", "An der Mauer:")
 
 

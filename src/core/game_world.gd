@@ -85,7 +85,7 @@ const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
 const GOLD := "gold"
 
 ## Wer geht; davon hängt ab, welche Ebenen er betreten darf: Bewohner und Feinde nur den Boden,
-## Soldaten auch den Wehrgang, den sie über Treppen erreichen.
+## Soldaten auch den Wehrgang, den sie über Treppen und Turmeingänge erreichen.
 enum Walker { GROUND_ONLY, SOLDIER }
 
 var map: MapData
@@ -444,7 +444,7 @@ func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
 	if not _is_walkable_position(target):
 		return "Dort kann kein Soldat stehen"
 	for id in soldier_ids:
-		if not _find_path(get_resident(id).position(), target, Walker.SOLDIER).is_empty():
+		if not _find_path(get_resident(id).plan_start(), target, Walker.SOLDIER).is_empty():
 			return ""
 	return "Kein Weg dorthin"
 
@@ -769,8 +769,8 @@ func _is_open_ground(position: Vector3i) -> bool:
 
 ## Kann jemand auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
-## (Lagerfeuer, Treppe). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer). Wer
-## welche Ebene betreten darf, regelt Walker.
+## (Lagerfeuer, Treppe, Tor). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer, Tor,
+## Turm). Wer welche Ebene betreten darf, regelt Walker.
 func is_walkable(tile: Vector2i, level: Figure.Level) -> bool:
 	if level == Figure.Level.WALL_WALK:
 		var below := get_building_at(tile)
@@ -1637,27 +1637,32 @@ func _can_stand(position: Vector3i, walker: Walker) -> bool:
 	return (walker == Walker.SOLDIER or position.z == Figure.Level.GROUND) and _is_walkable_position(position)
 
 
-## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen.
+## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
 	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker))
 
 
-## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen.
+## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
 	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
 
 
-## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen).
+## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen und Turmeingänge).
 func _ascents_for(walker: Walker) -> Callable:
 	return _ascents if walker == Walker.SOLDIER else Callable()
 
 
 ## Die Positionen auf der anderen Ebene, die man von position aus mit einem geraden Schritt
 ## erreicht: von einer Treppe am Boden auf den Wehrgang der Kacheln mit gemeinsamer Kante und
-## von dort zurück auf die Treppe. Ob dort ein Wehrgang ist, prüft die Wegfindung (walkable).
+## von dort zurück auf die Treppe, am Turmeingang hinauf auf den Wehrgang derselben Kachel und
+## zurück. Ob dort ein Wehrgang ist, prüft die Wegfindung (walkable).
 func _ascents(position: Vector3i) -> Array[Vector3i]:
 	var result: Array[Vector3i] = []
 	var tile := Vector2i(position.x, position.y)
+	var building := get_building_at(tile)
+	if building != null and building.has_ascending_entrance() and building.entrance() == tile:
+		var other_level := Figure.Level.WALL_WALK if position.z == Figure.Level.GROUND else Figure.Level.GROUND
+		result.append(Vector3i(tile.x, tile.y, other_level))
 	for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
 		var next := tile + Vector2i(step.x, step.y)
 		if position.z == Figure.Level.GROUND and _is_stairs(tile):
@@ -1897,14 +1902,18 @@ func _tiles_around_barracks(barracks: Building) -> Array[Vector2i]:
 ## Bewegen: Die Soldaten bekommen nach ID aufsteigend je eine eigene Kachel als Posten – das
 ## Ziel, dann die nächsten (_search_outward()) freien Kacheln, die vom Ziel aus auf seiner Ebene
 ## erreichbar sind; frei heißt ohne Gebäude und nicht Posten eines anderen Soldaten (Posten der
-## Bewegten zählen nicht). Wer keine mehr bekommt, behält seinen Posten. Alle gehen los.
+## Bewegten zählen nicht). Wer das Zielgebiet nicht erreicht, bleibt unverändert; wer keine
+## freie Kachel mehr bekommt, behält seinen Posten. Alle anderen gehen los.
 func _move(soldier_ids: Array[int], target: Vector3i) -> String:
 	var reason := move_error(soldier_ids, target)
 	if reason != "":
 		return reason
 	var moving: Dictionary[int, bool] = {}
 	for id in soldier_ids:
-		moving[id] = true
+		# Alle Kandidaten sind vom Ziel aus erreichbar, also auch von jedem Soldaten mit einem
+		# Weg dorthin. Nur diese geben ihre alten Posten für die Verteilung frei.
+		if not _find_path(get_resident(id).plan_start(), target, Walker.SOLDIER).is_empty():
+			moving[id] = true
 	var ids: Array[int] = moving.keys()
 	ids.sort()
 	var taken := _posts_except(moving)

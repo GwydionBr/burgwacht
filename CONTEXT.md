@@ -284,7 +284,7 @@ Ein 1×1-Gebäude in einer Mauerlinie, durch das eigene Leute am Boden gehen, Fe
 _Avoid_: Torhaus, Pforte
 
 **Treppe**:
-Ein billiges Gebäude neben einer Mauer, das Boden und Wehrgang verbindet; auch Feinde können sie benutzen.
+Ein billiges Gebäude neben Mauer, Tor oder Turm, das Boden und Wehrgang verbindet; auch Feinde können sie benutzen.
 _Avoid_: Aufgang, Leiter
 
 **Posten**:
