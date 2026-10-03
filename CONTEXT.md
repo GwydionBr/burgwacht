@@ -63,8 +63,12 @@ Die Bodenart einer Kachel; bestimmt, ob man darauf gehen und bauen kann.
 _Avoid_: Terrain, Boden
 
 **Ebene**:
-Die Höhenstufe, auf der sich jemand auf einer Kachel befindet: Boden oder auf einer Mauer bzw. einem Turm.
+Die Höhenstufe, auf der sich jemand auf einer Kachel befindet: Boden oder Wehrgang.
 _Avoid_: Höhe, Stockwerk, Layer
+
+**Wehrgang**:
+Die erhöhte Ebene oben auf Mauern, Toren und Türmen; erreichbar über Treppen und Türme, betreten nur von Soldaten und Feinden. Mauer und Turm liegen gleich hoch, der Turm gibt nur mehr Reichweite.
+_Avoid_: Mauerkrone, Zinnen
 
 **Vorkommen**:
 Ein abbaubares Objekt auf einer Kachel (Baum, Felsen, Eisenvorkommen, Wild), das eine begrenzte Menge eines Rohstoffs liefert.
@@ -190,7 +194,7 @@ Ein neuer Bewohner, der bei hoher Beliebtheit am Kartenrand erscheint und zum La
 _Avoid_: Ankömmling, Neuling, Zuwanderer
 
 **Gehender**:
-Ein Bewohner, der bei niedriger Beliebtheit oder zu wenig Wohnraum die Burg verlässt und zum Kartenrand geht, wo er verschwindet; er zählt schon ab dem Aufbruch nicht mehr als Bewohner.
+Ein Bewohner, der bei niedriger Beliebtheit oder zu wenig Wohnraum die Burg verlässt und zum Kartenrand geht, wo er verschwindet; er zählt schon ab dem Aufbruch nicht mehr als Bewohner. Soldaten werden nie zu Gehenden.
 _Avoid_: Auswanderer, Flüchtling
 
 **Lagerfeuer**:
@@ -252,11 +256,47 @@ _Avoid_: Bevölkerungslimit, Kapazität
 ### Kampf
 
 **Soldat**:
-Ein Bewohner, der mit Waffen angeworben wurde und kämpft statt zu arbeiten.
+Ein Bewohner, der mit Waffen angeworben wurde und kämpft statt zu arbeiten; er belegt Wohnraum, isst und zahlt Steuern wie jeder Bewohner.
 _Avoid_: Einheit, Krieger, Truppe
 
+**Soldatentyp**:
+Die Art eines Soldaten mit eigenen Kampfwerten und eigenen Anwerbekosten; heute Schwertkämpfer (Nahkampf, Schwert) und Bogenschütze (Fernkampf, Bogen).
+_Avoid_: Einheitentyp, Klasse
+
+**Anwerben**:
+Ein Befehl an einer Kaserne, der einen Untätigen gegen Waffen (und Gold) zum Soldaten macht; er gelingt ganz oder gar nicht. Der Untätige ist ab dem Befehl Soldat und läuft zur Kaserne.
+_Avoid_: Rekrutieren, Ausbilden
+
+**Kaserne**:
+Ein Gebäude ohne Arbeiter, an dem Soldaten angeworben werden.
+_Avoid_: Barracke, Trainingslager
+
+**Mauer**:
+Ein 1×1-Gebäude, das am Boden den Weg versperrt und oben Wehrgang trägt; wird als gerade Linie gezogen, jede Kachel ist ein eigenes Gebäude.
+_Avoid_: Wall, Palisade
+
+**Turm**:
+Ein Gebäude, dessen ganze Grundfläche Wehrgang ist; sein Eingang am Boden führt hinauf, aber nur für eigene Leute. Gibt Soldaten darauf zusätzliche Reichweite; darf auch ohne Mauer stehen.
+_Avoid_: Wachturm, Bastion
+
+**Tor**:
+Ein 1×1-Gebäude in einer Mauerlinie, durch das eigene Leute am Boden gehen, Feinde aber nicht; oben trägt es Wehrgang.
+_Avoid_: Torhaus, Pforte
+
+**Treppe**:
+Ein billiges Gebäude neben einer Mauer, das Boden und Wehrgang verbindet; auch Feinde können sie benutzen.
+_Avoid_: Aufgang, Leiter
+
+**Posten**:
+Die Position, zu der ein Soldat zuletzt befohlen wurde (anfangs die Kaserne); dorthin kehrt er nach selbstständigem Kämpfen zurück. Nahkämpfer verfolgen Feinde nur bis zu einer festen Entfernung vom Posten.
+_Avoid_: Stellung, Wachposten
+
+**Auswahl**:
+Die Soldaten, die der Spieler gerade per Klick oder Rahmen gewählt hat und denen er Bewegen und Angreifen befiehlt.
+_Avoid_: Selektion, Gruppe
+
 **Feind**:
-Ein angreifender Kämpfer, der nicht zur Burg gehört.
+Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
 _Avoid_: Gegner, Angreifer, Mob
 
 **Welle**:
