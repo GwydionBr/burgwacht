@@ -319,8 +319,8 @@ func _full_storage_and_cut_off(world: GameWorld) -> Array[Vector2i]:
 	add_deposit(world, TREE, "tree")
 	var woodcutter := world.get_building(build(world, "woodcutter", WOODCUTTER_SITE))
 	var worker := world.get_resident(1)
-	var at_door: Array[Vector2i] = [woodcutter.entrance(), woodcutter.entrance_front()]
-	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE and not at_door.has(worker.tile),
+	var at_entrance: Array[Vector2i] = [woodcutter.entrance(), woodcutter.entrance_front()]
+	_until(world, func() -> bool: return worker.task == Resident.Task.TO_STORAGE and not at_entrance.has(worker.tile),
 			"Unterwegs zum Lager")
 	var warehouse := world.get_building(WAREHOUSE)
 	# Mit Stein bis unters Dach auffüllen.

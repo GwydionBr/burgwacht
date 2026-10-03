@@ -1657,6 +1657,12 @@ func _passes_entrance(position: Vector3i, other: Vector3i) -> bool:
 	return other_tile == building.entrance_front() or other_tile == tile
 
 
+## Ist der nächste Schritt eines Kämpfers am Boden (noch) offen: Position begehbar und, an
+## einem Eingang, von vorn (_is_steppable())?
+func _is_next_step_open(figure: Figure) -> bool:
+	return _is_walkable_position(figure.path[0]) and _is_steppable(figure.position(), figure.path[0])
+
+
 ## Steht auf der Kachel eine Treppe?
 func _is_stairs(tile: Vector2i) -> bool:
 	var building := get_building_at(tile)
@@ -1939,7 +1945,7 @@ func _fight(figure: Figure, target: Figure) -> bool:
 			if figure.cooldown == 0:
 				_hit(figure, target)
 			return true
-		if not figure.is_moving() or figure.path.back() != target.position() or not _is_walkable_position(figure.path[0]):
+		if not figure.is_moving() or figure.path.back() != target.position() or not _is_next_step_open(figure):
 			if not _route_to(figure, target.position()):
 				figure.path.clear()
 				return false
@@ -2363,7 +2369,7 @@ func _update_enemy(enemy: Enemy) -> void:
 		if not _fight(enemy, target):
 			_drop_enemy_target(enemy)
 		return
-	if enemy.is_moving() and enemy.step_progress == 0 and not _is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and enemy.step_progress == 0 and not _is_next_step_open(enemy):
 		_send_enemy_to_keep(enemy)
 	enemy.advance()
 
@@ -2401,7 +2407,7 @@ func _drop_enemy_target(enemy: Enemy) -> void:
 ## Schickt einen Feind zur erreichbaren Kachel, die dem Bergfried am nächsten liegt
 ## (_keep_goal()); steht er schon dort oder gibt es keine, bleibt er stehen und wartet.
 func _send_enemy_to_keep(enemy: Enemy) -> void:
-	if enemy.is_moving() and not _is_walkable_position(enemy.path[0]):
+	if enemy.is_moving() and not _is_next_step_open(enemy):
 		# Die Kachel, auf die er gerade tritt, ist versperrt: zurück auf seine.
 		enemy.step_progress = 0
 	var goal := _keep_goal(enemy.plan_start())
