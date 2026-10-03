@@ -117,7 +117,8 @@ func _ready() -> void:
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
 		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
-		+ "WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
+		+ "Soldaten: Linksklick/-ziehen wählen, Rechtsklick schickt sie hin  ·  Esc: Auswahl aufheben\n"
+		+ "WASD/Pfeile, zwei Finger, Rechtsziehen: Kamera  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
 		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))

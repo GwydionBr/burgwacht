@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="5_hud"]
 [ext_resource type="Script" path="res://src/game_clock.gd" id="6_clock"]
 [ext_resource type="Script" path="res://src/view/placement_preview.gd" id="7_preview"]
+[ext_resource type="Script" path="res://src/view/selection_box.gd" id="8_selection"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -29,6 +30,11 @@ script = ExtResource("7_preview")
 visible = false
 z_index = 10
 script = ExtResource("3_highlight")
+
+[node name="SelectionBox" type="Node2D" parent="."]
+visible = false
+z_index = 10
+script = ExtResource("8_selection")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("4_camera")

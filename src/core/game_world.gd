@@ -246,6 +246,8 @@ func execute(command: Command) -> String:
 		return _trade(command.good, command.buying)
 	if command.kind == Command.Kind.RECRUIT:
 		return _recruit(command.building_id, command.soldier_type)
+	if command.kind == Command.Kind.MOVE:
+		return _move(command.resident_ids, command.target)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -324,6 +326,20 @@ func trade_error(good: String, buying: bool) -> String:
 		return gold
 	if get_storage_capacity(storage_type) - get_storage_used(storage_type) < amount:
 		return "Kein Platz im Lager"
+	return ""
+
+
+## Darf der Befehl „Bewegen“ diese Soldaten zum Ziel schicken? Leer oder der Grund.
+## Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → am Ziel kann jemand stehen.
+func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
+	if soldier_ids.is_empty():
+		return "Keine Soldaten ausgewählt"
+	for id in soldier_ids:
+		var resident := get_resident(id)
+		if resident == null or not resident.is_soldier():
+			return "Kein Soldat"
+	if not _is_walkable_position(target):
+		return "Dort kann kein Soldat stehen"
 	return ""
 
 
@@ -1561,6 +1577,42 @@ func _tiles_around_barracks(barracks: Building) -> Array[Vector2i]:
 		if adjacent.has(front + offset):
 			result.append(front + offset)
 	return result
+
+
+## Bewegen: Die Soldaten bekommen nach ID aufsteigend je eine eigene Kachel als Posten – das
+## Ziel, dann die nächsten (_search_outward()) freien Kacheln, die vom Ziel aus auf seiner Ebene
+## erreichbar sind; frei heißt ohne Gebäude und nicht Posten eines anderen Soldaten (Posten der
+## Bewegten zählen nicht). Wer keine mehr bekommt, behält seinen Posten. Alle gehen los.
+func _move(soldier_ids: Array[int], target: Vector3i) -> String:
+	var reason := move_error(soldier_ids, target)
+	if reason != "":
+		return reason
+	var moving: Dictionary[int, bool] = {}
+	for id in soldier_ids:
+		moving[id] = true
+	var ids: Array[int] = moving.keys()
+	ids.sort()
+	var taken: Dictionary[Vector3i, bool] = {}
+	for other: Resident in _residents.values():
+		if other.is_soldier() and not moving.has(other.id):
+			taken[other.post] = true
+	var reachable := Pathfinder.distances(target, _is_walkable_position)
+	var center := Vector2i(target.x, target.y)
+	var accept := func(tile: Vector2i) -> bool:
+		var position := Vector3i(tile.x, tile.y, target.z)
+		return reachable.has(position) and not taken.has(position) and get_building_at(tile) == null
+	for id: int in ids:
+		var soldier := get_resident(id)
+		var found: Array[Vector2i] = [center]
+		if not accept.call(center):
+			found = _search_outward(center, accept)
+		if not found.is_empty():
+			soldier.post = Vector3i(found[0].x, found[0].y, target.z)
+		taken[soldier.post] = true
+		soldier.task = Resident.Task.ON_DUTY
+		_send_to_post(soldier)
+		resident_changed.emit(soldier.id)
+	return ""
 
 
 ## Ein freier Posten für einen Soldaten: die erste Kachel aus preferred, sonst die nächste um
