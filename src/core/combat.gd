@@ -201,7 +201,7 @@ func _send_enemy_to_keep(enemy: Enemy) -> void:
 ## kleinere (zeilenweise). Ist der Weg frei, ist das eine Kachel direkt am Bergfried. Als
 ## [Position], leer, wenn es keine gibt.
 func _keep_goal(start: Vector3i) -> Array[Vector3i]:
-	var keep := _keep()
+	var keep := _world._keep()
 	var best: Array[Vector3i] = []
 	var best_distance := INF
 	var best_length := INF
@@ -230,15 +230,6 @@ static func _distance_to_building(tile: Vector2i, building: Building) -> float:
 	return Vector2(tile - nearest).length()
 
 
-## Der Bergfried (entsteht bei der Gründung).
-func _keep() -> Building:
-	for building in _world.get_buildings():
-		if building.type == GameWorld.FOUNDING_TYPE:
-			return building
-	assert(false, "Kein Bergfried in der Spielwelt")
-	return null
-
-
 ## Debug-Befehl: Ein Feind erscheint am Kartenrand nächst dem Bergfried (spawn_tile()).
 func spawn_enemy(type_id: String) -> String:
 	var reason := _world.spawn_enemy_error(type_id)
@@ -254,7 +245,7 @@ func spawn_enemy(type_id: String) -> String:
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
 ## nächste freie. Als [Kachel], leer, wenn es keine freie gibt.
 func spawn_tile() -> Array[Vector2i]:
-	var keep := _keep()
+	var keep := _world._keep()
 	var reaching := _reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
@@ -279,7 +270,7 @@ func spawn_tile() -> Array[Vector2i]:
 ## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground()). Je
 ## Zusammenhangsgebiet genügt eine Suche.
 func _reaches_keep() -> Dictionary[Vector3i, float]:
-	var keep := _keep()
+	var keep := _world._keep()
 	var result: Dictionary[Vector3i, float] = {}
 	for tile in Building.adjacent_tiles(keep.type, keep.origin):
 		var start := Figure.ground(tile)

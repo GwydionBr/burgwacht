@@ -1613,6 +1613,15 @@ func _campfire() -> Building:
 	return null
 
 
+## Der Bergfried (entsteht bei der Gründung).
+func _keep() -> Building:
+	for building: Building in _buildings.values():
+		if building.type == FOUNDING_TYPE:
+			return building
+	assert(false, "Kein Bergfried in der Spielwelt")
+	return null
+
+
 func _is_walkable_position(position: Vector3i) -> bool:
 	return is_walkable(Vector2i(position.x, position.y), position.z as Figure.Level)
 
