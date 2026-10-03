@@ -5,7 +5,9 @@ extends CanvasLayer
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
 ## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln;
-## sie ist zugleich die Bestandsübersicht. Verwaltung und Marktansicht schließen sich gegenseitig.
+## sie ist zugleich die Bestandsübersicht. Die Kasernenansicht (Linksklick auf eine Kaserne) zeigt
+## Untätige und Waffen und je Soldatentyp einen Knopf zum Anwerben. Verwaltung, Marktansicht und
+## Kasernenansicht schließen sich gegenseitig.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
@@ -17,6 +19,8 @@ signal ration_step(delta: int)
 signal tax_rate_step(delta: int)
 ## In der Marktansicht soll mit dieser Ware gehandelt werden: kaufen (true) oder verkaufen.
 signal trade_requested(good: String, buying: bool)
+## In der Kasernenansicht soll ein Soldat dieses Typs angeworben werden.
+signal recruit_requested(type_id: String)
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -41,6 +45,7 @@ var _message_timer: Timer
 var _info_panel: PanelContainer
 var _storage_label: Label
 var _residents_label: Label
+var _soldiers_label: Label
 var _popularity_label: Label
 var _gold_label: Label
 var _admin_panel: PanelContainer
@@ -57,6 +62,11 @@ var _market_missing_label: Label
 ## Ware → Knopf „Kaufen“ bzw. „Verkaufen“ in der Marktansicht (nur handelbare Waren).
 var _buy_buttons: Dictionary[String, Button] = {}
 var _sell_buttons: Dictionary[String, Button] = {}
+var _barracks_panel: PanelContainer
+## Untätige und Waffen in der Kasernenansicht.
+var _barracks_stock_label: Label
+## Soldatentyp → Knopf „anwerben“ in der Kasernenansicht.
+var _recruit_buttons: Dictionary[String, Button] = {}
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -82,6 +92,8 @@ func _ready() -> void:
 	row.add_child(_storage_label)
 	_residents_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_residents_label)
+	_soldiers_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_soldiers_label)
 	_popularity_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_popularity_label)
 	_gold_label = _make_label("", TEXT_COLOR, 16)
@@ -104,7 +116,7 @@ func _ready() -> void:
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
-		"Linksklick: gründen/bauen/abreißen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
+		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
 		+ "WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
 		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
@@ -167,6 +179,13 @@ func _ready() -> void:
 	_market_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_market_panel.visible = false
 
+	_barracks_panel = _make_barracks_panel()
+	add_child(_barracks_panel)
+	_barracks_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_barracks_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_barracks_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_barracks_panel.visible = false
+
 
 func set_seed(map_seed: int) -> void:
 	_seed_label.text = "Karte #%d" % map_seed
@@ -199,9 +218,11 @@ func show_storage(text: String) -> void:
 	_storage_label.text = text
 
 
-## Bewohnerzahl und Wohnraum in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“.
-func show_residents(total: int, housing: int, idle: int) -> void:
+## Bewohnerzahl, Wohnraum und Soldaten in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“
+## und „Soldaten 2“.
+func show_residents(total: int, housing: int, idle: int, soldiers: int) -> void:
 	_residents_label.text = "Bewohner %d/%d (Untätig %d)" % [total, housing, idle]
+	_soldiers_label.text = "Soldaten %d" % soldiers
 
 
 ## Beliebtheit und ihre Tendenz pro Tag in der Titelleiste, z. B. „Beliebtheit 54 ▲3“.
@@ -216,10 +237,11 @@ func show_treasury(gold: int) -> void:
 	_gold_label.text = "Gold %d" % gold
 
 
-## Verwaltung öffnen bzw. schließen (Taste V); schließt die Marktansicht.
+## Verwaltung öffnen bzw. schließen (Taste V); schließt die anderen Ansichten.
 func toggle_administration() -> void:
 	_admin_panel.visible = not _admin_panel.visible
 	_market_panel.visible = false
+	_barracks_panel.visible = false
 
 
 func close_administration() -> void:
@@ -230,10 +252,11 @@ func is_administration_open() -> bool:
 	return _admin_panel.visible
 
 
-## Marktansicht öffnen bzw. schließen (Taste M); schließt die Verwaltung.
+## Marktansicht öffnen bzw. schließen (Taste M); schließt die anderen Ansichten.
 func toggle_market() -> void:
 	_market_panel.visible = not _market_panel.visible
 	_admin_panel.visible = false
+	_barracks_panel.visible = false
 
 
 func close_market() -> void:
@@ -242,6 +265,34 @@ func close_market() -> void:
 
 func is_market_open() -> bool:
 	return _market_panel.visible
+
+
+## Kasernenansicht öffnen (Linksklick auf eine Kaserne); schließt die anderen Ansichten.
+func open_barracks() -> void:
+	_barracks_panel.visible = true
+	_admin_panel.visible = false
+	_market_panel.visible = false
+
+
+func close_barracks() -> void:
+	_barracks_panel.visible = false
+
+
+func is_barracks_open() -> bool:
+	return _barracks_panel.visible
+
+
+## Inhalt der Kasernenansicht: Untätige, Bestand je Waffe (Ware → Menge) und je Soldatentyp
+## der Grund, warum Anwerben gerade nicht geht (leer = möglich); gesperrte Knöpfe zeigen ihn als
+## Hinweis.
+func show_barracks(idle: int, weapons: Dictionary[String, int], errors: Dictionary[String, String]) -> void:
+	var parts: PackedStringArray = ["Untätige %d" % idle]
+	for good: String in weapons:
+		parts.append("%s %d" % [GameDefs.get_instance().goods[good]["name"], weapons[good]])
+	_barracks_stock_label.text = "  ·  ".join(parts)
+	for type_id: String in _recruit_buttons:
+		_set_button_reason(_recruit_buttons[type_id], errors[type_id])
+	_barracks_panel.reset_size()
 
 
 ## Bestand je Ware in der Marktansicht.
@@ -257,12 +308,12 @@ func show_trade_errors(market_error: String, buy_errors: Dictionary[String, Stri
 	_market_missing_label.text = market_error
 	_market_missing_label.visible = market_error != ""
 	for good: String in _buy_buttons:
-		_set_trade_reason(_buy_buttons[good], buy_errors[good])
-		_set_trade_reason(_sell_buttons[good], sell_errors[good])
+		_set_button_reason(_buy_buttons[good], buy_errors[good])
+		_set_button_reason(_sell_buttons[good], sell_errors[good])
 	_market_panel.reset_size()
 
 
-func _set_trade_reason(button: Button, reason: String) -> void:
+func _set_button_reason(button: Button, reason: String) -> void:
 	button.disabled = reason != ""
 	button.tooltip_text = reason
 
@@ -309,19 +360,21 @@ func show_tool(build_type: String, demolishing: bool) -> void:
 ## Knopf mit Name, Taste und Kosten, z. B. „Holzfäller [H]“ über „3 Holz“; Gold aus dem
 ## Schatz zuletzt („20 Holz, 30 Gold“).
 func _make_build_button(type_id: String) -> Button:
-	var defs := GameDefs.get_instance()
-	var def: Dictionary = defs.buildings[type_id]
-	var cost := GameWorld.goods_cost_of(type_id)
-	var cost_parts: PackedStringArray = []
-	for good: String in cost:
-		cost_parts.append("%d %s" % [cost[good], defs.goods[good]["name"]])
-	var gold := GameWorld.gold_cost_of(type_id)
-	if gold > 0:
-		cost_parts.append("%d Gold" % gold)
-	var button := _make_tool_button(
-		"%s [%s]\n%s" % [def["name"], def["hotkey"], ", ".join(cost_parts) if not cost_parts.is_empty() else "kostenlos"])
+	var def: Dictionary = GameDefs.get_instance().buildings[type_id]
+	var button := _make_tool_button("%s [%s]\n%s" % [def["name"], def["hotkey"],
+			_cost_text(GameWorld.goods_cost_of(type_id), GameWorld.gold_cost_of(type_id))])
 	button.pressed.connect(func() -> void: build_selected.emit(type_id))
 	return button
+
+
+## Kosten als Text, z. B. „20 Holz, 30 Gold“ (Gold zuletzt) oder „kostenlos“.
+static func _cost_text(goods_cost: Dictionary[String, int], gold: int) -> String:
+	var parts: PackedStringArray = []
+	for good: String in goods_cost:
+		parts.append("%d %s" % [goods_cost[good], GameDefs.get_instance().goods[good]["name"]])
+	if gold > 0:
+		parts.append("%d Gold" % gold)
+	return ", ".join(parts) if not parts.is_empty() else "kostenlos"
 
 
 ## Umschaltknopf der Bauleiste.
@@ -395,6 +448,34 @@ func _make_market_panel() -> PanelContainer:
 			_buy_buttons[good] = buy_button
 			_sell_buttons[good] = sell_button
 	column.add_child(_make_label("Preise in Gold pro Einheit  ·  M/Esc: schließen", HINT_COLOR, 13))
+	return panel
+
+
+## Die Kasernenansicht: Untätige und Waffen, darunter je Soldatentyp ein Knopf mit den
+## Anwerbekosten, der den Befehl „Anwerben“ auslöst.
+func _make_barracks_panel() -> PanelContainer:
+	var panel := _make_panel()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	column.add_child(_make_label("Kaserne", TEXT_COLOR, 20))
+	_barracks_stock_label = _make_label("", TEXT_COLOR, 16)
+	column.add_child(_barracks_stock_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	for type_id in SoldierType.ids():
+		var button := Button.new()
+		button.text = "%s anwerben\n%s" % [SoldierType.name_of(type_id),
+				_cost_text(SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id))]
+		button.focus_mode = Control.FOCUS_NONE
+		button.disabled = true
+		button.add_theme_font_size_override("font_size", 14)
+		button.custom_minimum_size = Vector2(160, 0)
+		button.pressed.connect(func() -> void: recruit_requested.emit(type_id))
+		row.add_child(button)
+		_recruit_buttons[type_id] = button
+	column.add_child(_make_label("Gesperrte Knöpfe nennen den Grund  ·  Esc: schließen", HINT_COLOR, 13))
 	return panel
 
 

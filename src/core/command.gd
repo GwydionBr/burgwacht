@@ -2,14 +2,14 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE }
+enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT }
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes.
 var origin: Vector2i
 ## Gebäudetyp aus buildings.json; bei FOUND der Bergfried.
 var building_type: String
-## Bei DEMOLISH: ID des Gebäudes.
+## Bei DEMOLISH: ID des Gebäudes; bei RECRUIT: ID der Kaserne.
 var building_id: int
 ## Bei SET_RATION: die Rationsstufe aus population.json.
 var ration: String
@@ -19,6 +19,8 @@ var tax_rate: String
 var good: String
 ## Bei TRADE: kaufen (true) oder verkaufen (false).
 var buying: bool
+## Bei RECRUIT: der Soldatentyp aus units.json.
+var soldier_type: String
 
 
 ## Burg gründen: Bergfried mit Ursprung keep_origin, dazu das erste Warenlager.
@@ -69,4 +71,13 @@ static func trade(good_id: String, buy: bool) -> Command:
 	command.kind = Kind.TRADE
 	command.good = good_id
 	command.buying = buy
+	return command
+
+
+## An einer Kaserne einen Untätigen als Soldaten dieses Typs anwerben.
+static func recruit(barracks_id: int, type_id: String) -> Command:
+	var command := Command.new()
+	command.kind = Kind.RECRUIT
+	command.building_id = barracks_id
+	command.soldier_type = type_id
 	return command

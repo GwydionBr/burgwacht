@@ -2,7 +2,8 @@ class_name Resident
 extends RefCounted
 ## Ein Bewohner der Burg. Position = Kachel + Ebene (ADR 0004); Verweise über IDs (ADR 0002).
 ## Läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert "ticks_per_tile" Takte
-## (units.json), ein schräger √2-mal so lange (gerundet).
+## (units.json, beim Soldaten die seines Soldatentyps), ein schräger √2-mal so lange (gerundet).
+## Ein Soldat ist weiter Bewohner, arbeitet aber nicht: Er geht zu seinem Posten und steht dort.
 ## Arbeiter eines Sammlers, Hofs oder Herstellungsbetriebs gehen dazu den Arbeitsablauf in
 ## Task durch; die Spielwelt treibt ihn an, hier steht nur der Zustand.
 
@@ -44,13 +45,15 @@ enum Task {
 	ARRIVING,
 	## Verlässt die Burg: geht zum Kartenrand und verschwindet dort; zählt nicht mehr mit.
 	LEAVING,
+	## Soldat: geht zu seinem Posten bzw. steht dort.
+	ON_DUTY,
 }
 ## Wie ein Arbeitsschritt abläuft: unterwegs, Arbeit vor Ort oder Warten (beides mit timer).
 enum Phase { NONE, WALK, WORK, WAIT }
 ## Worum es im Arbeitsschritt geht; danach richtet sich, was er beim Wiederaufnehmen neu
 ## sucht bzw. wohin er geht.
 ## INPUT: Eingangsware holen; STORAGE: Ware abliefern.
-enum Goal { WORKPLACE, DEPOSIT, STORAGE, INPUT, CAMPFIRE, EDGE }
+enum Goal { WORKPLACE, DEPOSIT, STORAGE, INPUT, CAMPFIRE, EDGE, POST }
 
 ## Die Bedeutung der Arbeitsschritte an einer Stelle; ein neuer Schritt braucht hier je
 ## einen Eintrag.
@@ -70,6 +73,7 @@ const TASK_PHASE: Dictionary[Task, Phase] = {
 	Task.PRODUCING: Phase.WORK,
 	Task.ARRIVING: Phase.WALK,
 	Task.LEAVING: Phase.WALK,
+	Task.ON_DUTY: Phase.WALK,
 }
 const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.NONE: Goal.WORKPLACE,
@@ -87,6 +91,7 @@ const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.PRODUCING: Goal.WORKPLACE,
 	Task.ARRIVING: Goal.CAMPFIRE,
 	Task.LEAVING: Goal.EDGE,
+	Task.ON_DUTY: Goal.POST,
 }
 ## Bei diesen Schritten ist er im Stehen unsichtbar in seiner Arbeitsstätte.
 const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING, Task.WAITING_FOR_INPUT,
@@ -113,6 +118,10 @@ var carried_good := ""
 var carried_amount := 0
 ## Restliche Takte für Abbau, Verarbeitung oder Warten.
 var timer := 0
+## Soldatentyp aus units.json; leer, wenn er kein Soldat ist.
+var soldier_type := ""
+## Nur bei Soldaten: die Position, zu der er gehört (anfangs eine Kachel an der Kaserne).
+var post := Vector3i.ZERO
 
 
 static func create(resident_id: int, start_tile: Vector2i, start_level: Level) -> Resident:
@@ -138,15 +147,21 @@ static func retry_ticks() -> int:
 	return int(GameDefs.get_instance().units["resident"]["retry_ticks"])
 
 
-## Dauer eines Schritts zwischen zwei benachbarten Positionen in Takten.
-static func step_ticks(from: Vector3i, to: Vector3i) -> int:
-	return roundi(ticks_per_tile() * Pathfinder.step_cost(from, to))
+## Dauer eines seiner Schritte zwischen zwei benachbarten Positionen in Takten.
+func step_ticks(from: Vector3i, to: Vector3i) -> int:
+	var straight := SoldierType.ticks_per_tile(soldier_type) if is_soldier() else ticks_per_tile()
+	return roundi(straight * Pathfinder.step_cost(from, to))
 
 
 ## Ohne Arbeitsstätte am Lagerfeuer bzw. auf dem Weg dorthin – nicht, wer erst ankommt
-## oder geht.
+## oder geht, und kein Soldat.
 func is_idle() -> bool:
-	return workplace_id == 0 and task == Task.NONE
+	return workplace_id == 0 and task == Task.NONE and not is_soldier()
+
+
+## Wurde er als Soldat angeworben? Dann arbeitet er nicht und geht nie fort.
+func is_soldier() -> bool:
+	return soldier_type != ""
 
 
 ## Kommt er gerade neu in die Burg? Dann zählt er schon als Bewohner, ist aber noch kein
@@ -205,6 +220,11 @@ func clear_work() -> void:
 	carried_good = ""
 	carried_amount = 0
 	timer = 0
+
+
+## Kachel seines Postens (nur bei Soldaten).
+func post_tile() -> Vector2i:
+	return Vector2i(post.x, post.y)
 
 
 ## Aktuelle Position als Kachel + Ebene.
@@ -268,6 +288,7 @@ func to_data() -> Dictionary:
 		"path": path_data, "step_progress": step_progress, "task": task,
 		"deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
 		"good": carried_good, "amount": carried_amount, "timer": timer,
+		"soldier_type": soldier_type, "post": [post.x, post.y, post.z],
 	}
 
 
@@ -285,4 +306,7 @@ static func from_data(data: Dictionary) -> Resident:
 	resident.carried_good = str(data["good"])
 	resident.carried_amount = int(data["amount"])
 	resident.timer = int(data["timer"])
+	resident.soldier_type = str(data["soldier_type"])
+	var post_data: Array = data["post"]
+	resident.post = Vector3i(int(post_data[0]), int(post_data[1]), int(post_data[2]))
 	return resident

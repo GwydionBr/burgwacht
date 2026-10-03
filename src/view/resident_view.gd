@@ -4,6 +4,7 @@ extends Node2D
 ## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
 ## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten. Getragene Ware als
 ## Bündel auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
+## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen).
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.25)
 const OUTLINE_COLOR := Color(0, 0, 0, 0.45)
@@ -12,16 +13,18 @@ const LEG_COLOR := Color("#4a3b2a")
 ## Wippen beim Abbau: Höhe in Pixeln und Schläge pro Sekunde (Echtzeit, nur Optik).
 const BOB_HEIGHT := 2.5
 const BOB_RATE := 2.0
+## Klinge des Schwerts.
+const BLADE_COLOR := Color("#d8dee6")
+## Bogen und Schwertgriff.
+const WOOD_COLOR := Color("#6b4423")
 
 var _resident: Resident
 var _clock: GameClock
-var _color: Color
 
 
 func setup(resident: Resident, clock: GameClock) -> void:
 	_resident = resident
 	_clock = clock
-	_color = Color(str(GameDefs.get_instance().units["resident"]["color"]))
 	_update_position()
 	queue_redraw()
 
@@ -51,13 +54,33 @@ func _draw() -> void:
 	draw_rect(Rect2(-3.5, -7, 2.5, 7), LEG_COLOR)
 	draw_rect(Rect2(1, -7, 2.5, 7), LEG_COLOR)
 	var body := PackedVector2Array([Vector2(-5, -6), Vector2(5, -6), Vector2(3.5, -18), Vector2(-3.5, -18)])
-	draw_colored_polygon(body, _color)
+	draw_colored_polygon(body, _body_color())
 	body.append(body[0])
 	draw_polyline(body, OUTLINE_COLOR, 1.0, true)
 	draw_circle(Vector2(0, -22), 4.0, SKIN_COLOR)
 	draw_arc(Vector2(0, -22), 4.0, 0, TAU, 16, OUTLINE_COLOR, 1.0, true)
 	if _resident.carried_amount > 0:
 		_draw_bundle(Color(str(GameDefs.get_instance().goods[_resident.carried_good]["color"])))
+	if _resident.is_soldier():
+		_draw_weapon()
+
+
+## Kittel in der Farbe des Soldatentyps, sonst in der des Bewohners. Jedes Mal neu gelesen:
+## Ein Untätiger kann jederzeit Soldat werden.
+func _body_color() -> Color:
+	if _resident.is_soldier():
+		return SoldierType.color_of(_resident.soldier_type)
+	return Color(str(GameDefs.get_instance().units["resident"]["color"]))
+
+
+## Waffe neben dem Körper: Nahkämpfer mit erhobener Klinge, Fernkämpfer mit Bogen.
+func _draw_weapon() -> void:
+	if SoldierType.is_melee(_resident.soldier_type):
+		draw_line(Vector2(6, -8), Vector2(6, -24), BLADE_COLOR, 2.0)
+		draw_line(Vector2(3, -11), Vector2(9, -11), WOOD_COLOR, 2.0)
+	else:
+		draw_arc(Vector2(3, -14), 9.0, -PI / 2.0 + 0.3, PI / 2.0 - 0.3, 10, WOOD_COLOR, 1.5, true)
+		draw_line(Vector2(5.8, -22), Vector2(5.8, -6), OUTLINE_COLOR, 1.0)
 
 
 ## Bündel der getragenen Ware auf dem Rücken, über die Schulter ragend.

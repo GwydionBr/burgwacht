@@ -26,6 +26,9 @@ extends RefCounted
 ## (population.json), kommt in regelmäßigem Abstand ein neuer vom Kartenrand zum Lagerfeuer,
 ## solange Wohnraum frei ist; liegt sie darunter, geht einer zum Kartenrand. Mehr Bewohner als
 ## Wohnraum: Die Überzähligen gehen sofort.
+##
+## An einer Kaserne wird ein Untätiger gegen Waffen (und Gold) zum Soldaten angeworben. Soldaten
+## bleiben Bewohner (Wohnraum, Essen, Steuern), arbeiten aber nicht und gehen nie fort.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -57,7 +60,7 @@ signal notice(text: String)
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 9
+const SAVE_VERSION := 10
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -241,6 +244,8 @@ func execute(command: Command) -> String:
 		return _set_tax_rate(command.tax_rate)
 	if command.kind == Command.Kind.TRADE:
 		return _trade(command.good, command.buying)
+	if command.kind == Command.Kind.RECRUIT:
+		return _recruit(command.building_id, command.soldier_type)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -320,6 +325,27 @@ func trade_error(good: String, buying: bool) -> String:
 	if get_storage_capacity(storage_type) - get_storage_used(storage_type) < amount:
 		return "Kein Platz im Lager"
 	return ""
+
+
+## Darf der Befehl „Anwerben“ jetzt an der Kaserne mit dieser ID einen Soldaten dieses Typs
+## anwerben? Leer oder der Grund. Prüfreihenfolge: Kaserne vorhanden → Soldatentyp bekannt →
+## Untätiger vorhanden → Waren der Anwerbekosten vorrätig → genug Gold.
+func recruit_error(barracks_id: int, type_id: String) -> String:
+	if _founding:
+		return FOUNDING_FIRST
+	var barracks := get_building(barracks_id)
+	if barracks == null or not barracks.is_barracks():
+		return "Keine Kaserne"
+	if not SoldierType.is_soldier_type(type_id):
+		return "Unbekannter Soldatentyp „%s“" % type_id
+	if get_idle_count() == 0:
+		return "Kein Untätiger"
+	var cost := SoldierType.goods_cost_of(type_id)
+	for good: String in cost:
+		if get_stock(good) < cost[good]:
+			var good_def: Dictionary = GameDefs.get_instance().goods[good]
+			return str(good_def["missing_text"]) if good_def.has("missing_text") else _stock_error(good, cost[good])
+	return _gold_error(SoldierType.gold_cost_of(type_id))
 
 
 ## Kann überhaupt gehandelt werden (steht ein Markt)? Leer oder der Grund.
@@ -462,6 +488,8 @@ func get_workers(building_id: int) -> Array[Resident]:
 ## Was ein Bewohner gerade tut, als Spieltext für die Kachel-Info,
 ## z. B. „Holzfäller – trägt 4 Holz“.
 func activity_of(resident: Resident) -> String:
+	if resident.is_soldier():
+		return "%s – %s" % [SoldierType.name_of(resident.soldier_type), _soldier_text(resident)]
 	if resident.is_arriving():
 		return "kommt an – wartet: Weg versperrt" if resident.is_blocked() else "kommt an"
 	if resident.is_leaving():
@@ -506,6 +534,13 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 	return "geht zur Arbeitsstätte" if resident.is_moving() else "an der Arbeitsstätte"
 
 
+## Der Teil von activity_of() nach dem Namen des Soldatentyps.
+func _soldier_text(soldier: Resident) -> String:
+	if soldier.is_blocked():
+		return "wartet: Weg versperrt"
+	return "geht zum Posten" if soldier.is_moving() else "auf Posten"
+
+
 ## Wie viele Bewohner die Burg hat: alle außer den gehenden, Ankommende ab ihrem Erscheinen.
 func get_population() -> int:
 	var count := 0
@@ -520,6 +555,15 @@ func get_idle_count() -> int:
 	var count := 0
 	for resident: Resident in _residents.values():
 		if resident.is_idle():
+			count += 1
+	return count
+
+
+## Wie viele der Bewohner Soldaten sind.
+func get_soldier_count() -> int:
+	var count := 0
+	for resident: Resident in _residents.values():
+		if resident.is_soldier():
 			count += 1
 	return count
 
@@ -866,7 +910,7 @@ func _migrate() -> void:
 	_send_away_surplus()
 	var balance := Population.balance_popularity()
 	var arriving := _popularity > balance and get_population() < get_housing()
-	var leaving := _popularity < balance and get_population() > 0
+	var leaving := _popularity < balance and _next_to_leave() != null
 	if not arriving and not leaving:
 		return
 	_migration_ticks += 1
@@ -880,15 +924,18 @@ func _migrate() -> void:
 
 
 ## Übersteigt die Zahl der Bewohner den Wohnraum, gehen die Überzähligen sofort
-## (Reihenfolge wie bei _next_to_leave()).
+## (Reihenfolge wie bei _next_to_leave()) – Soldaten nicht, sie bleiben auch ohne Wohnraum.
 func _send_away_surplus() -> void:
 	for _i in get_population() - get_housing():
-		_start_leaving(_next_to_leave())
+		var next := _next_to_leave()
+		if next == null:
+			return
+		_start_leaving(next)
 
 
 ## Wer als Nächster geht: der Untätige mit der größten ID, sonst der Arbeiter der jüngsten
 ## besetzten Arbeitsstätte (größte ID; dort der mit der größten ID), sonst der Ankommende mit
-## der größten ID. Es muss noch jemand da sein (get_population() > 0).
+## der größten ID; null, wenn keiner gehen kann. Soldaten gehen nie.
 func _next_to_leave() -> Resident:
 	var worker: Resident = null
 	var newcomer: Resident = null
@@ -1071,7 +1118,7 @@ func _work(resident: Resident) -> void:
 
 ## Nimmt den Arbeitsschritt wieder auf – nach der Wartezeit oder wenn der Weg versperrt und
 ## das Ziel nicht mehr erreichbar ist: Untätige und Ankommende gehen zum Lagerfeuer, Gehende
-## zum nächsten Rand, Arbeiter suchen ihr Vorkommen bzw. Lager neu oder gehen (wieder) zur
+## zum nächsten Rand, Soldaten zu ihrem Posten, Arbeiter suchen ihr Vorkommen bzw. Lager neu oder gehen (wieder) zur
 ## Arbeitsstätte; im Herstellungsbetrieb holt er weiter Eingangsware (nach dem Warten in der
 ## Arbeitsstätte nur, wenn der Bestand für den Rest reicht). Ist auch das nicht erreichbar,
 ## greift die jeweilige Warteregel.
@@ -1081,6 +1128,9 @@ func _resume(resident: Resident) -> void:
 		return
 	if resident.goal() == Resident.Goal.EDGE:
 		_send_to_edge(resident)
+		return
+	if resident.goal() == Resident.Goal.POST:
+		_send_to_post(resident)
 		return
 	var workplace := get_building(resident.workplace_id)
 	if workplace == null:
@@ -1376,13 +1426,18 @@ func _build(type_id: String, origin: Vector2i) -> String:
 ## Bewohner auf der Grundfläche eines neuen Gebäudes weichen auf die nächste begehbare
 ## Kachel aus, von der aus sie ihren Anker erreichen (_anchor_of()), sonst auf die nächste
 ## begehbare; wer unterwegs ist und nun über die Grundfläche müsste, plant neu. Wer dort
-## abgebaut hat, sucht sein Vorkommen neu.
+## abgebaut hat, sucht sein Vorkommen neu. Liegt der Posten eines Soldaten darunter, bekommt er
+## den nächsten freien (_free_post()) und geht dorthin.
 func _make_way(building: Building) -> void:
 	# In diesem Abstand liegt von jeder Kachel der Grundfläche aus der ganze Rand um sie herum.
 	var size := Building.size_of(building.type)
 	var reach := ceili(Vector2(size).length())
 	for resident: Resident in _residents.values():
 		_report_change(resident, func() -> void:
+			if resident.is_soldier() and not _is_walkable_position(resident.post):
+				resident.post = _free_post(resident, resident.post_tile(), [])
+				if not resident.is_moving() and is_walkable(resident.tile, resident.level):
+					_send_to_post(resident)
 			if not is_walkable(resident.tile, resident.level):
 				resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach)
 				resident.step_progress = 0
@@ -1390,6 +1445,8 @@ func _make_way(building: Building) -> void:
 					_reroute(resident)
 				elif resident.task == Resident.Task.MINING:
 					_seek_deposit(resident, get_building(resident.workplace_id))
+				elif resident.is_soldier():
+					_send_to_post(resident)
 			elif resident.is_moving() and _crosses(resident, building):
 				_reroute(resident))
 
@@ -1405,8 +1462,10 @@ func _crosses(resident: Resident, building: Building) -> bool:
 
 ## Woran gemessen wird, ob ein verdrängter Bewohner nicht abgeschnitten ist: Arbeiter am
 ## Eingang ihrer Arbeitsstätte (von dort aus suchen sie Vorkommen und Lager), Untätige am
-## Lagerfeuer.
+## Lagerfeuer, Soldaten an ihrem Posten.
 func _anchor_of(resident: Resident) -> Vector3i:
+	if resident.is_soldier():
+		return resident.post
 	var workplace := get_building(resident.workplace_id)
 	if workplace != null:
 		return Resident.ground(workplace.entrance())
@@ -1465,6 +1524,71 @@ func _demolish(id: int) -> String:
 	@warning_ignore("integer_division")
 	_change_treasury(gold_cost_of(building.type) / 2)
 	return ""
+
+
+## Anwerben: Waren und Gold sofort abziehen (ältestes Lager zuerst); der Untätige mit der
+## kleinsten ID wird Soldat, bekommt einen freien Posten an der Kaserne und geht dorthin.
+func _recruit(barracks_id: int, type_id: String) -> String:
+	var reason := recruit_error(barracks_id, type_id)
+	if reason != "":
+		return reason
+	var cost := SoldierType.goods_cost_of(type_id)
+	var changed: Dictionary[int, bool] = {}
+	for good: String in cost:
+		_take_goods(good, cost[good], changed)
+	_emit_stock_changed(changed)
+	_change_treasury(-SoldierType.gold_cost_of(type_id))
+	var barracks := get_building(barracks_id)
+	# Die Untätigen kommen nach ID aufsteigend.
+	var soldier := get_workers(0)[0]
+	soldier.soldier_type = type_id
+	soldier.task = Resident.Task.ON_DUTY
+	# Ein Untätiger kann noch auf einen neuen Versuch zum Lagerfeuer warten.
+	soldier.timer = 0
+	soldier.post = _free_post(soldier, barracks.entrance_front(), _tiles_around_barracks(barracks))
+	_send_to_post(soldier)
+	resident_changed.emit(soldier.id)
+	return ""
+
+
+## Die Kacheln, die an die Kaserne grenzen, als Posten der Reihe nach: zuerst die vor dem
+## Eingang, dann nach Abstand zu ihr, bei gleichem Abstand im Uhrzeigersinn ab „oben“.
+func _tiles_around_barracks(barracks: Building) -> Array[Vector2i]:
+	var front := barracks.entrance_front()
+	var adjacent := Building.adjacent_tiles(barracks.type, barracks.origin)
+	var result: Array[Vector2i] = [front]
+	for offset: Vector2i in _offsets_within(ceili(Vector2(Building.size_of(barracks.type)).length()) + 1):
+		if adjacent.has(front + offset):
+			result.append(front + offset)
+	return result
+
+
+## Ein freier Posten für einen Soldaten: die erste Kachel aus preferred, sonst die nächste um
+## center (_search_outward()), die vom Lagerfeuer aus erreichbar ist, auf der kein Gebäude
+## steht und die nicht Posten eines anderen Soldaten ist. Gibt es keine, bleibt er, wo er ist.
+func _free_post(soldier: Resident, center: Vector2i, preferred: Array[Vector2i]) -> Vector3i:
+	var taken: Dictionary[Vector3i, bool] = {}
+	for other: Resident in _residents.values():
+		if other != soldier and other.is_soldier():
+			taken[other.post] = true
+	var reachable := Pathfinder.distances(Resident.ground(_campfire().origin), _is_walkable_position)
+	var accept := func(tile: Vector2i) -> bool:
+		var position := Resident.ground(tile)
+		return reachable.has(position) and not taken.has(position) and get_building_at(tile) == null
+	for tile in preferred:
+		if accept.call(tile):
+			return Resident.ground(tile)
+	var found := _search_outward(center, accept)
+	return Resident.ground(found[0]) if not found.is_empty() else soldier.position()
+
+
+## Schickt einen Soldaten zu seinem Posten; steht er schon dort, bleibt er. Gibt es keinen Weg,
+## bleibt er stehen und versucht es nach der Wartezeit erneut (_work() → _resume()).
+func _send_to_post(soldier: Resident) -> void:
+	soldier.timer = 0
+	if not _route_to(soldier, soldier.post):
+		soldier.stop()
+		soldier.timer = Resident.retry_ticks()
 
 
 func _trade(good: String, buying: bool) -> String:
@@ -1624,17 +1748,25 @@ func _building_name(type_id: String) -> String:
 
 ## Baukosten eines Gebäudetyps in Waren: Ware → Menge (ohne Gold).
 static func goods_cost_of(type_id: String) -> Dictionary[String, int]:
+	return goods_in(GameDefs.get_instance().buildings[type_id]["cost"])
+
+
+## Baukosten eines Gebäudetyps in Gold aus dem Schatz (0, wenn keins).
+static func gold_cost_of(type_id: String) -> int:
+	return gold_in(GameDefs.get_instance().buildings[type_id]["cost"])
+
+
+## Die Waren einer Kostenangabe aus den Daten ("cost": Ware → Menge, dazu optional GOLD).
+static func goods_in(cost: Dictionary) -> Dictionary[String, int]:
 	var result: Dictionary[String, int] = {}
-	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
 	for good: String in cost:
 		if good != GOLD:
 			result[good] = int(cost[good])
 	return result
 
 
-## Baukosten eines Gebäudetyps in Gold aus dem Schatz (0, wenn keins).
-static func gold_cost_of(type_id: String) -> int:
-	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+## Das Gold einer Kostenangabe aus den Daten (0, wenn keins).
+static func gold_in(cost: Dictionary) -> int:
 	return int(cost.get(GOLD, 0))
 
 
@@ -1673,7 +1805,7 @@ func _set_map(new_map: MapData) -> void:
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume, Wild) breiten sich in ihrem Rhythmus aus:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
 ## angegebenen Chance ein neues – mit "terrain" nur auf diesen Geländen. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
-## ein Bewohner steht, bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
+## ein Bewohner steht, und Posten von Soldaten bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
 	var types: Array[String] = []
@@ -1694,6 +1826,8 @@ func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 	var standing: Dictionary[Vector2i, bool] = {}
 	for resident: Resident in _residents.values():
 		standing[resident.tile] = true
+		if resident.is_soldier():
+			standing[resident.post_tile()] = true
 	# Kacheln neben einem Vorkommen dieses Typs markieren, dann zeilenweise würfeln.
 	var near_mask := PackedByteArray()
 	near_mask.resize(map.width * map.height)
