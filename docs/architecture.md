@@ -68,6 +68,10 @@ Neues Zustandsstück:
 - **Simulationstests** über die Spielwelt: Mini-Szenario laden, Befehle geben, N Takte laufen lassen, Ergebnis prüfen. Das ist die bevorzugte Teststelle. Die Mini-Szenarien liegen in `tests/scenarios/` (z. B. `tiny`: 20×16, Seed 7, 4 Startbewohner); `run_scenario("tiny", ticks)` bzw. `run_scenario_with_seed("tiny", ticks, seed)` aus `TestCase` laden eins, erzeugen die Spielwelt und lassen sie N Takte laufen.
 - Neue Spielwelten aus `run_scenario…` sind schon gegründet (`found_castle()`: Stelle nächst der Kartenmitte); `new_world()` liefert eine in Gründung, `empty_world([szenario])` eine leergeräumte (nur Wiese) in Gründung; `founding_origin()` nennt den Ursprung eines Gebäudes der Gründung.
 - Einzelne Testdateien: `tools/test.sh test_founding` (Teil des Dateinamens).
+- Ein Test schlägt fehl, wenn eine Prüfung nicht stimmt, wenn er einen Fehler auslöst (Skriptfehler, fehlgeschlagenes `assert()`, `push_error()`) oder wenn er keine einzige Prüfung erreicht.
+- `tests/test_structure.gd` prüft die Regeln des Aufbaus: alle Skripte unter `src/` lassen sich laden, `core/` nennt keine Klasse und keinen Pfad aus `view/` oder `ui/`. Fehlende Typangaben sind Fehler (`untyped_declaration` in `project.godot`).
+- **Rauchtest** (`tools/smoke.sh`, läuft am Ende von `tools/test.sh` ohne Filter): startet das Spiel ohne Fenster in mehreren Zuständen (Gründung, Baumodus, Verwaltung, Markt, Abriss) und scheitert an jeder Fehlermeldung. Neue Ansicht oder neuer Startparameter: dort einen Aufruf ergänzen.
+- GitHub Actions (`.github/workflows/tests.yml`) führt `tools/test.sh` bei jedem Pull Request aus.
 - Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage] [--found]`; mit Tagen wird gegründet und die Spielwelt läuft vorher so lange, sonst zeigt das Bild die Gründungsvorschau über der Kartenmitte).
 
 ## Spielmodus
