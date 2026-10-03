@@ -7,8 +7,17 @@
     { "id": "double", "name": "doppelt", "consumption": 2,   "factor": 8 }
   ],
   "default_ration": "normal",
+  "tax_rates": [
+    { "id": "none",      "name": "keine",     "gold": 0,   "factor": 2 },
+    { "id": "low",       "name": "niedrig",   "gold": 0.6, "factor": -2 },
+    { "id": "medium",    "name": "mittel",    "gold": 0.8, "factor": -4 },
+    { "id": "high",      "name": "hoch",      "gold": 1.0, "factor": -6 },
+    { "id": "very_high", "name": "sehr hoch", "gold": 1.2, "factor": -8 }
+  ],
+  "default_tax_rate": "none",
   "factors": {
     "ration":  { "name": "Ration" },
-    "variety": { "name": "Vielfalt", "per_extra_kind": 1 }
+    "variety": { "name": "Vielfalt", "per_extra_kind": 1 },
+    "tax":     { "name": "Steuersatz" }
   }
 }

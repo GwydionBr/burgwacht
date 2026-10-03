@@ -157,8 +157,8 @@ func test_no_food_means_no_ration() -> void:
 	var world := _founded()
 	_next_day(world)
 	assert_eq(world.get_eaten_ration(), "none", "Tatsächliche Ration:")
-	assert_eq(_factors(world), [["ration", -8], ["variety", 0]] as Array[Array], "Faktoren:")
-	assert_eq(world.get_popularity(), 42, "Beliebtheit:")
+	assert_eq(_factors(world), [["ration", -8], ["variety", 0], ["tax", 2]] as Array[Array], "Faktoren:")
+	assert_eq(world.get_popularity(), 44, "Beliebtheit (−8 Ration, +2 keine Steuern):")
 
 
 func test_no_notice_without_shortage() -> void:
@@ -185,10 +185,10 @@ func test_variety_counts_eaten_kinds() -> void:
 	var world := _founded()
 	_set_food(world, 20, 20)
 	_next_day(world)
-	assert_eq(_factors(world), [["ration", 0], ["variety", 1]] as Array[Array], "Zwei Sorten:")
+	assert_eq(_factors(world), [["ration", 0], ["variety", 1], ["tax", 2]] as Array[Array], "Zwei Sorten:")
 	_set_food(world, 20, 0)
 	_next_day(world)
-	assert_eq(_factors(world), [["ration", 0], ["variety", 0]] as Array[Array], "Eine Sorte:")
+	assert_eq(_factors(world), [["ration", 0], ["variety", 0], ["tax", 2]] as Array[Array], "Eine Sorte:")
 
 
 func test_variety_counts_only_kinds_actually_eaten() -> void:
@@ -196,7 +196,7 @@ func test_variety_counts_only_kinds_actually_eaten() -> void:
 	_set_food(world, 20, 20)
 	world.execute(Command.set_ration("none"))
 	_next_day(world)
-	assert_eq(_factors(world), [["ration", -8], ["variety", 0]] as Array[Array], "Nichts gegessen:")
+	assert_eq(_factors(world), [["ration", -8], ["variety", 0], ["tax", 2]] as Array[Array], "Nichts gegessen:")
 
 
 func test_popularity_changes_by_factor_sum() -> void:
@@ -206,8 +206,8 @@ func test_popularity_changes_by_factor_sum() -> void:
 	var count: Array[int] = [0]
 	world.popularity_changed.connect(func() -> void: count[0] += 1)
 	_next_day(world)
-	assert_eq(world.get_popularity(), 59, "50 + 8 + 1:")
-	assert_eq(world.get_factor_sum(), 9, "Summe:")
+	assert_eq(world.get_popularity(), 61, "50 + 8 + 1 + 2:")
+	assert_eq(world.get_factor_sum(), 11, "Summe:")
 	assert_eq(count[0], 1, "Signal:")
 
 
@@ -218,6 +218,7 @@ func test_popularity_stays_within_bounds() -> void:
 	_next_day(world)
 	assert_eq(world.get_popularity(), 100, "Obergrenze:")
 	world.execute(Command.set_ration("none"))
+	world.execute(Command.set_tax_rate("very_high"))
 	for i in 13:
 		_next_day(world)
 	assert_eq(world.get_popularity(), 0, "Untergrenze:")
@@ -227,10 +228,10 @@ func test_factors_preview_before_first_day() -> void:
 	var world := _founded()
 	_set_food(world, 20, 20)
 	world.execute(Command.set_ration("extra"))
-	assert_eq(_factors(world), [["ration", 4], ["variety", 1]] as Array[Array], "Vorschau:")
+	assert_eq(_factors(world), [["ration", 4], ["variety", 1], ["tax", 2]] as Array[Array], "Vorschau:")
 	assert_eq(world.get_stock("apples"), 20, "Vorschau isst nichts:")
 	_set_food(world, 2, 0)
-	assert_eq(_factors(world), [["ration", -4], ["variety", 0]] as Array[Array], "Vorschau bei Mangel:")
+	assert_eq(_factors(world), [["ration", -4], ["variety", 0], ["tax", 2]] as Array[Array], "Vorschau bei Mangel:")
 
 
 func test_factors_have_german_names() -> void:
@@ -238,7 +239,7 @@ func test_factors_have_german_names() -> void:
 	var names: Array[String] = []
 	for factor in world.get_factors():
 		names.append(factor.name())
-	assert_eq(names, ["Ration", "Vielfalt"] as Array[String], "Namen:")
+	assert_eq(names, ["Ration", "Vielfalt", "Steuersatz"] as Array[String], "Namen:")
 
 
 func test_factors_stay_from_last_day_after_setting_change() -> void:
@@ -246,7 +247,7 @@ func test_factors_stay_from_last_day_after_setting_change() -> void:
 	_set_food(world, 20, 0)
 	_next_day(world)
 	world.execute(Command.set_ration("double"))
-	assert_eq(_factors(world), [["ration", 0], ["variety", 0]] as Array[Array], "Faktoren des letzten Tags:")
+	assert_eq(_factors(world), [["ration", 0], ["variety", 0], ["tax", 2]] as Array[Array], "Faktoren des letzten Tags:")
 
 
 func test_day_reports_factors_changed() -> void:

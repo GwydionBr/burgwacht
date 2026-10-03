@@ -153,3 +153,26 @@ func test_bad_start_popularity_is_invalid() -> void:
 		var data := _valid_data()
 		data["start_popularity"] = value
 		assert_true(_error_for(data).contains("start_popularity"), "Startbeliebtheit %s: %s" % [str(value), _error_for(data)])
+
+
+func test_start_gold_is_read() -> void:
+	var data := _valid_data()
+	data["start_gold"] = 120.0
+	var scenario := Scenario.from_dict("test", data)
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.start_gold, 120, "Startgold:")
+
+
+func test_missing_start_gold_means_zero() -> void:
+	assert_eq(Scenario.from_dict("test", _valid_data()).start_gold, 0, "Startgold:")
+
+
+func test_free_play_starts_without_gold() -> void:
+	assert_eq(Scenario.load_named(Scenario.DEFAULT).start_gold, 0, "Startgold:")
+
+
+func test_bad_start_gold_is_invalid() -> void:
+	for value: Variant in [-1, 2.5, "10", null, true]:
+		var data := _valid_data()
+		data["start_gold"] = value
+		assert_true(_error_for(data).contains("start_gold"), "Startgold %s: %s" % [str(value), _error_for(data)])
