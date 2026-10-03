@@ -24,6 +24,8 @@ const MESSAGE_SECONDS := 3.0
 const BUILD_HINT_TOP := 64
 ## Steigende Beliebtheit (fallende in BLOCKED_COLOR).
 const UP_COLOR := Color("#9fd88a")
+## Abstand der Felder vom Bildschirmrand und zwischen Feldern übereinander.
+const MARGIN := 12
 
 var _info_label: Label
 var _seed_label: Label
@@ -79,7 +81,7 @@ func _ready() -> void:
 	_message_label = _make_label("", TEXT_COLOR, 16)
 	_message_panel.add_child(_message_label)
 	add_child(_message_panel)
-	_message_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
+	_message_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
 	_message_panel.offset_top = BUILD_HINT_TOP
 	_message_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_message_panel.visible = false
@@ -96,7 +98,7 @@ func _ready() -> void:
 		+ "V: Verwaltung  ·  F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))
 	add_child(help_panel)
-	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
+	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
 	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	help_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
@@ -104,7 +106,7 @@ func _ready() -> void:
 	_info_label = _make_label("", TEXT_COLOR, 15)
 	_info_panel.add_child(_info_label)
 	add_child(_info_panel)
-	_info_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 12)
+	_info_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, MARGIN)
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_info_panel.visible = false
 
@@ -128,9 +130,13 @@ func _ready() -> void:
 	_demolish_button.pressed.connect(demolish_selected.emit)
 	buttons.add_child(_demolish_button)
 	add_child(_build_bar)
-	_build_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
+	_build_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, MARGIN)
 	_build_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# Hinweise und Kachel-Info über der Bauleiste, die bei vielen Gebäuden fast die ganze Breite braucht.
+	var above_bar := -(MARGIN + _build_bar.get_combined_minimum_size().y + MARGIN)
+	help_panel.offset_bottom = above_bar
+	_info_panel.offset_bottom = above_bar
 
 	_admin_panel = _make_admin_panel()
 	add_child(_admin_panel)
