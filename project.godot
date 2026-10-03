@@ -23,3 +23,7 @@ environment/defaults/default_clear_color=Color(0.09, 0.1, 0.09, 1)
 [debug]
 
 gdscript/warnings/untyped_declaration=2
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/presets/plugin.cfg")
