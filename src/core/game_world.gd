@@ -72,6 +72,10 @@ const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
 ## Schlüssel in den Baukosten für Gold aus dem Schatz (keine Ware).
 const GOLD := "gold"
 
+## Wer geht; davon hängt ab, welche Ebenen er betreten darf: Bewohner nur den Boden, Soldaten
+## auch den Wehrgang, den sie über Treppen erreichen.
+enum Walker { RESIDENT, SOLDIER }
+
 var map: MapData
 
 var _scenario_id: String
@@ -236,6 +240,8 @@ func execute(command: Command) -> String:
 		return _found(command.origin)
 	if command.kind == Command.Kind.BUILD:
 		return _build(command.building_type, command.origin)
+	if command.kind == Command.Kind.BUILD_LINE:
+		return _build_line(command.building_type, command.origin, command.line_end)
 	if command.kind == Command.Kind.DEMOLISH:
 		return _demolish(command.building_id)
 	if command.kind == Command.Kind.SET_RATION:
@@ -268,6 +274,12 @@ func placement_error(type_id: String, origin: Vector2i) -> String:
 ## der Grund. Erst placement_error(), dann die Bauregeln des Typs, dann „genug Waren“ und
 ## als letzte Prüfung „genug Gold“ (Kosten aus den Daten).
 func build_error(type_id: String, origin: Vector2i) -> String:
+	return _build_error(type_id, origin, {}, 0)
+
+
+## Wie build_error(); spent_goods (Ware → Menge) und spent_gold sind schon verplant und
+## zählen nicht mehr zum Bestand (für die Mauerlinie).
+func _build_error(type_id: String, origin: Vector2i, spent_goods: Dictionary[String, int], spent_gold: int) -> String:
 	if _founding:
 		return FOUNDING_FIRST
 	if type_id == FOUNDING_TYPE:
@@ -282,10 +294,57 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 		return rules
 	var cost := goods_cost_of(type_id)
 	for good: String in cost:
-		var stock := _stock_error(good, cost[good])
+		var stock := _stock_error(good, cost[good], spent_goods.get(good, 0))
 		if stock != "":
 			return stock
-	return _gold_error(gold_cost_of(type_id))
+	return _gold_error(gold_cost_of(type_id), spent_gold)
+
+
+## Was der Befehl Mauerlinie jetzt bauen würde, ohne etwas zu ändern: je Kachel der Linie
+## (line_tiles(), in Reihenfolge ab dem Start) leer, wenn dort ein Gebäude entsteht, sonst
+## der Grund. Unbebaubare Kacheln werden übersprungen; reichen die Kosten nach den früheren
+## Kacheln nicht mehr, entsteht keine weitere.
+func line_plan(type_id: String, line_start: Vector2i, line_end: Vector2i) -> Dictionary[Vector2i, String]:
+	var plan: Dictionary[Vector2i, String] = {}
+	# Unbekannte Typen lehnt _build_error() ab.
+	var known := is_buildable(type_id)
+	var not_line := "„%s“ kann nicht als Linie gebaut werden" % _building_name(type_id) \
+			if known and not is_line_type(type_id) else ""
+	var cost: Dictionary[String, int] = {}
+	if known:
+		cost = goods_cost_of(type_id)
+	var spent: Dictionary[String, int] = {}
+	var spent_gold := 0
+	# Jede Kachel kostet gleich viel: Fehlen einmal die Kosten, entsteht danach keine mehr.
+	for tile in line_tiles(line_start, line_end):
+		plan[tile] = not_line if not_line != "" else _build_error(type_id, tile, spent, spent_gold)
+		if plan[tile] == "":
+			for good: String in cost:
+				spent[good] = spent.get(good, 0) + cost[good]
+			spent_gold += gold_cost_of(type_id) if known else 0
+	return plan
+
+
+## Wird dieser Gebäudetyp als Linie gebaut ("line" in buildings.json, z. B. die Mauer)?
+static func is_line_type(type_id: String) -> bool:
+	return bool(GameDefs.get_instance().buildings.get(type_id, {}).get("line", false))
+
+
+## Die Kacheln einer geraden Linie ab line_start in Richtung line_end, in Reihenfolge ab dem
+## Start. Die Richtung rastet auf die nächste waagrechte, senkrechte oder diagonale (45°) ein.
+## Länge: gerade so weit wie line_end entlang dieser Achse, diagonal der Mittelwert beider
+## Achsen (gerundet).
+static func line_tiles(line_start: Vector2i, line_end: Vector2i) -> Array[Vector2i]:
+	var delta := line_end - line_start
+	var angle := snappedf(atan2(float(delta.y), float(delta.x)), PI / 4.0)
+	var direction := Vector2i(roundi(cos(angle)), roundi(sin(angle)))
+	var count := absi(delta.x) if direction.y == 0 else absi(delta.y)
+	if direction.x != 0 and direction.y != 0:
+		count = roundi((absi(delta.x) + absi(delta.y)) / 2.0)
+	var result: Array[Vector2i] = []
+	for i in count + 1:
+		result.append(line_start + direction * i)
+	return result
 
 
 ## Darf der Befehl „Gebäude abreißen“ das Gebäude mit dieser ID jetzt abreißen? Leer oder
@@ -369,16 +428,18 @@ func market_error() -> String:
 	return "" if has_market() else "Kein Markt gebaut"
 
 
-## Grund, wenn weniger als amount der Ware auf Lager ist (Bauen und Verkauf), sonst leer.
-func _stock_error(good: String, amount: int) -> String:
-	if get_stock(good) < amount:
+## Grund, wenn weniger als amount der Ware auf Lager ist (Bauen und Verkauf), sonst leer;
+## spent davon ist schon verplant.
+func _stock_error(good: String, amount: int, spent := 0) -> String:
+	if get_stock(good) - spent < amount:
 		return "Zu wenig %s (%d nötig)" % [_good_name(good), amount]
 	return ""
 
 
-## Grund, wenn weniger als amount Gold im Schatz ist (Bauen und Kauf), sonst leer.
-func _gold_error(amount: int) -> String:
-	if _treasury < amount:
+## Grund, wenn weniger als amount Gold im Schatz ist (Bauen und Kauf), sonst leer; spent
+## davon ist schon verplant.
+func _gold_error(amount: int, spent := 0) -> String:
+	if _treasury - spent < amount:
 		return "Nicht genug Gold (%d nötig)" % amount
 	return ""
 
@@ -592,10 +653,14 @@ func get_housing() -> int:
 	return total
 
 
-## Kann ein Bewohner auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
+## Kann jemand auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
-## (Lagerfeuer).
+## (Lagerfeuer, Treppe). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer). Wer
+## welche Ebene betreten darf, regelt Walker.
 func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
+	if level == Resident.Level.WALL_WALK:
+		var below := get_building_at(tile)
+		return below != null and below.has_walkway()
 	if level != Resident.Level.GROUND or not map.is_walkable(tile):
 		return false
 	var deposit := map.get_deposit(tile)
@@ -1012,7 +1077,7 @@ func _send_newcomer(newcomer: Resident) -> void:
 func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
-	var distances := Pathfinder.distances(start, _is_walkable_position)
+	var distances := _distances(start, Walker.RESIDENT)
 	for position: Vector3i in distances:
 		var tile := Vector2i(position.x, position.y)
 		if not map.is_edge(tile):
@@ -1038,7 +1103,7 @@ func _update_resident(resident: Resident) -> void:
 			and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
 		# Das angesteuerte Vorkommen ist weg (erschöpft, ersetzt): gleich ein neues suchen.
 		_seek_deposit(resident, get_building(resident.workplace_id))
-	if resident.is_moving() and not _is_walkable_position(resident.path[0]):
+	if resident.is_moving() and not _can_step(resident):
 		_reroute(resident)
 		if not _residents.has(resident.id):
 			# Ein Gehender ohne erreichbaren Rand ist fort.
@@ -1167,7 +1232,7 @@ func _resume(resident: Resident) -> void:
 ## nimmt er den Arbeitsschritt neu auf (_resume()). Ist schon die Kachel versperrt, auf die
 ## er gerade tritt, kehrt er auf seine zurück.
 func _reroute(resident: Resident) -> void:
-	if not _is_walkable_position(resident.path[0]):
+	if not _can_step(resident):
 		resident.step_progress = 0
 	if not _route_to(resident, resident.path.back()):
 		_resume(resident)
@@ -1218,8 +1283,7 @@ func _seek_deposit(resident: Resident, workplace: Building) -> void:
 func _nearest_deposit(resident: Resident, workplace: Building) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
-	var distances := Pathfinder.distances(Resident.ground(workplace.entrance()), _is_walkable_position,
-			workplace.gather_range())
+	var distances := _distances(Resident.ground(workplace.entrance()), Walker.RESIDENT, workplace.gather_range())
 	for position: Vector3i in distances:
 		var stand := Vector2i(position.x, position.y)
 		var length := distances[position]
@@ -1276,7 +1340,7 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 ## das accept (Lager → bool) gilt; bei gleicher Länge das mit der kleineren ID. null, wenn
 ## es keins gibt.
 func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Building:
-	var distances := Pathfinder.distances(resident.plan_start(), _is_walkable_position)
+	var distances := _distances(resident.plan_start(), Walker.RESIDENT)
 	var best: Building = null
 	var best_length := INF
 	for storage in _storages(_storage_type_of(good)):
@@ -1369,8 +1433,7 @@ func _deliver(resident: Resident, workplace: Building) -> void:
 ## Plant den kürzesten Weg eines Bewohners zu goal und schickt ihn los; false (und nichts
 ## ändert sich), wenn es keinen Weg gibt. Mitten im Schritt geht er den erst zu Ende.
 func _route_to(resident: Resident, goal: Vector3i) -> bool:
-	var start := resident.plan_start()
-	var path := Pathfinder.find_path(start, goal, _is_walkable_position)
+	var path := _find_path(resident.plan_start(), goal, _walker_of(resident))
 	if path.is_empty():
 		return false
 	if resident.step_progress == 0:
@@ -1390,7 +1453,7 @@ func _send_to_campfire(resident: Resident) -> void:
 			taken[other.destination()] = true
 	var ground := Resident.Level.GROUND
 	# Erreicht er das Lagerfeuer gar nicht, braucht er die Kacheln drumherum nicht zu prüfen.
-	if Pathfinder.find_path(resident.plan_start(), Resident.ground(campfire.origin), _is_walkable_position).is_empty():
+	if _find_path(resident.plan_start(), Resident.ground(campfire.origin), Walker.RESIDENT).is_empty():
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 		return
@@ -1416,6 +1479,60 @@ func _is_walkable_position(position: Vector3i) -> bool:
 	return is_walkable(Vector2i(position.x, position.y), position.z as Resident.Level)
 
 
+## Wer der Bewohner beim Gehen ist (Walker).
+static func _walker_of(resident: Resident) -> Walker:
+	return Walker.SOLDIER if resident.is_soldier() else Walker.RESIDENT
+
+
+## Darf walker auf dieser Position stehen? Bewohner nur am Boden, Soldaten auch auf dem Wehrgang.
+func _can_stand(position: Vector3i, walker: Walker) -> bool:
+	return (walker == Walker.SOLDIER or position.z == Resident.Level.GROUND) and _is_walkable_position(position)
+
+
+## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen.
+func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
+	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker))
+
+
+## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen.
+func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
+	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
+
+
+## Die Aufgänge für walker: nur Soldaten wechseln die Ebene.
+func _ascents_for(walker: Walker) -> Callable:
+	return _ascents if walker == Walker.SOLDIER else Callable()
+
+
+## Die Positionen auf der anderen Ebene, die man von position aus mit einem geraden Schritt
+## erreicht: von einer Treppe am Boden auf den Wehrgang der Kacheln mit gemeinsamer Kante und
+## von dort zurück auf die Treppe. Ob dort ein Wehrgang ist, prüft die Wegfindung (walkable).
+func _ascents(position: Vector3i) -> Array[Vector3i]:
+	var result: Array[Vector3i] = []
+	var tile := Vector2i(position.x, position.y)
+	for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
+		var next := tile + Vector2i(step.x, step.y)
+		if position.z == Resident.Level.GROUND and _is_stairs(tile):
+			result.append(Vector3i(next.x, next.y, Resident.Level.WALL_WALK))
+		elif position.z == Resident.Level.WALL_WALK and _is_stairs(next):
+			result.append(Resident.ground(next))
+	return result
+
+
+func _is_stairs(tile: Vector2i) -> bool:
+	var building := get_building_at(tile)
+	return building != null and building.is_stairs()
+
+
+## Kann der Bewohner den nächsten Schritt seines Weges (noch) gehen? Die Position muss für ihn
+## begehbar sein, ein Wechsel der Ebene braucht einen Aufgang.
+func _can_step(resident: Resident) -> bool:
+	var next: Vector3i = resident.path[0]
+	if not _can_stand(next, _walker_of(resident)):
+		return false
+	return next.z == resident.level or _ascents(resident.position()).has(next)
+
+
 func _add_resident(tile: Vector2i, level: Resident.Level, task := Resident.Task.NONE) -> Resident:
 	var resident := Resident.create(_next_resident_id, tile, level)
 	resident.task = task
@@ -1439,6 +1556,18 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	return ""
 
 
+## Mauerlinie: baut die Kacheln aus line_plan(), die entstehen, der Reihe nach ab dem Start.
+## Abgelehnt nur, wenn keine einzige entsteht – mit dem Grund der ersten Kachel.
+func _build_line(type_id: String, line_start: Vector2i, line_end: Vector2i) -> String:
+	var plan := line_plan(type_id, line_start, line_end)
+	if not plan.values().has(""):
+		return plan.values()[0]
+	for tile: Vector2i in plan:
+		if plan[tile] == "":
+			_build(type_id, tile)
+	return ""
+
+
 ## Bewohner auf der Grundfläche eines neuen Gebäudes weichen auf die nächste begehbare
 ## Kachel aus, von der aus sie ihren Anker erreichen (_anchor_of()), sonst auf die nächste
 ## begehbare; wer unterwegs ist und nun über die Grundfläche müsste, plant neu. Wer dort
@@ -1455,7 +1584,7 @@ func _make_way(building: Building) -> void:
 				if not resident.is_moving() and is_walkable(resident.tile, resident.level):
 					_send_to_post(resident)
 			if not is_walkable(resident.tile, resident.level):
-				resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach)
+				resident.tile = _nearest_reachable(resident.tile, _anchor_of(resident), reach, _walker_of(resident))
 				resident.step_progress = 0
 				if resident.is_moving():
 					_reroute(resident)
@@ -1488,20 +1617,20 @@ func _anchor_of(resident: Resident) -> Vector3i:
 	return Resident.ground(_campfire().origin)
 
 
-## Die nächste begehbare Kachel am Boden, von der aus anchor erreichbar ist: Suche nach
+## Die nächste begehbare Kachel am Boden, von der aus walker anchor erreicht: Suche nach
 ## außen (_search_outward()) bis zum Abstand reach. Abgeschlossene Taschen werden so
 ## übersprungen; ist anchor in der Nähe von keiner aus erreichbar, die nächste begehbare,
 ## gibt es gar keine, die Kachel selbst.
-func _nearest_reachable(tile: Vector2i, anchor: Vector3i, reach: int) -> Vector2i:
+func _nearest_reachable(tile: Vector2i, anchor: Vector3i, reach: int, walker: Walker) -> Vector2i:
 	var nearest := _search_outward(tile, func(candidate: Vector2i) -> bool:
 		return is_walkable(candidate, Resident.Level.GROUND))
 	if nearest.is_empty():
 		return tile
 	# Meist erreicht schon die nächste begehbare Kachel den Anker (ein Weg). Sonst wird
 	# einmal alles gemessen, was vom Anker aus erreichbar ist (selten, aber die ganze Burg).
-	if not Pathfinder.find_path(Resident.ground(nearest[0]), anchor, _is_walkable_position).is_empty():
+	if not _find_path(Resident.ground(nearest[0]), anchor, walker).is_empty():
 		return nearest[0]
-	var reachable := Pathfinder.distances(anchor, _is_walkable_position)
+	var reachable := _distances(anchor, walker)
 	for offset in _offsets_within(reach):
 		var candidate := tile + offset
 		if is_walkable(candidate, Resident.Level.GROUND) and reachable.has(Resident.ground(candidate)):
@@ -1518,6 +1647,7 @@ func _demolish(id: int) -> String:
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
+	_leave_lost_wall_walk()
 	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
 	for resident: Resident in _residents.values():
 		if resident.task in [Resident.Task.TO_STORAGE, Resident.Task.FETCHING] and resident.storage_id == id:
@@ -1540,6 +1670,34 @@ func _demolish(id: int) -> String:
 	@warning_ignore("integer_division")
 	_change_treasury(gold_cost_of(building.type) / 2)
 	return ""
+
+
+## Nach einem Abriss: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, weicht aus
+## (_wall_walk_refuge()) und bleibt dort stehen – das ist sein neuer Posten. Lag nur der Posten
+## eines Soldaten dort, weicht der Posten ebenso aus und der Soldat geht dorthin.
+func _leave_lost_wall_walk() -> void:
+	for resident: Resident in _residents.values():
+		if resident.level == Resident.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
+			var refuge := _wall_walk_refuge(resident.position())
+			resident.tile = Vector2i(refuge.x, refuge.y)
+			resident.level = refuge.z as Resident.Level
+			resident.path.clear()
+			resident.step_progress = 0
+			resident.post = refuge
+			resident.timer = 0
+			resident_changed.emit(resident.id)
+		elif resident.is_soldier() and not _is_walkable_position(resident.post):
+			resident.post = _wall_walk_refuge(resident.post)
+			_report_change(resident, _send_to_post.bind(resident))
+
+
+## Wohin man von einer Position auf dem Wehrgang ausweicht, die es nicht mehr gibt: auf die
+## nächste Wehrgang-Kachel daneben (erst gerade, dann schräg), sonst auf den Boden derselben Kachel.
+func _wall_walk_refuge(position: Vector3i) -> Vector3i:
+	for step: Vector3i in Pathfinder.STRAIGHT_STEPS + Pathfinder.DIAGONAL_STEPS:
+		if _is_walkable_position(position + step):
+			return position + step
+	return Resident.ground(Vector2i(position.x, position.y))
 
 
 ## Anwerben: Waren und Gold sofort abziehen (ältestes Lager zuerst); der Untätige mit der
@@ -1631,13 +1789,14 @@ func _posts_except(excluded: Dictionary[int, bool]) -> Dictionary[Vector3i, bool
 
 
 ## Prüfung (Kachel → bool), ob eine Kachel ein freier Posten ist: auf der Ebene von origin von
-## dort aus erreichbar, ohne Gebäude und nicht in taken (wird beim Aufruf gelesen, darf also
-## noch wachsen).
+## dort aus für Soldaten erreichbar, am Boden ohne Gebäude und nicht in taken (wird beim Aufruf
+## gelesen, darf also noch wachsen).
 func _free_post_filter(origin: Vector3i, taken: Dictionary[Vector3i, bool]) -> Callable:
-	var reachable := Pathfinder.distances(origin, _is_walkable_position)
+	var reachable := _distances(origin, Walker.SOLDIER)
 	return func(tile: Vector2i) -> bool:
 		var position := Vector3i(tile.x, tile.y, origin.z)
-		return reachable.has(position) and not taken.has(position) and get_building_at(tile) == null
+		return reachable.has(position) and not taken.has(position) \
+				and (origin.z != Resident.Level.GROUND or get_building_at(tile) == null)
 
 
 ## Schickt einen Soldaten zu seinem Posten; steht er schon dort, bleibt er. Gibt es keinen Weg,
@@ -1787,6 +1946,14 @@ func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
 		for tile in adjacent:
 			var deposit := map.get_deposit(tile)
 			if deposit != null and deposit.type == deposit_type:
+				return true
+		return false
+	if kind == "next_to_behavior":
+		# Grenzt an ein Gebäude mit einem der genannten Verhalten (z. B. Treppe an Mauer).
+		var behaviors: Array = rule["behavior"]
+		for tile in adjacent:
+			var other := get_building_at(tile)
+			if other != null and behaviors.has(other.def()["behavior"]):
 				return true
 		return false
 	if kind == "on_terrain":

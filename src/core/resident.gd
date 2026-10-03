@@ -7,8 +7,8 @@ extends RefCounted
 ## Arbeiter eines Sammlers, Hofs oder Herstellungsbetriebs gehen dazu den Arbeitsablauf in
 ## Task durch; die Spielwelt treibt ihn an, hier steht nur der Zustand.
 
-## Höhenstufe einer Position; bisher gibt es nur den Boden.
-enum Level { GROUND = 0 }
+## Höhenstufe einer Position: Boden oder Wehrgang (oben auf Mauern, nur für Soldaten).
+enum Level { GROUND = 0, WALL_WALK = 1 }
 ## Schritt im Arbeitsablauf eines Sammlers, Hofs bzw. Herstellungsbetriebs. Gewartet und gearbeitet wird erst, wenn er steht.
 enum Task {
 	## Untätig oder noch ohne Auftrag.
@@ -273,9 +273,20 @@ func advance() -> bool:
 func tile_point(fraction: float) -> Vector2:
 	if path.is_empty():
 		return Vector2(tile)
-	var next := Vector2(path[0].x, path[0].y)
-	var weight := clampf((step_progress + fraction) / step_ticks(position(), path[0]), 0.0, 1.0)
-	return Vector2(tile).lerp(next, weight)
+	return Vector2(tile).lerp(Vector2(path[0].x, path[0].y), _step_weight(fraction))
+
+
+## Ebene zwischen zwei Takten für die Darstellung, wie tile_point(): 0 am Boden, 1 auf dem
+## Wehrgang, dazwischen auf dem Weg die Treppe hinauf oder hinab.
+func level_point(fraction: float) -> float:
+	if path.is_empty():
+		return float(level)
+	return lerpf(float(level), float(path[0].z), _step_weight(fraction))
+
+
+## Wie weit er im aktuellen Schritt ist (0 bis 1); fraction ist der Bruchteil bis zum nächsten Takt.
+func _step_weight(fraction: float) -> float:
+	return clampf((step_progress + fraction) / step_ticks(position(), path[0]), 0.0, 1.0)
 
 
 ## Als reine Daten für den Spielstand.

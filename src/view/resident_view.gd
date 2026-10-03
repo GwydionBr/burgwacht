@@ -5,7 +5,7 @@ extends Node2D
 ## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten. Getragene Ware als
 ## Bündel auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
 ## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen);
-## ausgewählte stehen in einem Ring.
+## ausgewählte stehen in einem Ring. Auf dem Wehrgang steht die Figur um die Mauerhöhe angehoben.
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.25)
 const OUTLINE_COLOR := Color(0, 0, 0, 0.45)
@@ -22,6 +22,11 @@ const WOOD_COLOR := Color("#6b4423")
 const RING_COLOR := Color(1, 0.95, 0.7, 0.95)
 ## Fläche der Figur um den Fußpunkt, in der ein Klick sie trifft.
 const HIT_RECT := Rect2(-8, -27, 16, 30)
+## So hoch über dem Boden liegt der Wehrgang (= "height" der Mauer in buildings.json).
+const WALL_WALK_HEIGHT := 28.0
+## Auf dem Wehrgang wird die Figur sortiert, als stünde sie knapp eine halbe Kachel weiter vorn:
+## nach der Mauer, auf der sie steht, aber vor den Mauern und Figuren auf den Kacheln davor.
+const WALL_WALK_SORT := Iso.TILE_H * 0.5 - 1.0
 
 ## Ist er ausgewählt? Dann steht er in einem Ring.
 var selected := false:
@@ -31,6 +36,8 @@ var selected := false:
 
 var _resident: Resident
 var _clock: GameClock
+## Um so viel ist die Figur über ihrem Sortierpunkt gezeichnet (auf dem Wehrgang).
+var _lift := 0.0
 
 
 func setup(resident: Resident, clock: GameClock) -> void:
@@ -46,11 +53,14 @@ func _process(_delta: float) -> void:
 
 ## Die Fläche der Figur in Weltkoordinaten (für Klick und Rahmen).
 func hit_rect() -> Rect2:
-	return Rect2(position + HIT_RECT.position, HIT_RECT.size)
+	return Rect2(position + HIT_RECT.position + Vector2(0, -_lift), HIT_RECT.size)
 
 
 func _update_position() -> void:
-	position = Iso.point_to_world(_resident.tile_point(_clock.tick_fraction()))
+	var fraction := _clock.tick_fraction()
+	var level := _resident.level_point(fraction)
+	position = Iso.point_to_world(_resident.tile_point(fraction)) + Vector2(0, WALL_WALK_SORT * level)
+	_lift = (WALL_WALK_SORT + WALL_WALK_HEIGHT) * level
 	visible = not _resident.is_inside_building()
 	queue_redraw()
 
@@ -63,11 +73,11 @@ func _bob() -> float:
 
 
 func _draw() -> void:
-	draw_set_transform(Vector2(0, 1), 0.0, Vector2(1.0, 0.5))
+	draw_set_transform(Vector2(0, 1 - _lift), 0.0, Vector2(1.0, 0.5))
 	draw_circle(Vector2.ZERO, 7.0, SHADOW_COLOR)
 	if selected:
 		draw_arc(Vector2.ZERO, 11.0, 0, TAU, 32, RING_COLOR, 2.0, true)
-	draw_set_transform(Vector2(0, -_bob()))
+	draw_set_transform(Vector2(0, -_bob() - _lift))
 	# Beine, Körper (Kittel), Kopf.
 	draw_rect(Rect2(-3.5, -7, 2.5, 7), LEG_COLOR)
 	draw_rect(Rect2(1, -7, 2.5, 7), LEG_COLOR)

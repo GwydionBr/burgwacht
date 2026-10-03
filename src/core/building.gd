@@ -44,6 +44,16 @@ func is_barracks() -> bool:
 	return def()["behavior"] == "barracks"
 
 
+## Treppe (Verhalten „stairs“): Aufgang vom Boden auf den Wehrgang der Mauerkacheln daneben.
+func is_stairs() -> bool:
+	return def()["behavior"] == "stairs"
+
+
+## Trägt das Gebäude einen Wehrgang ("walkway" in den Daten, z. B. die Mauer)?
+func has_walkway() -> bool:
+	return bool(def().get("walkway", false))
+
+
 ## Beschäftigt das Gebäude Arbeiter ("workers" in den Daten)?
 func is_workplace() -> bool:
 	return worker_slots() > 0

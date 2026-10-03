@@ -275,5 +275,27 @@
     "hotkey": "C",
     "color": "#7a3b34",
     "height": 30
+  },
+  "wall": {
+    "name": "Mauer",
+    "behavior": "wall",
+    "size": [1, 1],
+    "cost": { "stone": 2 },
+    "line": true,
+    "walkway": true,
+    "hotkey": "Q",
+    "color": "#8f897d",
+    "height": 28
+  },
+  "stairs": {
+    "name": "Treppe",
+    "behavior": "stairs",
+    "size": [1, 1],
+    "cost": { "stone": 1 },
+    "walkable": true,
+    "rules": [{ "kind": "next_to_behavior", "behavior": ["wall"], "reason": "Muss an eine Mauer grenzen" }],
+    "hotkey": "I",
+    "color": "#a39d90",
+    "height": 12
   }
 }
