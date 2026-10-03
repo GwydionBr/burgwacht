@@ -64,6 +64,8 @@ const FOUNDING_TYPE := "keep"
 const NO_SITE := Vector2i(-1, -1)
 ## Grund für jeden anderen Befehl während der Gründung.
 const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
+## Schlüssel in den Baukosten für Gold aus dem Schatz (keine Ware).
+const GOLD := "gold"
 
 var map: MapData
 
@@ -252,8 +254,8 @@ func placement_error(type_id: String, origin: Vector2i) -> String:
 
 
 ## Darf der Befehl „Gebäude bauen“ jetzt Typ type_id mit diesem Ursprung bauen? Leer oder
-## der Grund. Erst placement_error(), dann die Bauregeln des Typs, als letzte
-## Prüfung „genug Waren“ (Kosten aus den Daten).
+## der Grund. Erst placement_error(), dann die Bauregeln des Typs, dann „genug Waren“ und
+## als letzte Prüfung „genug Gold“ (Kosten aus den Daten).
 func build_error(type_id: String, origin: Vector2i) -> String:
 	if _founding:
 		return FOUNDING_FIRST
@@ -267,10 +269,13 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 	var rules := _rules_error(type_id, origin)
 	if rules != "":
 		return rules
-	var cost := _cost_of(type_id)
+	var cost := _goods_cost_of(type_id)
 	for good: String in cost:
-		if get_stock(good) < int(cost[good]):
-			return "Zu wenig %s (%d nötig)" % [_good_name(good), int(cost[good])]
+		if get_stock(good) < cost[good]:
+			return "Zu wenig %s (%d nötig)" % [_good_name(good), cost[good]]
+	var gold := gold_cost_of(type_id)
+	if _treasury < gold:
+		return "Nicht genug Gold (%d nötig)" % gold
 	return ""
 
 
@@ -536,6 +541,14 @@ func get_treasury() -> int:
 	return _treasury
 
 
+## Steht ein Markt (Gebäude mit Verhalten „market“)?
+func has_market() -> bool:
+	for building: Building in _buildings.values():
+		if building.is_market():
+			return true
+	return false
+
+
 ## Die tatsächlich gegessene Ration des letzten Tags – bei Mangel kleiner als die
 ## eingestellte; vor dem ersten Tag die Vorschau aus Einstellung und Vorrat.
 func get_eaten_ration() -> String:
@@ -611,10 +624,7 @@ func _start_day() -> void:
 	_short_of_food = _is_lower_ration(meal.ration, _ration)
 	if _short_of_food:
 		notice.emit("Nicht genug Nahrung – Ration: %s" % Population.ration_name(meal.ration))
-	var taxes := _daily_taxes()
-	if taxes > 0:
-		_treasury += taxes
-		treasury_changed.emit()
+	_change_treasury(_daily_taxes())
 	_factors = _factors_of(meal)
 	factors_changed.emit()
 	var popularity := clampi(_popularity + get_factor_sum(), 0, 100)
@@ -1217,11 +1227,12 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	var error := build_error(type_id, origin)
 	if error != "":
 		return error
-	var cost := _cost_of(type_id)
+	var cost := _goods_cost_of(type_id)
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
-		_take_goods(good, int(cost[good]), changed)
+		_take_goods(good, cost[good], changed)
 	_emit_stock_changed(changed)
+	_change_treasury(-gold_cost_of(type_id))
 	_make_way(_add_building(type_id, origin))
 	return ""
 
@@ -1309,12 +1320,14 @@ func _demolish(id: int) -> String:
 	# Mit einem Wohnhaus kann Wohnraum fehlen.
 	_send_away_surplus()
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
-	var cost := _cost_of(building.type)
+	var cost := _goods_cost_of(building.type)
 	var changed: Dictionary[int, bool] = {}
 	for good: String in cost:
 		@warning_ignore("integer_division")
-		_store_goods(good, int(cost[good]) / 2, changed)
+		_store_goods(good, cost[good] / 2, changed)
 	_emit_stock_changed(changed)
+	@warning_ignore("integer_division")
+	_change_treasury(gold_cost_of(building.type) / 2)
 	return ""
 
 
@@ -1460,9 +1473,28 @@ func _building_name(type_id: String) -> String:
 	return str(GameDefs.get_instance().buildings[type_id]["name"])
 
 
-## Baukosten eines Gebäudetyps: Ware → Menge.
-func _cost_of(type_id: String) -> Dictionary:
-	return GameDefs.get_instance().buildings[type_id]["cost"]
+## Baukosten eines Gebäudetyps in Waren: Ware → Menge (ohne Gold).
+func _goods_cost_of(type_id: String) -> Dictionary[String, int]:
+	var result: Dictionary[String, int] = {}
+	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	for good: String in cost:
+		if good != GOLD:
+			result[good] = int(cost[good])
+	return result
+
+
+## Baukosten eines Gebäudetyps in Gold aus dem Schatz (0, wenn keins).
+static func gold_cost_of(type_id: String) -> int:
+	var cost: Dictionary = GameDefs.get_instance().buildings[type_id]["cost"]
+	return int(cost.get(GOLD, 0))
+
+
+## Ändert das Gold im Schatz um amount und meldet es (nichts bei 0).
+func _change_treasury(amount: int) -> void:
+	if amount == 0:
+		return
+	_treasury += amount
+	treasury_changed.emit()
 
 
 func _good_name(good: String) -> String:

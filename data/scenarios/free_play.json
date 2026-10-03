@@ -5,5 +5,5 @@
   "start_goods": { "wood": 100, "stone": 50, "apples": 40 },
   "start_residents": 8,
   "start_popularity": 50,
-  "start_gold": 0
+  "start_gold": 100
 }

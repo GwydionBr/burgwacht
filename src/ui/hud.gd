@@ -279,14 +279,19 @@ func show_tool(build_type: String, demolishing: bool) -> void:
 	_demolish_button.set_pressed_no_signal(demolishing)
 
 
-## Knopf mit Name, Taste und Kosten, z. B. „Holzfäller [H]“ über „3 Holz“.
+## Knopf mit Name, Taste und Kosten, z. B. „Holzfäller [H]“ über „3 Holz“; Gold aus dem
+## Schatz zuletzt („20 Holz, 30 Gold“).
 func _make_build_button(type_id: String) -> Button:
 	var defs := GameDefs.get_instance()
 	var def: Dictionary = defs.buildings[type_id]
 	var cost: Dictionary = def["cost"]
 	var cost_parts: PackedStringArray = []
 	for good: String in cost:
-		cost_parts.append("%d %s" % [int(cost[good]), defs.goods[good]["name"]])
+		if good != GameWorld.GOLD:
+			cost_parts.append("%d %s" % [int(cost[good]), defs.goods[good]["name"]])
+	var gold := GameWorld.gold_cost_of(type_id)
+	if gold > 0:
+		cost_parts.append("%d Gold" % gold)
 	var button := _make_tool_button(
 		"%s [%s]\n%s" % [def["name"], def["hotkey"], ", ".join(cost_parts) if not cost_parts.is_empty() else "kostenlos"])
 	button.pressed.connect(func() -> void: build_selected.emit(type_id))

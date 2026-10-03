@@ -1,0 +1,8 @@
+{
+  "name": "Kleine Testkarte mit Gold für einen Markt",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50 },
+  "start_residents": 4,
+  "start_gold": 45
+}

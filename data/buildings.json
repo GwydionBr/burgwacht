@@ -167,5 +167,15 @@
     "hotkey": "E",
     "color": "#5a5550",
     "height": 22
+  },
+  "market": {
+    "name": "Markt",
+    "behavior": "market",
+    "size": [3, 3],
+    "entrance": [1, 2],
+    "cost": { "wood": 20, "gold": 30 },
+    "hotkey": "T",
+    "color": "#b5523b",
+    "height": 20
   }
 }

@@ -167,8 +167,8 @@ func test_missing_start_gold_means_zero() -> void:
 	assert_eq(Scenario.from_dict("test", _valid_data()).start_gold, 0, "Startgold:")
 
 
-func test_free_play_starts_without_gold() -> void:
-	assert_eq(Scenario.load_named(Scenario.DEFAULT).start_gold, 0, "Startgold:")
+func test_free_play_starts_with_100_gold() -> void:
+	assert_eq(Scenario.load_named(Scenario.DEFAULT).start_gold, 100, "Startgold:")
 
 
 func test_bad_start_gold_is_invalid() -> void:
