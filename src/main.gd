@@ -96,7 +96,9 @@ func _ready() -> void:
 	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	if args.has("load"):
-		_load_from(str(args["load"]))
+		var load_error := _load_from(str(args["load"]))
+		if load_error != "":
+			printerr("--load: ", load_error)
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
@@ -124,26 +126,38 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
+	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
 			if building.is_barracks():
 				_open_barracks(building.id)
 				break
+		if not _hud.is_barracks_open():
+			printerr("--barracks: keine Kaserne")
 	if args.has("select"):
 		_set_selection(_soldier_views())
-	var focus := str(args.get("focus", "")).split(",")
-	if focus.size() == 2:
-		_camera.focus_on(Iso.tile_to_world(Vector2i(int(focus[0]), int(focus[1]))))
-	if args.has("screenshot"):
-		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
-		set_process(false)
-		_hovered = world.map.center()
-		var hover := str(args.get("hover", "")).split(",")
-		if hover.size() == 2:
-			_hovered = Vector2i(int(hover[0]), int(hover[1]))
-		var box := str(args.get("box", "")).split(",")
+		if _selected.is_empty():
+			printerr("--select: keine Soldaten")
+	if args.has("focus"):
+		var focus := str(args["focus"]).split(",")
+		if focus.size() == 2:
+			_camera.focus_on(Iso.tile_to_world(Vector2i(int(focus[0]), int(focus[1]))))
+		else:
+			printerr("--focus: Format: --focus=x,y")
+	# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
+	var hover_tile := world.map.center()
+	var hover := str(args.get("hover", "")).split(",")
+	if hover.size() == 2:
+		hover_tile = Vector2i(int(hover[0]), int(hover[1]))
+	if args.has("box"):
+		var box := str(args["box"]).split(",")
 		if box.size() == 2:
-			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(_hovered))
+			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(hover_tile))
+		else:
+			printerr("--box: Format: --box=x,y")
+	if args.has("screenshot"):
+		set_process(false)
+		_hovered = hover_tile
 		_update_hover()
 		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
@@ -392,7 +406,7 @@ func _show_world(new_world: GameWorld) -> void:
 	var map := world.map
 	_terrain.show_map(map)
 
-	for view in _deposit_views.values():
+	for view: DepositView in _deposit_views.values():
 		view.queue_free()
 	_deposit_views.clear()
 	for tile in map.deposits:
@@ -442,17 +456,16 @@ func _quick_load() -> void:
 	_load_from(QUICKSAVE_PATH)
 
 
-## Lädt den Spielstand aus dieser Datei; Fehler als Meldung.
-func _load_from(path: String) -> void:
+## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
+func _load_from(path: String) -> String:
 	var file := FileAccess.open(path, FileAccess.READ)
 	var data: Variant = file.get_var() if file != null else null
-	if not data is Dictionary:
-		_hud.show_message("Spielstand ist beschädigt")
-		return
-	var error := GameWorld.data_error(data)
+	var error := "Spielstand ist beschädigt"
+	if data is Dictionary:
+		error = GameWorld.data_error(data)
 	if error != "":
 		_hud.show_message(error)
-		return
+		return error
 	var loaded := GameWorld.from_data(data)
 	# Neue Karte (N) danach im Szenario des Spielstands.
 	var scenario := Scenario.load_named(loaded.get_scenario_id())
@@ -460,6 +473,7 @@ func _load_from(path: String) -> void:
 		_scenario = scenario
 	_show_world(loaded)
 	_hud.show_message("Geladen (Tag %d)" % world.get_day())
+	return ""
 
 
 func _add_deposit_view(tile: Vector2i) -> void:

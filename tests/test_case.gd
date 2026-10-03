@@ -8,14 +8,18 @@ const TEST_SCENARIO_DIR := "res://tests/scenarios/"
 const TEST_RANDOM_SEED := 12345
 
 var failures: PackedStringArray = []
+## Zahl der ausgeführten Prüfungen; ein Test ganz ohne Prüfung gilt als fehlgeschlagen.
+var checks := 0
 
 
 func assert_true(condition: bool, message := "") -> void:
+	checks += 1
 	if not condition:
 		failures.append(message if message != "" else "Bedingung ist falsch")
 
 
 func assert_eq(actual: Variant, expected: Variant, message := "") -> void:
+	checks += 1
 	if actual != expected:
 		failures.append("%s erwartet %s, war %s" % [message, str(expected), str(actual)])
 
