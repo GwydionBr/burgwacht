@@ -3,7 +3,7 @@ extends Figure
 ## Ein Bewohner der Burg (Bewegung und Kampfwerte: Figure). Ein gerader Schritt dauert
 ## "ticks_per_tile" Takte (units.json, beim Soldaten die seines Soldatentyps).
 ## Ein Soldat ist weiter Bewohner, arbeitet aber nicht: Er geht zu seinem Posten und steht dort
-## bzw. greift den befohlenen Feind an.
+## bzw. greift den befohlenen Feind an; ohne Befehl verteidigt er sich selbst.
 ## Arbeiter eines Sammlers, Hofs oder Herstellungsbetriebs gehen dazu den Arbeitsablauf in
 ## Task durch; die Spielwelt treibt ihn an, hier steht nur der Zustand.
 
@@ -113,6 +113,9 @@ var timer := 0
 var soldier_type := ""
 ## Nur bei Soldaten: die Position, zu der er gehört (anfangs eine Kachel an der Kaserne).
 var post := Vector3i.ZERO
+## Nur bei Soldaten mit Ziel (target_id): Verteidigt er sich selbst, ohne Befehl? Dann verfolgt er
+## höchstens bis zur Leine und kehrt danach zum Posten zurück.
+var defending := false
 
 
 static func create(resident_id: int, start_tile: Vector2i, start_level: Level) -> Resident:
@@ -217,7 +220,7 @@ func to_data() -> Dictionary:
 	data.merge({
 		"workplace": workplace_id, "task": task, "deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
 		"good": carried_good, "amount": carried_amount, "timer": timer,
-		"soldier_type": soldier_type, "post": [post.x, post.y, post.z],
+		"soldier_type": soldier_type, "post": [post.x, post.y, post.z], "defending": defending,
 	})
 	return data
 
@@ -237,4 +240,5 @@ static func from_data(data: Dictionary) -> Resident:
 	resident.soldier_type = str(data["soldier_type"])
 	var post_data: Array = data["post"]
 	resident.post = Vector3i(int(post_data[0]), int(post_data[1]), int(post_data[2]))
+	resident.defending = bool(data["defending"])
 	return resident
