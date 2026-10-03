@@ -4,7 +4,6 @@ extends SceneTree
 ## Aufruf: godot --headless --path . --script res://tests/smoke_save.gd -- /pfad/zum.sav
 ## Wird bei jedem Rauchtest neu erzeugt und passt deshalb immer zum Speicherformat.
 
-const KEEP_ORIGIN := Vector2i(2, 2)
 const ARMORY_SITE := Vector2i(10, 10)
 const BARRACKS_SITE := Vector2i(14, 2)
 const SOLDIERS := 2
@@ -18,19 +17,20 @@ func _initialize() -> void:
 		printerr("Aufruf: … --script res://tests/smoke_save.gd -- /pfad/zum.sav")
 		quit(1)
 		return
+	# Die Hilfen der Tests (wie in test_move.gd); ein fehlgeschlagenes assert() darin meldet
+	# Godot als Fehler, und daran scheitert der Rauchtest.
 	var helper := TestCase.new()
 	var world := helper.empty_world("tiny_production")
-	var reason := world.execute(Command.found(KEEP_ORIGIN))
+	helper.found_castle(world)
 	var armory := helper.build(world, "armory", ARMORY_SITE)
 	helper.put_goods(world, armory, "sword", SOLDIERS)
 	var barracks := helper.build(world, "barracks", BARRACKS_SITE)
 	for i in SOLDIERS:
-		if reason == "":
-			reason = world.execute(Command.recruit(barracks, "swordsman"))
-	if reason != "":
-		printerr("Spielstand für den Rauchtest: ", reason)
-		quit(1)
-		return
+		var reason := world.execute(Command.recruit(barracks, "swordsman"))
+		if reason != "":
+			printerr("Spielstand für den Rauchtest: Anwerben: ", reason)
+			quit(1)
+			return
 	for i in TICKS:
 		world.step()
 	var file := FileAccess.open(args[0], FileAccess.WRITE)

@@ -8,10 +8,15 @@ FAILED=0
 # auch „--barracks: …“ und Co., wenn ein Startparameter nichts bewirkt.
 smoke() {
 	OUTPUT=$(godot --headless --path . --quit-after 30 -- --seed=1 "$@" 2>&1)
-	if [ $? -ne 0 ] || echo "$OUTPUT" | grep -q "ERROR\|^--[a-z]*:"; then
+	check $? "$*"
+}
+# Wertet Exitcode ($1) und $OUTPUT eines Godot-Laufs aus; $2 benennt ihn in der Meldung.
+check() {
+	if [ "$1" -ne 0 ] || echo "$OUTPUT" | grep -q "ERROR\|^--[a-z]*:"; then
 		FAILED=1
-		echo "FEHLER  Rauchtest: $*"
+		echo "FEHLER  Rauchtest: $2"
 		echo "$OUTPUT" | grep -v "^Godot Engine" | sed 's/^/        /'
+		return 1
 	fi
 }
 smoke
@@ -22,12 +27,6 @@ smoke --days=1 --demolish
 SAVE=$(mktemp /tmp/burgwacht-rauchtest-XXXXXX)
 trap 'rm -f "$SAVE"' EXIT
 OUTPUT=$(godot --headless --path . --script res://tests/smoke_save.gd -- "$SAVE" 2>&1)
-if [ $? -ne 0 ] || echo "$OUTPUT" | grep -q "ERROR"; then
-	FAILED=1
-	echo "FEHLER  Rauchtest: Spielstand mit Kaserne (tests/smoke_save.gd)"
-	echo "$OUTPUT" | grep -v "^Godot Engine" | sed 's/^/        /'
-else
-	smoke --load="$SAVE" --barracks --select --box=10,7
-fi
+check $? "Spielstand mit Kaserne (tests/smoke_save.gd)" && smoke --load="$SAVE" --barracks --select --box=10,7
 [ $FAILED -eq 0 ] && echo "Rauchtest bestanden"
 exit $FAILED

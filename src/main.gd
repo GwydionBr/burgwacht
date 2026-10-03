@@ -130,22 +130,22 @@ func _ready() -> void:
 		_set_selection(_soldier_views())
 		if _selected.is_empty():
 			printerr("--select: keine Soldaten")
-	# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover
-	# (ohne --screenshot nur bis zur ersten Mausbewegung).
-	_hovered = world.map.center()
+	# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
+	var hover_tile := world.map.center()
 	var hover := str(args.get("hover", "")).split(",")
 	if hover.size() == 2:
-		_hovered = Vector2i(int(hover[0]), int(hover[1]))
+		hover_tile = Vector2i(int(hover[0]), int(hover[1]))
 	if args.has("box"):
 		var box := str(args["box"]).split(",")
 		if box.size() == 2:
-			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(_hovered))
+			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(hover_tile))
 		else:
 			printerr("--box: Format: --box=x,y")
-	_update_hover()
-	_update_preview()
 	if args.has("screenshot"):
 		set_process(false)
+		_hovered = hover_tile
+		_update_hover()
+		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
 
 
