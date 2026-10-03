@@ -463,7 +463,7 @@ func _update_market() -> void:
 	for good: String in GameDefs.get_instance().goods:
 		buy_errors[good] = world.trade_error(good, true)
 		sell_errors[good] = world.trade_error(good, false)
-	_hud.show_trade_errors(world.has_market(), buy_errors, sell_errors)
+	_hud.show_trade_errors(world.market_error(), buy_errors, sell_errors)
 
 
 ## Handel aus der Marktansicht als Befehl abschicken.

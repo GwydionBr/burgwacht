@@ -52,7 +52,7 @@ var _factor_sum_label: Label
 var _market_panel: PanelContainer
 ## Ware → Feld für ihren Bestand in der Marktansicht.
 var _market_stock_labels: Dictionary[String, Label] = {}
-## Hinweis oben in der Marktansicht, solange kein Markt steht.
+## Grund oben in der Marktansicht, solange kein Markt steht.
 var _market_missing_label: Label
 ## Ware → Knopf „Kaufen“ bzw. „Verkaufen“ in der Marktansicht (nur handelbare Waren).
 var _buy_buttons: Dictionary[String, Button] = {}
@@ -248,10 +248,11 @@ func show_market_stock(stock: Dictionary[String, int]) -> void:
 
 
 ## Handelsknöpfe der Marktansicht: Grund je Ware für Kauf bzw. Verkauf (leer = möglich);
-## gesperrte Knöpfe zeigen ihn als Hinweis. Ohne Markt steht oben „Kein Markt gebaut“.
-func show_trade_errors(has_market: bool, buy_errors: Dictionary[String, String],
+## gesperrte Knöpfe zeigen ihn als Hinweis. Ohne Markt steht oben market_error.
+func show_trade_errors(market_error: String, buy_errors: Dictionary[String, String],
 		sell_errors: Dictionary[String, String]) -> void:
-	_market_missing_label.visible = not has_market
+	_market_missing_label.text = market_error
+	_market_missing_label.visible = market_error != ""
 	for good: String in _buy_buttons:
 		_set_trade_reason(_buy_buttons[good], buy_errors[good])
 		_set_trade_reason(_sell_buttons[good], sell_errors[good])
@@ -363,7 +364,7 @@ func _make_market_panel() -> PanelContainer:
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
 	column.add_child(_make_label("Markt", TEXT_COLOR, 20))
-	_market_missing_label = _make_label("Kein Markt gebaut", BLOCKED_COLOR, 15)
+	_market_missing_label = _make_label("", BLOCKED_COLOR, 15)
 	column.add_child(_market_missing_label)
 	var grid := GridContainer.new()
 	grid.columns = 6

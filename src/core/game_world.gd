@@ -273,12 +273,10 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 		return rules
 	var cost := goods_cost_of(type_id)
 	for good: String in cost:
-		if get_stock(good) < cost[good]:
-			return "Zu wenig %s (%d nötig)" % [_good_name(good), cost[good]]
-	var gold := gold_cost_of(type_id)
-	if _treasury < gold:
-		return "Nicht genug Gold (%d nötig)" % gold
-	return ""
+		var stock := _stock_error(good, cost[good])
+		if stock != "":
+			return stock
+	return _gold_error(gold_cost_of(type_id))
 
 
 ## Darf der Befehl „Gebäude abreißen“ das Gebäude mit dieser ID jetzt abreißen? Leer oder
@@ -301,8 +299,9 @@ func demolish_error(id: int) -> String:
 ## verkaufen? Leer oder der Grund. Prüfreihenfolge: Markt vorhanden → Ware handelbar → beim
 ## Kauf Lager der Lagerart vorhanden, genug Gold, Platz für alles → beim Verkauf genug Bestand.
 func trade_error(good: String, buying: bool) -> String:
-	if not has_market():
-		return "Kein Markt gebaut"
+	var market := market_error()
+	if market != "":
+		return market
 	if not GameDefs.get_instance().goods.has(good):
 		return "Diese Ware gibt es nicht"
 	if not Market.is_tradable(good):
@@ -310,16 +309,33 @@ func trade_error(good: String, buying: bool) -> String:
 	var amount := Market.trade_amount()
 	var storage_type := _storage_type_of(good)
 	if not buying:
-		if get_stock(good) < amount:
-			return "Zu wenig %s (%d nötig)" % [_good_name(good), amount]
-		return ""
+		return _stock_error(good, amount)
 	if _storages(storage_type).is_empty():
 		return Building.storage_missing_text(storage_type)
-	var price := amount * Market.buy_price(good)
-	if _treasury < price:
-		return "Nicht genug Gold (%d nötig)" % price
+	var gold := _gold_error(amount * Market.buy_price(good))
+	if gold != "":
+		return gold
 	if get_storage_capacity(storage_type) - get_storage_used(storage_type) < amount:
 		return "Kein Platz im Lager"
+	return ""
+
+
+## Kann überhaupt gehandelt werden (steht ein Markt)? Leer oder der Grund.
+func market_error() -> String:
+	return "" if has_market() else "Kein Markt gebaut"
+
+
+## Grund, wenn weniger als amount der Ware auf Lager ist (Bauen und Verkauf), sonst leer.
+func _stock_error(good: String, amount: int) -> String:
+	if get_stock(good) < amount:
+		return "Zu wenig %s (%d nötig)" % [_good_name(good), amount]
+	return ""
+
+
+## Grund, wenn weniger als amount Gold im Schatz ist (Bauen und Kauf), sonst leer.
+func _gold_error(amount: int) -> String:
+	if _treasury < amount:
+		return "Nicht genug Gold (%d nötig)" % amount
 	return ""
 
 
