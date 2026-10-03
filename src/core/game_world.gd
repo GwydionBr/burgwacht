@@ -396,7 +396,7 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 		Resident.Task.TO_DEPOSIT:
 			return "geht zum %s" % deposit_name
 		Resident.Task.MINING:
-			return "baut %s ab" % deposit_name
+			return Deposit.mining_text_of(workplace.deposit_type())
 		Resident.Task.RETURNING, Resident.Task.TO_STORAGE:
 			return "trägt %s" % carried
 		Resident.Task.PROCESSING:
@@ -1193,8 +1193,10 @@ func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictiona
 			return extra_blocked[tile]
 	if not Building.has_entrance_type(type_id):
 		return ""
+	# Begehbare Vorkommen (z. B. Wild) versperren den Eingang nicht.
 	var front := Building.front_of_entrance(type_id, origin)
-	if not map.is_walkable(front) or map.get_deposit(front) != null \
+	var front_deposit := map.get_deposit(front)
+	if not map.is_walkable(front) or (front_deposit != null and not front_deposit.is_walkable()) \
 			or _occupied.has(front) or extra_blocked.has(front):
 		return "Eingang ist versperrt"
 	return ""
@@ -1277,9 +1279,9 @@ func _set_map(new_map: MapData) -> void:
 	map.deposit_changed.connect(deposit_changed.emit)
 
 
-## Vorkommen mit "spread" in den Daten (z. B. Bäume) breiten sich in ihrem Rhythmus aus:
+## Vorkommen mit "spread" in den Daten (z. B. Bäume, Wild) breiten sich in ihrem Rhythmus aus:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
-## angegebenen Chance ein neues. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
+## angegebenen Chance ein neues – mit "terrain" nur auf diesen Geländen. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
 ## ein Bewohner steht, bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
@@ -1292,11 +1294,12 @@ func _spread_deposits() -> void:
 			continue
 		var spread: Dictionary = deposit_def["spread"]
 		if _tick % int(spread["interval_ticks"]) == 0:
-			_spread_type(type, float(spread["chance"]))
+			_spread_type(type, float(spread["chance"]), Deposit.spread_terrains_of(type))
 
 
+## terrains leer: auf jedem bebaubaren Gelände.
 @warning_ignore("integer_division")
-func _spread_type(type: String, chance: float) -> void:
+func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 	var standing: Dictionary[Vector2i, bool] = {}
 	for resident: Resident in _residents.values():
 		standing[resident.tile] = true
@@ -1314,5 +1317,6 @@ func _spread_type(type: String, chance: float) -> void:
 			continue
 		var tile := Vector2i(i % map.width, i / map.width)
 		if map.is_buildable(tile) and not _occupied.has(tile) and not _entrance_fronts.has(tile) \
+				and (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \
 				and _rng.randf() < chance and not standing.has(tile):
 			map.add_deposit(tile, Deposit.create(type, _rng))
