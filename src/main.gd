@@ -16,8 +16,11 @@ extends Node2D
 ##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
 ##   --load=pfad.sav       Spielstand laden statt neuer Partie (für Screenshots)
+##   --setup=name          Spielwelt aus tests/setups/name.gd statt neuer Partie (für Testzustände)
+##   --preset=id           Startparameter des Testzustands aus tools/presets.json (eigene gehen vor)
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
+##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
@@ -26,7 +29,8 @@ extends Node2D
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/G/H/B/J/O/P) ein Gebäude: Vorschau unter der Maus,
-## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn.
+## Linksklick baut und bleibt im Baumodus, Rechtsklick oder Esc beendet ihn. Mauern (Q) zieht
+## man mit der linken Taste als Linie (grün/rot je Kachel), Loslassen schickt den Befehl Mauerlinie.
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
 ## V öffnet und schließt die Verwaltung (Esc schließt sie auch); darin stellen ◀ ▶ bzw. −/+
@@ -36,8 +40,9 @@ extends Node2D
 ## ihre Knöpfe schicken den Befehl Anwerben.
 ## Ohne Werkzeug wählt ein Linksklick einen Soldaten (Ring), Linksziehen alle im Rahmen; ein
 ## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
-## sonst per Befehl Bewegen dorthin; Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die
-## Auswahl auf. F8 lässt im Debug-Build einen Räuber am Rand nächst dem Bergfried erscheinen.
+## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus eine Mauer liegt –;
+## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
+## einen Räuber am Rand nächst dem Bergfried erscheinen.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -60,6 +65,9 @@ var _barracks_id := 0
 var _selected: Array[int] = []
 ## Linke Taste ohne Werkzeug gedrückt: Klick oder Rahmen wählen Soldaten aus.
 var _selecting := false
+## Linke Taste im Baumodus einer Mauer gedrückt: Die Linie beginnt bei _line_start.
+var _drawing_line := false
+var _line_start := Vector2i.ZERO
 ## Wo die linke bzw. rechte Taste gedrückt wurde (Bildschirm); links auch in der Welt.
 var _left_press := Vector2.ZERO
 var _left_press_world := Vector2.ZERO
@@ -95,6 +103,13 @@ func _ready() -> void:
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
+	if args.has("setup"):
+		var setup_path := Presets.setup_path(str(args["setup"]))
+		if ResourceLoader.exists(setup_path):
+			var setup: GDScript = load(setup_path)
+			_show_world(setup.call("create"))
+		else:
+			printerr("--setup: ", setup_path, " fehlt")
 	if args.has("load"):
 		var load_error := _load_from(str(args["load"]))
 		if load_error != "":
@@ -158,6 +173,10 @@ func _ready() -> void:
 	if args.has("screenshot"):
 		set_process(false)
 		_hovered = hover_tile
+		var line := str(args.get("line", "")).split(",")
+		if line.size() == 2:
+			_drawing_line = true
+			_line_start = Vector2i(int(line[0]), int(line[1]))
 		_update_hover()
 		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
@@ -172,8 +191,13 @@ func _process(_delta: float) -> void:
 
 
 ## Eine begonnene Auswahl folgt der Maus und endet beim Loslassen – auch über dem HUD, das
-## diese Ereignisse sonst abfängt.
+## diese Ereignisse sonst abfängt. Ebenso endet eine Mauerlinie beim Loslassen.
 func _input(event: InputEvent) -> void:
+	var release := event as InputEventMouseButton
+	if _drawing_line and release != null and release.button_index == MOUSE_BUTTON_LEFT and not release.pressed:
+		_drawing_line = false
+		_execute_or_show(Command.build_line(_build_type, _line_start, _hovered))
+		_update_preview()
 	if not _selecting:
 		return
 	var motion := event as InputEventMouseMotion
@@ -216,7 +240,7 @@ func _right_click() -> void:
 		if enemy != 0:
 			_execute_or_show(Command.attack(_selected, enemy))
 		else:
-			_execute_or_show(Command.move(_selected, Resident.ground(_hovered)))
+			_execute_or_show(Command.move(_selected, _target_under_mouse()))
 
 
 ## Der Feind, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
@@ -229,12 +253,26 @@ func _enemy_at(point: Vector2) -> int:
 	return front
 
 
+## Das Ziel für Bewegen unter der Maus: eine Wehrgang-Kachel, wenn die Maus auf einer Mauer liegt
+## (ihr Dach ist um die Mauerhöhe angehoben), sonst die Kachel am Boden.
+func _target_under_mouse() -> Vector3i:
+	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, FigureView.wall_walk_height()))
+	for tile: Vector2i in [raised, _hovered]:
+		if world.is_walkable(tile, Resident.Level.WALL_WALK):
+			return Vector3i(tile.x, tile.y, Resident.Level.WALL_WALK)
+	return Resident.ground(_hovered)
+
+
 ## Linke Taste gedrückt: gründet, baut oder reißt ab; ohne Werkzeug beginnt die Auswahl
 ## (entschieden wird beim Loslassen).
 func _left_click() -> void:
 	var reason := ""
 	if world.is_founding():
 		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
+	elif GameWorld.is_line_type(_build_type):
+		_drawing_line = true
+		_line_start = _hovered
+		_update_preview()
 	elif _build_type != "":
 		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
 	elif _demolishing:
@@ -403,6 +441,7 @@ func _show_world(new_world: GameWorld) -> void:
 	_hud.close_barracks()
 	_selected.clear()
 	_selecting = false
+	_drawing_line = false
 	_selection_box.visible = false
 	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
@@ -635,6 +674,7 @@ func _select_tool(build_type: String, demolishing: bool) -> void:
 		_set_selection([])
 	_build_type = build_type
 	_demolishing = demolishing
+	_drawing_line = false
 	_hud.show_tool(build_type, demolishing)
 	_update_preview()
 
@@ -664,6 +704,9 @@ func _update_build_preview() -> void:
 					% ("1 Soldat" if _selected.size() == 1 else "%d Soldaten" % _selected.size())
 		_hud.show_build_hint(hint, true)
 		return
+	if GameWorld.is_line_type(_build_type):
+		_update_line_preview()
+		return
 	var origin := _origin_under_mouse(_build_type)
 	var reason := world.build_error(_build_type, origin)
 	_preview.show_parts([[_build_type, origin]] as Array[Array], reason == "")
@@ -672,6 +715,22 @@ func _update_build_preview() -> void:
 		_hud.show_build_hint("%s setzen (Linksklick)  ·  Rechtsklick/Esc: beenden" % building_name, true)
 	else:
 		_hud.show_build_hint("%s: %s" % [building_name, reason], false)
+
+
+## Mauer: die Linie vom Start bis zur Maus (vor dem Drücken nur die Kachel unter der Maus),
+## grün, was entsteht, rot, was nicht; der Hinweis nennt, wie viele Kacheln entstehen.
+func _update_line_preview() -> void:
+	var plan := world.line_plan(_build_type, _line_start if _drawing_line else _hovered, _hovered)
+	_preview.show_line(_build_type, plan)
+	var building_name: String = GameDefs.get_instance().buildings[_build_type]["name"]
+	var reason := GameWorld.line_error(plan)
+	if reason != "":
+		_hud.show_build_hint("%s: %s" % [building_name, reason], false)
+	elif _drawing_line:
+		var built := plan.values().count("")
+		_hud.show_build_hint("%s: %d von %d Kacheln (Loslassen baut)" % [building_name, built, plan.size()], true)
+	else:
+		_hud.show_build_hint("%s ziehen (Linksziehen)  ·  Rechtsklick/Esc: beenden" % building_name, true)
 
 
 ## Abriss: Gebäude unter der Maus hervorheben, mit Grund, wenn es nicht abreißbar ist.
@@ -838,9 +897,28 @@ static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
 
 
+## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
+## Umgebungsvariable Presets.ENV) zuerst, eigene Parameter überschreiben sie.
 func _parse_user_args() -> Dictionary:
+	var own := _args_to_dict(OS.get_cmdline_user_args())
+	var preset := str(own.get("preset", OS.get_environment(Presets.ENV)))
+	if preset == "":
+		return own
 	var args := {}
-	for arg in OS.get_cmdline_user_args():
+	var presets_error := Presets.error()
+	if presets_error != "":
+		printerr("--preset: ", presets_error)
+	elif not Presets.load_all().has(preset):
+		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(Presets.load_all().keys()), ")")
+	else:
+		args = _args_to_dict(Presets.args_of(preset))
+	args.merge(own, true)
+	return args
+
+
+static func _args_to_dict(list: PackedStringArray) -> Dictionary:
+	var args := {}
+	for arg in list:
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		args[parts[0]] = parts[1] if parts.size() > 1 else ""
 	return args

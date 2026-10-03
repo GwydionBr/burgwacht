@@ -27,7 +27,7 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 
 ## Entwicklung
 
-Tests: `tools/test.sh` · Aufbau: `docs/architecture.md` · Fahrplan: `docs/roadmap.md`.
+Tests: `tools/test.sh` · Testzustände: `tools/run.sh barracks` bzw. im Editor das Menü „Testzustand“ (Liste in `tools/presets.json`) · Aufbau: `docs/architecture.md` · Fahrplan: `docs/roadmap.md`.
 
 ## Lizenz
 

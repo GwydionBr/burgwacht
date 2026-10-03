@@ -6,8 +6,8 @@ extends RefCounted
 ## Feinde) haben dazu Lebenspunkte, ein Angriffsziel und eine Wartezeit bis zum nächsten Angriff.
 ## Verweise über IDs (ADR 0002); die Spielwelt treibt die Figuren an, hier steht nur der Zustand.
 
-## Höhenstufe einer Position; bisher gibt es nur den Boden.
-enum Level { GROUND = 0 }
+## Höhenstufe einer Position: Boden oder Wehrgang (oben auf Mauern, nur für Soldaten).
+enum Level { GROUND = 0, WALL_WALK = 1 }
 
 var id: int
 var tile: Vector2i
@@ -77,6 +77,14 @@ func destination() -> Vector2i:
 	return Vector2i(last.x, last.y)
 
 
+## Steht sofort auf dieser Position (Kachel + Ebene), ohne Weg (z. B. beim Ausweichen).
+func place_at(target: Vector3i) -> void:
+	tile = Vector2i(target.x, target.y)
+	level = target.z as Level
+	path.clear()
+	step_progress = 0
+
+
 ## Bleibt stehen; mitten im Schritt geht er den noch zu Ende.
 func stop() -> void:
 	if step_progress > 0:
@@ -104,9 +112,20 @@ func advance() -> bool:
 func tile_point(fraction: float) -> Vector2:
 	if path.is_empty():
 		return Vector2(tile)
-	var next := Vector2(path[0].x, path[0].y)
-	var weight := clampf((step_progress + fraction) / step_ticks(position(), path[0]), 0.0, 1.0)
-	return Vector2(tile).lerp(next, weight)
+	return Vector2(tile).lerp(Vector2(path[0].x, path[0].y), _step_weight(fraction))
+
+
+## Ebene zwischen zwei Takten für die Darstellung, wie tile_point(): 0 am Boden, 1 auf dem
+## Wehrgang, dazwischen auf dem Weg die Treppe hinauf oder hinab.
+func level_point(fraction: float) -> float:
+	if path.is_empty():
+		return float(level)
+	return lerpf(float(level), float(path[0].z), _step_weight(fraction))
+
+
+## Wie weit er im aktuellen Schritt ist (0 bis 1); fraction ist der Bruchteil bis zum nächsten Takt.
+func _step_weight(fraction: float) -> float:
+	return clampf((step_progress + fraction) / step_ticks(position(), path[0]), 0.0, 1.0)
 
 
 ## Der gemeinsame Teil von to_data() der Unterklassen.

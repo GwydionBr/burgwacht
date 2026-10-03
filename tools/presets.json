@@ -1,0 +1,26 @@
+{
+	"founding": {
+		"name": "Gründung",
+		"args": ["--seed=1"]
+	},
+	"build": {
+		"name": "Baumodus mit Verwaltung",
+		"args": ["--seed=1", "--found", "--build=woodcutter", "--admin"]
+	},
+	"workers": {
+		"name": "Holzfäller bei der Arbeit, Markt offen",
+		"args": ["--seed=1", "--days=3", "--place=woodcutter@46,41", "--ticks=25", "--market"]
+	},
+	"demolish": {
+		"name": "Abriss nach einem Tag",
+		"args": ["--seed=1", "--days=1", "--demolish"]
+	},
+	"barracks": {
+		"name": "Kaserne mit Soldaten",
+		"args": ["--setup=barracks", "--barracks", "--select"]
+	},
+	"bandit": {
+		"name": "Räuber am Rand",
+		"args": ["--seed=1", "--days=1", "--spawn"]
+	}
+}

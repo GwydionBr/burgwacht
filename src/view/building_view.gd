@@ -7,7 +7,8 @@ extends Node2D
 ## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
 ## ein Steinkreis mit Flamme (Platzhalter). Gebäude mit "decor": "trees" (Apfelplantage)
 ## tragen auf jeder Kachel ein kleines Obstbäumchen, mit "decor": "wheat" (Weizenfarm)
-## einige Ähren.
+## einige Ähren. Gebäude mit Wehrgang (Mauer) stehen ohne Abstand zum Nachbarn, damit eine
+## Mauerlinie geschlossen wirkt; Gebäude mit einer Kachel (Mauer, Treppe) tragen keinen Namen.
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -27,6 +28,7 @@ const EAR_COLOR := Color("#ecd27a")
 var _type: String
 var _origin: Vector2i
 var _campfire := false
+var _walkway := false
 ## Umriss des Blocks (Welt) und sein umschließendes Rechteck, für covers_figure().
 var _outline := PackedVector2Array()
 var _bounds := Rect2()
@@ -36,6 +38,7 @@ func setup(building: Building) -> void:
 	_type = building.type
 	_origin = building.origin
 	_campfire = building.is_campfire()
+	_walkway = building.has_walkway()
 	var size := Building.size_of(_type)
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
 	_outline = PackedVector2Array() if _campfire else _block_outline()
@@ -57,7 +60,7 @@ func covers_figure(rect: Rect2, foot_y: float) -> bool:
 
 ## Umriss des Blocks in Weltkoordinaten: Dach oben, links und rechts, Wände unten.
 func _block_outline() -> PackedVector2Array:
-	var base := footprint_corners(_type, _origin, Vector2.ZERO, INSET)
+	var base := footprint_corners(_type, _origin, Vector2.ZERO, 0.0 if _walkway else INSET)
 	var height := float(GameDefs.get_instance().buildings[_type]["height"])
 	var roof := block_faces(base, height)[2]
 	return PackedVector2Array([roof[0], roof[1], base[1], base[2], base[3], roof[3]])
@@ -69,7 +72,7 @@ func _draw() -> void:
 		return
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	var color := Color(str(def["color"]))
-	var base := footprint_corners(_type, _origin, position, INSET)
+	var base := footprint_corners(_type, _origin, position, 0.0 if _walkway else INSET)
 	var faces := block_faces(base, float(def["height"]))
 	draw_colored_polygon(faces[0], color.darkened(0.15))
 	draw_colored_polygon(faces[1], color.darkened(0.32))
@@ -84,7 +87,8 @@ func _draw() -> void:
 			_draw_small_trees(float(def["height"]))
 		"wheat":
 			_draw_wheat(float(def["height"]))
-	_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
+	if Building.size_of(_type) != Vector2i.ONE:
+		_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
 
 
 ## Die sichtbaren Flächen eines Blocks über den Ecken base (aus footprint_corners()):
@@ -148,6 +152,8 @@ func _draw_small_trees(height: float) -> void:
 
 ## Tor auf der vorderen Seite, an der der Eingang liegt.
 func _draw_gate(base: PackedVector2Array) -> void:
+	if not Building.has_entrance_type(_type):
+		return
 	var size := Building.size_of(_type)
 	var entrance := Building.entrance_of(_type, _origin) - _origin
 	var from: Vector2
