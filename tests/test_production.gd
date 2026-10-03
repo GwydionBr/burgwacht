@@ -47,7 +47,7 @@ func _standing_in(resident: Resident, task: Resident.Task) -> bool:
 
 func test_flour_and_bread_are_goods() -> void:
 	var goods: Dictionary = GameDefs.get_instance().goods
-	assert_eq(goods.keys(), ["wood", "stone", "iron", "wheat", "flour", "apples", "meat", "bread"], "Reihenfolge:")
+	assert_eq(goods.keys(), ["wood", "stone", "iron", "wheat", "flour", "apples", "meat", "bread", "sword", "bow"], "Reihenfolge:")
 	assert_eq([goods["flour"]["name"], goods["flour"]["storage"]], ["Mehl", "warehouse"], "Mehl:")
 	assert_true(not goods["flour"].get("food", false), "Mehl ist keine Nahrung")
 	assert_eq([goods["bread"]["name"], goods["bread"]["storage"], goods["bread"]["food"]], ["Brot", "granary", true],

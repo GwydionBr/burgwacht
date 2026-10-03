@@ -6,5 +6,7 @@
   "flour": { "name": "Mehl", "storage": "warehouse", "color": "#ece3cf", "buy": 16, "sell": 8 },
   "apples": { "name": "Äpfel", "storage": "granary", "food": true, "color": "#c0392b", "buy": 8, "sell": 4 },
   "meat":   { "name": "Fleisch", "storage": "granary", "food": true, "color": "#9e3b3b", "buy": 8, "sell": 4 },
-  "bread":  { "name": "Brot", "storage": "granary", "food": true, "color": "#b9803d", "buy": 8, "sell": 4 }
+  "bread":  { "name": "Brot", "storage": "granary", "food": true, "color": "#b9803d", "buy": 8, "sell": 4 },
+  "sword": { "name": "Schwert", "storage": "armory", "color": "#c4ccd4", "buy": 60, "sell": 30 },
+  "bow":   { "name": "Bogen", "storage": "armory", "color": "#7a4e24", "buy": 30, "sell": 15 }
 }
