@@ -86,7 +86,7 @@ const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
 const GOLD := "gold"
 
 ## Wer geht; davon hängt ab, welche Ebenen er betreten darf: Bewohner und Feinde nur den Boden,
-## Soldaten auch den Wehrgang, den sie über Treppen erreichen.
+## Soldaten auch den Wehrgang, den sie über Treppen und Turmeingänge erreichen.
 enum Walker { GROUND_ONLY, SOLDIER }
 
 var map: MapData
@@ -763,8 +763,8 @@ func get_housing() -> int:
 
 ## Kann jemand auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
-## (Lagerfeuer, Treppe). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer). Wer
-## welche Ebene betreten darf, regelt Walker.
+## (Lagerfeuer, Treppe, Tor). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer, Tor,
+## Turm). Wer welche Ebene betreten darf, regelt Walker.
 func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
 	if level == Resident.Level.WALL_WALK:
 		var below := get_building_at(tile)
@@ -1602,27 +1602,32 @@ func _can_stand(position: Vector3i, walker: Walker) -> bool:
 	return (walker == Walker.SOLDIER or position.z == Resident.Level.GROUND) and _is_walkable_position(position)
 
 
-## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen.
+## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
 	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker))
 
 
-## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen.
+## Weglängen für walker (Pathfinder.distances()); Soldaten nehmen dabei Treppen und Turmeingänge.
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
 	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
 
 
-## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen).
+## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen und Turmeingänge).
 func _ascents_for(walker: Walker) -> Callable:
 	return _ascents if walker == Walker.SOLDIER else Callable()
 
 
 ## Die Positionen auf der anderen Ebene, die man von position aus mit einem geraden Schritt
 ## erreicht: von einer Treppe am Boden auf den Wehrgang der Kacheln mit gemeinsamer Kante und
-## von dort zurück auf die Treppe. Ob dort ein Wehrgang ist, prüft die Wegfindung (walkable).
+## von dort zurück auf die Treppe, am Turmeingang hinauf auf den Wehrgang derselben Kachel und
+## zurück. Ob dort ein Wehrgang ist, prüft die Wegfindung (walkable).
 func _ascents(position: Vector3i) -> Array[Vector3i]:
 	var result: Array[Vector3i] = []
 	var tile := Vector2i(position.x, position.y)
+	var building := get_building_at(tile)
+	if building != null and building.has_ascending_entrance() and building.entrance() == tile:
+		var other_level := Resident.Level.WALL_WALK if position.z == Resident.Level.GROUND else Resident.Level.GROUND
+		result.append(Vector3i(tile.x, tile.y, other_level))
 	for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
 		var next := tile + Vector2i(step.x, step.y)
 		if position.z == Resident.Level.GROUND and _is_stairs(tile):

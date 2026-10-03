@@ -22,5 +22,9 @@
 	"bandit": {
 		"name": "Räuber am Rand",
 		"args": ["--seed=1", "--days=1", "--spawn"]
+	},
+	"walls": {
+		"name": "Mauer mit Tor und Turm, Soldaten oben",
+		"args": ["--setup=walls", "--focus=8,10"]
 	}
 }

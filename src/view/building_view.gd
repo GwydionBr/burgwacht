@@ -8,7 +8,10 @@ extends Node2D
 ## ein Steinkreis mit Flamme (Platzhalter). Gebäude mit "decor": "trees" (Apfelplantage)
 ## tragen auf jeder Kachel ein kleines Obstbäumchen, mit "decor": "wheat" (Weizenfarm)
 ## einige Ähren. Gebäude mit Wehrgang (Mauer) stehen ohne Abstand zum Nachbarn, damit eine
-## Mauerlinie geschlossen wirkt; Gebäude mit einer Kachel (Mauer, Treppe) tragen keinen Namen.
+## Mauerlinie geschlossen wirkt; Gebäude mit einer Kachel (Mauer, Tor, Treppe) tragen keinen Namen.
+## Ist ein Gebäude mit Wehrgang höher als der Wehrgang (Turm), endet der Block auf Höhe des
+## Wehrgangs, und an den Ecken ragen Türmchen bis zur vollen Höhe auf. Ein begehbares Gebäude mit
+## Wehrgang (Tor) zeigt auf beiden sichtbaren Wänden einen dunklen Durchgang.
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -16,6 +19,8 @@ const OUTLINE_COLOR := Color(0, 0, 0, 0.35)
 const LABEL_COLOR := Color("#f4ead2")
 const LABEL_SIZE := 13
 const GATE_HEIGHT := 18.0
+## Anteil der Kachel, den ein Ecktürmchen eines Turms einnimmt.
+const TURRET_SIZE := 0.4
 const LOG_COLOR := Color("#5b3d24")
 const FIRE_STONE_COLOR := Color("#77736b")
 const FLAME_OUTER_COLOR := Color("#e0702a")
@@ -29,6 +34,8 @@ var _type: String
 var _origin: Vector2i
 var _campfire := false
 var _walkway := false
+## Begehbar mit Wehrgang (Tor): Durchgang auf beiden Wänden.
+var _passage := false
 
 
 func setup(building: Building) -> void:
@@ -36,6 +43,7 @@ func setup(building: Building) -> void:
 	_origin = building.origin
 	_campfire = building.is_campfire()
 	_walkway = building.has_walkway()
+	_passage = _walkway and building.is_walkable()
 	var size := Building.size_of(_type)
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
 	queue_redraw()
@@ -48,15 +56,15 @@ func _draw() -> void:
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	var color := Color(str(def["color"]))
 	var base := footprint_corners(_type, _origin, position, 0.0 if _walkway else INSET)
-	var faces := block_faces(base, float(def["height"]))
-	draw_colored_polygon(faces[0], color.darkened(0.15))
-	draw_colored_polygon(faces[1], color.darkened(0.32))
-	draw_colored_polygon(faces[2], color.lightened(0.08))
+	var height := float(def["height"])
+	# Der Block eines Turms endet auf dem Wehrgang; darüber ragen nur die Ecktürmchen.
+	var block_height := minf(height, FigureView.wall_walk_height()) if _walkway else height
+	var faces := _draw_block(base, block_height, color)
 	_draw_gate(base)
-	for face: PackedVector2Array in faces:
-		var outline := face.duplicate()
-		outline.append(face[0])
-		draw_polyline(outline, OUTLINE_COLOR, 1.0, true)
+	if _passage:
+		_draw_passage(base)
+	if height > block_height:
+		_draw_turrets(height - block_height, block_height, color)
 	match str(def.get("decor", "")):
 		"trees":
 			_draw_small_trees(float(def["height"]))
@@ -64,6 +72,49 @@ func _draw() -> void:
 			_draw_wheat(float(def["height"]))
 	if Building.size_of(_type) != Vector2i.ONE:
 		_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
+
+
+## Zeichnet einen Block über den Ecken base mit Wänden, Dach und Umriss; liefert seine Flächen.
+func _draw_block(base: PackedVector2Array, height: float, color: Color) -> Array[PackedVector2Array]:
+	var faces := block_faces(base, height)
+	draw_colored_polygon(faces[0], color.darkened(0.15))
+	draw_colored_polygon(faces[1], color.darkened(0.32))
+	draw_colored_polygon(faces[2], color.lightened(0.08))
+	_draw_outline(faces)
+	return faces
+
+
+func _draw_outline(faces: Array[PackedVector2Array]) -> void:
+	for face: PackedVector2Array in faces:
+		var outline := face.duplicate()
+		outline.append(face[0])
+		draw_polyline(outline, OUTLINE_COLOR, 1.0, true)
+
+
+## Ein Türmchen auf jeder Ecke des Dachs (Höhe floor), height hoch; hinten zuerst.
+func _draw_turrets(height: float, floor_height: float, color: Color) -> void:
+	var size := Vector2(Building.size_of(_type))
+	var start := Vector2(_origin) - Vector2(0.5, 0.5)
+	var far := size - Vector2(TURRET_SIZE, TURRET_SIZE)
+	# Ecken in Kachelkoordinaten: oben, rechts, links, unten (von hinten nach vorn).
+	for corner: Vector2 in [Vector2.ZERO, Vector2(far.x, 0), Vector2(0, far.y), far]:
+		var low := start + corner
+		var high := low + Vector2(TURRET_SIZE, TURRET_SIZE)
+		var base := PackedVector2Array()
+		for point: Vector2 in [low, Vector2(high.x, low.y), high, Vector2(low.x, high.y)]:
+			base.append(Iso.point_to_world(point) - position + Vector2(0, -floor_height))
+		_draw_block(base, height, color.lightened(0.04))
+
+
+## Dunkler Durchgang unten in beiden sichtbaren Wänden (Tor).
+func _draw_passage(base: PackedVector2Array) -> void:
+	var up := Vector2(0, -GATE_HEIGHT)
+	for edge: Array in [[base[3], base[2]], [base[2], base[1]]]:
+		var from: Vector2 = edge[0]
+		var to: Vector2 = edge[1]
+		var a := from.lerp(to, 0.25)
+		var b := from.lerp(to, 0.75)
+		draw_colored_polygon(PackedVector2Array([a, b, b + up * 0.8, (a + b) * 0.5 + up, a + up * 0.8]), GATE_COLOR)
 
 
 ## Die sichtbaren Flächen eines Blocks über den Ecken base (aus footprint_corners()):
