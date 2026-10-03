@@ -87,13 +87,13 @@ func _draw() -> void:
 ## Ein Untätiger kann jederzeit Soldat werden.
 func _body_color() -> Color:
 	if _resident.is_soldier():
-		return SoldierType.color_of(_resident.soldier_type)
+		return FighterType.color_of(_resident.soldier_type)
 	return Color(str(GameDefs.get_instance().units["resident"]["color"]))
 
 
 ## Waffe neben dem Körper: Nahkämpfer mit erhobener Klinge, Fernkämpfer mit Bogen.
 func _draw_weapon() -> void:
-	if SoldierType.is_melee(_resident.soldier_type):
+	if FighterType.is_melee(_resident.soldier_type):
 		draw_line(Vector2(6, -8), Vector2(6, -24), BLADE_COLOR, 2.0)
 		draw_line(Vector2(3, -11), Vector2(9, -11), WOOD_COLOR, 2.0)
 	else:

@@ -176,3 +176,23 @@ func test_bad_start_gold_is_invalid() -> void:
 		var data := _valid_data()
 		data["start_gold"] = value
 		assert_true(_error_for(data).contains("start_gold"), "Startgold %s: %s" % [str(value), _error_for(data)])
+
+
+func test_enemies_are_read() -> void:
+	var data := _valid_data()
+	data["enemies"] = [{"type": "bandit", "tile": [3.0, 4.0]}, {"type": "bandit", "tile": [11, 9]}]
+	var scenario := Scenario.from_dict("test", data)
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.start_enemies, [["bandit", Vector2i(3, 4)], ["bandit", Vector2i(11, 9)]] as Array[Array], "Feinde:")
+
+
+func test_missing_enemies_means_none() -> void:
+	assert_eq(Scenario.from_dict("test", _valid_data()).start_enemies, [] as Array[Array], "Feinde:")
+
+
+func test_bad_enemies_are_invalid() -> void:
+	for value: Variant in [5, [{"type": "swordsman", "tile": [1, 1]}], [{"type": "bandit"}],
+			[{"type": "bandit", "tile": [12, 1]}], [{"type": "bandit", "tile": [1.5, 1]}], ["bandit"]]:
+		var data := _valid_data()
+		data["enemies"] = value
+		assert_true(_error_for(data).contains("enemies"), "Feinde %s: %s" % [str(value), _error_for(data)])

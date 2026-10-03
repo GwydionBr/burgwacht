@@ -1,8 +1,8 @@
 class_name SoldierType
 extends RefCounted
-## Soldatentypen aus data/units.json (Einträge mit "kind": "soldier"): Name, Kampfwerte,
-## Gehgeschwindigkeit, Farbe und Anwerbekosten ("cost": Ware → Menge, dazu optional "gold" aus
-## dem Schatz – wie die Baukosten der Gebäude).
+## Soldatentypen aus data/units.json (Einträge mit "kind": "soldier") und ihre Anwerbekosten
+## ("cost": Ware → Menge, dazu optional "gold" aus dem Schatz – wie die Baukosten der Gebäude).
+## Name, Kampfwerte, Gehgeschwindigkeit und Farbe liefert FighterType.
 
 const KIND := "soldier"
 
@@ -20,26 +20,6 @@ static func ids() -> Array[String]:
 static func is_soldier_type(type_id: String) -> bool:
 	var def: Dictionary = GameDefs.get_instance().units.get(type_id, {})
 	return def.get("kind", "") == KIND
-
-
-## Anzeigename, z. B. „Schwertkämpfer“.
-static func name_of(type_id: String) -> String:
-	return str(_def(type_id)["name"])
-
-
-## Takte für einen geraden Schritt.
-static func ticks_per_tile(type_id: String) -> int:
-	return int(_def(type_id)["ticks_per_tile"])
-
-
-## Kämpft er im Nahkampf ("melee")? Sonst ist er ein Fernkämpfer mit "range".
-static func is_melee(type_id: String) -> bool:
-	return bool(_def(type_id).get("melee", false))
-
-
-## Platzhalter-Farbe der Figur.
-static func color_of(type_id: String) -> Color:
-	return Color(str(_def(type_id)["color"]))
 
 
 ## Anwerbekosten in Waren: Ware → Menge (ohne Gold).

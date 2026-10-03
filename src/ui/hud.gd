@@ -467,7 +467,7 @@ func _make_barracks_panel() -> PanelContainer:
 	column.add_child(row)
 	for type_id in SoldierType.ids():
 		var button := Button.new()
-		button.text = "%s anwerben\n%s" % [SoldierType.name_of(type_id),
+		button.text = "%s anwerben\n%s" % [FighterType.name_of(type_id),
 				_cost_text(SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id))]
 		button.focus_mode = Control.FOCUS_NONE
 		button.disabled = true
