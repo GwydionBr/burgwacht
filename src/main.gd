@@ -63,7 +63,7 @@ func _ready() -> void:
 	_hud.build_selected.connect(_select_build)
 	_hud.demolish_selected.connect(_select_demolish)
 	_hud.ration_step.connect(_step_ration)
-	_hud.tax_step.connect(_step_tax_rate)
+	_hud.tax_rate_step.connect(_step_tax_rate)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -446,18 +446,21 @@ func _update_residents() -> void:
 
 ## Ration um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
 func _step_ration(delta: int) -> void:
-	var rations := Population.ration_ids()
-	var index := clampi(rations.find(world.get_ration()) + delta, 0, rations.size() - 1)
-	var reason := world.execute(Command.set_ration(rations[index]))
-	if reason != "":
-		_hud.show_message(reason)
+	_execute_or_show(Command.set_ration(_stepped(Population.ration_ids(), world.get_ration(), delta)))
 
 
 ## Steuersatz um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
 func _step_tax_rate(delta: int) -> void:
-	var tax_rates := Population.tax_rate_ids()
-	var index := clampi(tax_rates.find(world.get_tax_rate()) + delta, 0, tax_rates.size() - 1)
-	var reason := world.execute(Command.set_tax_rate(tax_rates[index]))
+	_execute_or_show(Command.set_tax_rate(_stepped(Population.tax_rate_ids(), world.get_tax_rate(), delta)))
+
+
+## Die Stufe delta Schritte neben current, begrenzt auf die Liste.
+static func _stepped(levels: Array[String], current: String, delta: int) -> String:
+	return levels[clampi(levels.find(current) + delta, 0, levels.size() - 1)]
+
+
+func _execute_or_show(command: Command) -> void:
+	var reason := world.execute(command)
 	if reason != "":
 		_hud.show_message(reason)
 

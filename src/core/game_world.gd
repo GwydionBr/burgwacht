@@ -49,6 +49,8 @@ signal notice(text: String)
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
 const SAVE_VERSION := 7
+## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
+const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -618,10 +620,9 @@ func _plan_meal() -> Meal:
 	return meal
 
 
-## Steuern eines Tags: abgerundet Bewohner × Gold des Steuersatzes. Der kleine Zuschlag
-## gleicht Rundungsfehler der Kommazahlen aus (5 × 0,6 darf nicht 2,999… ergeben).
+## Steuern eines Tags: abgerundet Bewohner × Gold des Steuersatzes.
 func _daily_taxes() -> int:
-	return floori(_residents.size() * Population.tax_gold(_tax_rate) + 0.000001)
+	return floori(_residents.size() * Population.tax_gold(_tax_rate) + ROUNDING_SLACK)
 
 
 static func _is_lower_ration(ration_id: String, than: String) -> bool:
@@ -635,7 +636,7 @@ func _factors_of(meal: Meal) -> Array[Factor]:
 	return [
 		Factor.create(Factor.RATION, Population.ration_factor(meal.ration)),
 		Factor.create(Factor.VARIETY, Population.variety_factor(meal.amounts.size())),
-		Factor.create(Factor.TAX, Population.tax_factor(_tax_rate)),
+		Factor.create(Factor.TAX_RATE, Population.tax_factor(_tax_rate)),
 	]
 
 

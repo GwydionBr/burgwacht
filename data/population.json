@@ -18,6 +18,6 @@
   "factors": {
     "ration":  { "name": "Ration" },
     "variety": { "name": "Vielfalt", "per_extra_kind": 1 },
-    "tax":     { "name": "Steuersatz" }
+    "tax_rate": { "name": "Steuersatz" }
   }
 }

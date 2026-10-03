@@ -12,7 +12,7 @@ signal demolish_selected()
 ## In der Verwaltung soll die Ration um so viele Stufen steigen (+1) bzw. sinken (−1).
 signal ration_step(delta: int)
 ## In der Verwaltung soll der Steuersatz um so viele Stufen steigen (+1) bzw. sinken (−1).
-signal tax_step(delta: int)
+signal tax_rate_step(delta: int)
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -39,7 +39,7 @@ var _popularity_label: Label
 var _gold_label: Label
 var _admin_panel: PanelContainer
 var _ration_label: Label
-var _tax_label: Label
+var _tax_rate_label: Label
 var _eaten_label: Label
 var _factors_label: Label
 var _factor_sum_label: Label
@@ -206,7 +206,7 @@ func is_administration_open() -> bool:
 func show_administration(ration: String, eaten_ration: String, tax_rate: String, factors: Array[Factor],
 		total: int) -> void:
 	_ration_label.text = ration
-	_tax_label.text = tax_rate
+	_tax_rate_label.text = tax_rate
 	_eaten_label.text = "Zu wenig Nahrung – gegessen wird: %s" % eaten_ration
 	_eaten_label.visible = eaten_ration != ""
 	var lines: PackedStringArray = []
@@ -277,7 +277,7 @@ func _make_admin_panel() -> PanelContainer:
 	_ration_label = _make_setting_row(column, "Ration", "(−/+)", ration_step)
 	_eaten_label = _make_label("", BLOCKED_COLOR, 15)
 	column.add_child(_eaten_label)
-	_tax_label = _make_setting_row(column, "Steuersatz", "(,/.)", tax_step)
+	_tax_rate_label = _make_setting_row(column, "Steuersatz", "(,/.)", tax_rate_step)
 	column.add_child(_make_label("Beliebtheit pro Tag", HINT_COLOR, 15))
 	_factors_label = _make_label("", TEXT_COLOR, 16)
 	_factors_label.tab_stops = PackedFloat32Array([140])

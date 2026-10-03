@@ -117,11 +117,11 @@ func test_no_tax_means_no_gold_and_no_signal() -> void:
 
 func test_tax_rate_is_a_factor() -> void:
 	var world := _founded()
-	assert_eq(_factors(world)[2], ["tax", 2], "Vorschau keine Steuern:")
+	assert_eq(_factors(world)[2], ["tax_rate", 2], "Vorschau keine Steuern:")
 	world.execute(Command.set_tax_rate("medium"))
-	assert_eq(_factors(world)[2], ["tax", -4], "Vorschau mittel:")
+	assert_eq(_factors(world)[2], ["tax_rate", -4], "Vorschau mittel:")
 	_next_day(world)
-	assert_eq(_factors(world), [["ration", -8], ["variety", 0], ["tax", -4]] as Array[Array], "Faktoren des Tags:")
+	assert_eq(_factors(world), [["ration", -8], ["variety", 0], ["tax_rate", -4]] as Array[Array], "Faktoren des Tags:")
 	assert_eq(world.get_factors()[2].name(), "Steuersatz", "Name:")
 
 

@@ -6,7 +6,7 @@ extends RefCounted
 
 const RATION := "ration"
 const VARIETY := "variety"
-const TAX := "tax"
+const TAX_RATE := "tax_rate"
 
 var id: String
 var value: int
