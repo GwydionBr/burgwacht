@@ -45,8 +45,8 @@ func _initialize() -> void:
 			var method_name: String = method["name"]
 			if not method_name.begins_with("test_"):
 				continue
-			var test_case: TestCase = script.new()
 			collector.errors.clear()
+			var test_case: TestCase = script.new()
 			test_case.call(method_name)
 			var failures := test_case.failures.duplicate()
 			for error in collector.errors:
