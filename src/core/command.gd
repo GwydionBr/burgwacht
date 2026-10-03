@@ -2,11 +2,13 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY }
+enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY }
 
 var kind: Kind
-## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes.
+## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes; bei BUILD_LINE der Anfang der Linie.
 var origin: Vector2i
+## Bei BUILD_LINE: das Ende der Linie (wird eingerastet).
+var line_end: Vector2i
 ## Gebäudetyp aus buildings.json; bei FOUND der Bergfried.
 var building_type: String
 ## Bei DEMOLISH: ID des Gebäudes; bei RECRUIT: ID der Kaserne.
@@ -45,6 +47,17 @@ static func build(type_id: String, building_origin: Vector2i) -> Command:
 	var command := Command.new()
 	command.kind = Kind.BUILD
 	command.origin = building_origin
+	command.building_type = type_id
+	return command
+
+
+## Gebäude vom Typ type_id (eins mit "line" in den Daten, z. B. Mauer) als gerade Linie von
+## line_start bis line_end bauen, so weit die Kosten reichen.
+static func build_line(type_id: String, line_start: Vector2i, end: Vector2i) -> Command:
+	var command := Command.new()
+	command.kind = Kind.BUILD_LINE
+	command.origin = line_start
+	command.line_end = end
 	command.building_type = type_id
 	return command
 

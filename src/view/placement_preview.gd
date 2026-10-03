@@ -2,7 +2,8 @@ class_name PlacementPreview
 extends Node2D
 ## Halbdurchsichtige Bauvorschau unter der Maus: Grundflächen grün (erlaubt) oder rot,
 ## dazu die Kachel vor dem Eingang. Beim Abriss das Gebäude unter der Maus orange
-## (abreißbar) oder rot, ohne Eingang. Kennt nur Typ und Ursprung, keinen Zustand.
+## (abreißbar) oder rot, ohne Eingang. Eine Mauerlinie zeigt je Kachel grün, was entsteht, und
+## rot, was nicht. Kennt nur Typ und Ursprung, keinen Zustand.
 
 const OK_COLOR := Color(0.35, 0.9, 0.4)
 const BLOCKED_COLOR := Color(0.95, 0.3, 0.25)
@@ -14,12 +15,31 @@ const FRONT_COLOR := Color(1, 0.95, 0.7, 0.8)
 ## Paare [Gebäudetyp, Ursprung].
 var _parts: Array[Array] = []
 var _allowed := true
+## Bei einer Linie: Ursprung → entsteht dort ein Gebäude? (sonst gilt _allowed für alle)
+var _tile_allowed: Dictionary[Vector2i, bool] = {}
 var _demolish := false
 
 
 func show_parts(parts: Array[Array], allowed: bool) -> void:
 	_parts = parts
 	_allowed = allowed
+	_tile_allowed.clear()
+	_demolish = false
+	visible = true
+	queue_redraw()
+
+
+## Eine Linie aus Gebäuden mit einer Kachel: plan ist Ursprung → Grund (leer = entsteht),
+## wie GameWorld.line_plan().
+func show_line(type_id: String, plan: Dictionary[Vector2i, String]) -> void:
+	var tiles: Array[Vector2i] = plan.keys()
+	# Hinten zuerst, damit vordere Blöcke die hinteren verdecken.
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
+	_parts.clear()
+	_tile_allowed.clear()
+	for tile in tiles:
+		_parts.append([type_id, tile])
+		_tile_allowed[tile] = plan[tile] == ""
 	_demolish = false
 	visible = true
 	queue_redraw()
@@ -29,18 +49,19 @@ func show_parts(parts: Array[Array], allowed: bool) -> void:
 func show_demolish(type_id: String, origin: Vector2i, allowed: bool) -> void:
 	_parts = [[type_id, origin]]
 	_allowed = allowed
+	_tile_allowed.clear()
 	_demolish = true
 	visible = true
 	queue_redraw()
 
 
 func _draw() -> void:
-	var color := BLOCKED_COLOR
-	if _allowed:
-		color = DEMOLISH_COLOR if _demolish else OK_COLOR
 	for part in _parts:
 		var type_id: String = part[0]
 		var origin: Vector2i = part[1]
+		var color := BLOCKED_COLOR
+		if _tile_allowed.get(origin, _allowed):
+			color = DEMOLISH_COLOR if _demolish else OK_COLOR
 		for tile in Building.footprint(type_id, origin):
 			draw_colored_polygon(Iso.tile_polygon(tile), Color(color, FILL_ALPHA))
 		_draw_ghost_block(type_id, origin, color)

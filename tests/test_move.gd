@@ -7,6 +7,7 @@ extends TestCase
 const KEEP_ORIGIN := Vector2i(2, 2)
 const ARMORY_SITE := Vector2i(10, 10)
 const BARRACKS_SITE := Vector2i(14, 2)
+const WAREHOUSE := 2
 ## Freie Wiese links in der Mitte der Karte.
 const TARGET := Vector2i(10, 7)
 ## Obergrenze, bis ein Soldat am Ziel steht.
@@ -95,14 +96,14 @@ func test_moving_again_frees_the_old_posts() -> void:
 func test_only_tiles_reachable_from_the_target_count() -> void:
 	var world := _soldiers(2)
 	var old_post := world.get_resident(2).post
-	# Felsen schließen das Ziel ein: Die Kacheln dahinter sind frei, aber vom Ziel aus nicht
-	# erreichbar – der zweite behält seinen Posten.
-	var target := Vector2i(4, 13)
-	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0),
-			Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
-		add_deposit(world, target + offset, "stone")
-	assert_eq(world.execute(Command.move([1, 2] as Array[int], Resident.ground(target))), "", "Bewegen:")
-	assert_eq(world.get_resident(1).post_tile(), target, "Erster aufs Ziel:")
+	# Eine einzelne Mauerkachel mit Treppe: Der Wehrgang dort ist nur eine Kachel groß, die
+	# Kacheln daneben sind von ihm aus nicht erreichbar – der zweite behält seinen Posten.
+	put_goods(world, WAREHOUSE, "stone", 10)
+	var target := Vector3i(4, 13, Resident.Level.WALL_WALK)
+	assert_eq(world.execute(Command.build_line("wall", Vector2i(4, 13), Vector2i(4, 13))), "", "Mauer:")
+	build(world, "stairs", Vector2i(3, 13))
+	assert_eq(world.execute(Command.move([1, 2] as Array[int], target)), "", "Bewegen:")
+	assert_eq(world.get_resident(1).post, target, "Erster aufs Ziel:")
 	assert_eq(world.get_resident(2).post, old_post, "Zweiter behält seinen Posten:")
 
 
@@ -117,6 +118,12 @@ func test_move_reasons() -> void:
 			"Dort kann kein Soldat stehen", "Außerhalb der Karte:")
 	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(KEEP_ORIGIN))),
 			"Dort kann kein Soldat stehen", "Bergfried:")
+	# Felsen schließen eine Kachel ein: Dort kann man stehen, aber niemand kommt hin.
+	var enclosed := Vector2i(4, 13)
+	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0),
+			Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+		add_deposit(world, enclosed + offset, "stone")
+	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(enclosed))), "Kein Weg dorthin", "Eingeschlossen:")
 
 
 func test_rejected_move_changes_nothing() -> void:
