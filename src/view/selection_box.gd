@@ -15,10 +15,6 @@ func show_box(from: Vector2, to: Vector2) -> void:
 	queue_redraw()
 
 
-func get_rect() -> Rect2:
-	return _rect
-
-
 func _draw() -> void:
 	draw_rect(_rect, FILL_COLOR)
 	# Breite -1: immer ein Pixel, unabhängig vom Zoom.

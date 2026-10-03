@@ -60,6 +60,8 @@ var _selecting := false
 var _left_press := Vector2.ZERO
 var _left_press_world := Vector2.ZERO
 var _right_press := Vector2.ZERO
+## Die rechte Taste wurde über der Karte gedrückt (nicht über dem HUD).
+var _right_pressed_on_map := false
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
@@ -120,11 +122,7 @@ func _ready() -> void:
 				_open_barracks(building.id)
 				break
 	if args.has("select"):
-		var soldiers: Array[int] = []
-		for resident in world.get_residents():
-			if resident.is_soldier():
-				soldiers.append(resident.id)
-		_set_selection(soldiers)
+		_set_selection(_soldier_views())
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -148,12 +146,20 @@ func _process(_delta: float) -> void:
 		_update_preview()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	var motion := event as InputEventMouseMotion
-	if motion != null:
-		if _selecting and _is_drag(_left_press, motion.position):
-			_selection_box.show_box(_left_press_world, get_global_mouse_position())
+## Eine begonnene Auswahl folgt der Maus und endet beim Loslassen – auch über dem HUD, das
+## diese Ereignisse sonst abfängt.
+func _input(event: InputEvent) -> void:
+	if not _selecting:
 		return
+	var motion := event as InputEventMouseMotion
+	if motion != null and _is_drag(_left_press, motion.position):
+		_selection_box.show_box(_left_press_world, get_global_mouse_position())
+	var button := event as InputEventMouseButton
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
+		_finish_selection(button.position)
+
+
+func _unhandled_input(event: InputEvent) -> void:
 	var button := event as InputEventMouseButton
 	if button == null:
 		return
@@ -161,13 +167,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if button.button_index == MOUSE_BUTTON_RIGHT:
 		if button.pressed:
 			_right_press = button.position
-		elif not _is_drag(_right_press, button.position):
-			_right_click()
-	elif button.button_index == MOUSE_BUTTON_LEFT:
-		if button.pressed:
-			_left_click()
-		elif _selecting:
-			_finish_selection(button.position)
+			_right_pressed_on_map = true
+		elif _right_pressed_on_map:
+			_right_pressed_on_map = false
+			if not _is_drag(_right_press, button.position):
+				_right_click()
+	elif button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		_left_click()
 
 
 ## Ist die Maus zwischen Drücken und Loslassen so weit gewandert, dass es ein Ziehen ist?
@@ -205,8 +211,8 @@ func _left_click() -> void:
 
 
 ## Linke Taste losgelassen: Gezogen wählt alle Soldaten im Rahmen. Ein Klick wählt den
-## Soldaten unter der Maus; steht dort keiner, hebt er die Auswahl auf und öffnet auf einer
-## Kaserne deren Ansicht.
+## Soldaten unter der Maus (_soldier_at()); steht dort keiner, hebt er die Auswahl auf und
+## öffnet auf einer Kaserne deren Ansicht.
 func _finish_selection(release: Vector2) -> void:
 	_selecting = false
 	_selection_box.visible = false
@@ -217,13 +223,12 @@ func _finish_selection(release: Vector2) -> void:
 			if _resident_views[id].hit_rect().intersects(box, true):
 				picked.append(id)
 	else:
-		var front := _soldier_at(get_global_mouse_position())
+		var building := world.get_building_at(_hovered)
+		var front := _soldier_at(get_global_mouse_position(), building != null)
 		if front != 0:
 			picked.append(front)
-		else:
-			var building := world.get_building_at(_hovered)
-			if building != null and building.is_barracks():
-				_open_barracks(building.id)
+		elif building != null and building.is_barracks():
+			_open_barracks(building.id)
 	_set_selection(picked)
 
 
@@ -237,10 +242,14 @@ func _soldier_views() -> Array[int]:
 
 
 ## Der Soldat, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
-func _soldier_at(point: Vector2) -> int:
+## Über einem Gebäude zählt nur, wer auf der Kachel unter der Maus steht: Figuren davor ragen
+## sonst in die Kaserne hinein.
+func _soldier_at(point: Vector2, on_tile_only: bool) -> int:
 	var front := 0
 	for id in _soldier_views():
 		var view := _resident_views[id]
+		if on_tile_only and world.get_resident(id).tile != _hovered:
+			continue
 		if view.hit_rect().has_point(point) and (front == 0 or view.position.y > _resident_views[front].position.y):
 			front = id
 	return front
@@ -251,9 +260,11 @@ func _set_selection(ids: Array[int]) -> void:
 	for id in _selected:
 		if _resident_views.has(id):
 			_resident_views[id].selected = false
-	_selected = ids.duplicate()
-	for id in _selected:
-		_resident_views[id].selected = true
+	_selected.clear()
+	for id in ids:
+		if _resident_views.has(id):
+			_selected.append(id)
+			_resident_views[id].selected = true
 	_update_preview()
 
 
@@ -533,6 +544,9 @@ func _select_tool(build_type: String, demolishing: bool) -> void:
 		_hud.show_message(GameWorld.FOUNDING_FIRST)
 		build_type = ""
 		demolishing = false
+	# Mit einem Werkzeug ist keine Auswahl sichtbar; Esc soll dann gleich das Werkzeug beenden.
+	if build_type != "" or demolishing:
+		_set_selection([])
 	_build_type = build_type
 	_demolishing = demolishing
 	_hud.show_tool(build_type, demolishing)
