@@ -77,7 +77,7 @@ Alles, was gelagert und transportiert werden kann, z. B. Holz, Mehl, Schwert.
 _Avoid_: Gut, Item, Ressource
 
 **Rohstoff**:
-Eine Ware, die direkt aus einem Vorkommen gewonnen wird (Holz, Stein, Eisen). Eigenschaft einer Ware, kein eigener Typ.
+Eine Ware, die direkt aus einem Vorkommen gewonnen wird (Holz, Stein, Eisen, Fleisch). Eigenschaft einer Ware, kein eigener Typ; ein Rohstoff kann zugleich Nahrung sein.
 _Avoid_: Ressource
 
 **Lager**:
@@ -88,7 +88,7 @@ _Avoid_: Speicher (allein), Inventar, Bestand
 Die Sorte Lager, in die eine Ware gehört (Warenlager, Kornspeicher, Waffenkammer); jede Ware hat genau eine.
 
 **Warenlager**:
-Das Lager für Rohstoffe und andere Waren, die weder Nahrung noch Waffen sind.
+Das Lager für alle Waren, die weder Nahrung noch Waffen sind, also auch für die meisten Rohstoffe.
 _Avoid_: Lager (für dieses konkrete Gebäude), Stockpile
 
 **Schatz**:
@@ -106,6 +106,10 @@ _Avoid_: Speisekammer, Vorratslager
 **Wild**:
 Ein Vorkommen aus Tieren, das Fleisch liefert und wie Bäume nachwächst; es bewegt sich nicht.
 _Avoid_: Tiere, Hirsche, Beute
+
+**Rudel**:
+Eine zusammenhängende Gruppe von Wild-Kacheln (3–6), wie sie die Kartenerzeugung setzt; Rudel berühren einander nicht, auch nicht schräg.
+_Avoid_: Herde, Gruppe
 
 **Ration**:
 Die vom Spieler eingestellte Stufe, wie viel Nahrung jeder Bewohner pro Tag isst (keine, halb, normal, extra, doppelt).
