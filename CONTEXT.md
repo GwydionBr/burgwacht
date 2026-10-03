@@ -130,7 +130,7 @@ Das Rechteck aus Kacheln, das ein Gebäude belegt; Gebäude werden nicht gedreht
 _Avoid_: Footprint, Fläche
 
 **Bauregel**:
-Eine Bedingung aus den Daten eines Gebäudetyps, wo er stehen darf, z. B. „grenzt an Felsen“. **Grenzen** heißt: eine Kachel direkt neben der Grundfläche, mit gemeinsamer Kante; schräg zählt nicht.
+Eine Bedingung aus den Daten eines Gebäudetyps, wo er stehen darf, z. B. „grenzt an Felsen“ oder „nur auf Wiese“. **Grenzen** heißt: eine Kachel direkt neben der Grundfläche, mit gemeinsamer Kante; schräg zählt nicht.
 _Avoid_: Bauvoraussetzung, Platzierungsregel
 
 **Abriss**:
@@ -184,6 +184,14 @@ _Avoid_: Zufriedenheit, Stimmung, Ansehen
 **Faktor**:
 Ein Beitrag zur täglichen Änderung der Beliebtheit, z. B. Ration, Vielfalt der Nahrung, Steuersatz.
 _Avoid_: Modifikator, Einfluss
+
+**Hof**:
+Eine Arbeitsstätte, deren Arbeiter darin arbeitet und die Ware selbst erzeugt, ohne Vorkommen (Verhalten `farm`), z. B. die Apfelplantage.
+_Avoid_: Farm, Bauernhof
+
+**Apfelplantage**:
+Ein Hof auf Wiese, dessen Arbeiter darin Äpfel anbaut und sie zum nächsten Kornspeicher trägt; braucht kein Vorkommen.
+_Avoid_: Obstgarten, Farm
 
 **Wohnhaus**:
 Ein Gebäude, das den Wohnraum erhöht; Bewohner wohnen nicht sichtbar darin.

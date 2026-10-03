@@ -65,7 +65,28 @@ func process_ticks() -> int:
 	return int(def()["process_ticks"])
 
 
-## Sammler: so viel nimmt ein Arbeiter je Gang höchstens aus dem Vorkommen ("load").
+## Hof (Verhalten „farm“): Arbeiter arbeiten in der Arbeitsstätte statt an einem Vorkommen.
+func is_farm() -> bool:
+	return def()["behavior"] == "farm"
+
+
+## Hof: Takte Arbeit in der Arbeitsstätte je Gang ("work_ticks").
+func work_ticks() -> int:
+	return int(def()["work_ticks"])
+
+
+## Hof: die Ware, die ein Arbeiter nach der Arbeit herausträgt ("product").
+func product() -> String:
+	return str(def()["product"])
+
+
+## Hof: Tätigkeitstext während der Arbeit, z. B. „arbeitet in der Plantage“ ("work_text").
+func work_text() -> String:
+	return str(def()["work_text"])
+
+
+## Sammler und Hof: so viel trägt ein Arbeiter je Gang höchstens ("load"); beim Sammler
+## aus dem Vorkommen entnommen.
 func carry_load() -> int:
 	return int(def()["load"])
 
