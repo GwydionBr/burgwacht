@@ -1,0 +1,9 @@
+{
+  "name": "Kleine Testkarte mit einem Räuber",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50 },
+  "start_residents": 4,
+  "start_gold": 100,
+  "enemies": [{ "type": "bandit", "tile": [16, 13] }]
+}

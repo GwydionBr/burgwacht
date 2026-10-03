@@ -1,14 +1,12 @@
 class_name Resident
-extends RefCounted
-## Ein Bewohner der Burg. Position = Kachel + Ebene (ADR 0004); Verweise über IDs (ADR 0002).
-## Läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert "ticks_per_tile" Takte
-## (units.json, beim Soldaten die seines Soldatentyps), ein schräger √2-mal so lange (gerundet).
-## Ein Soldat ist weiter Bewohner, arbeitet aber nicht: Er geht zu seinem Posten und steht dort.
+extends Figure
+## Ein Bewohner der Burg (Bewegung und Kampfwerte: Figure). Ein gerader Schritt dauert
+## "ticks_per_tile" Takte (units.json, beim Soldaten die seines Soldatentyps).
+## Ein Soldat ist weiter Bewohner, arbeitet aber nicht: Er geht zu seinem Posten und steht dort
+## bzw. greift den befohlenen Feind an.
 ## Arbeiter eines Sammlers, Hofs oder Herstellungsbetriebs gehen dazu den Arbeitsablauf in
 ## Task durch; die Spielwelt treibt ihn an, hier steht nur der Zustand.
 
-## Höhenstufe einer Position; bisher gibt es nur den Boden.
-enum Level { GROUND = 0 }
 ## Schritt im Arbeitsablauf eines Sammlers, Hofs bzw. Herstellungsbetriebs. Gewartet und gearbeitet wird erst, wenn er steht.
 enum Task {
 	## Untätig oder noch ohne Auftrag.
@@ -97,15 +95,8 @@ const TASK_GOAL: Dictionary[Task, Goal] = {
 const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING, Task.WAITING_FOR_INPUT,
 		Task.PRODUCING]
 
-var id: int
-var tile: Vector2i
-var level := Level.GROUND
 ## ID der zugeteilten Arbeitsstätte, 0 = Untätiger.
 var workplace_id := 0
-## Die noch abzulaufenden Positionen (Kachel + Ebene), ohne die aktuelle; leer = steht.
-var path: Array[Vector3i] = []
-## Takte, die er schon auf dem Schritt zu path[0] unterwegs ist.
-var step_progress := 0
 var task := Task.NONE
 ## Bei TO_DEPOSIT und MINING: Kachel des Vorkommens. Exklusive Vorkommen (Bäume) gelten
 ## damit als reserviert.
@@ -132,11 +123,6 @@ static func create(resident_id: int, start_tile: Vector2i, start_level: Level) -
 	return resident
 
 
-## Position (Kachel + Ebene) einer Kachel am Boden.
-static func ground(ground_tile: Vector2i) -> Vector3i:
-	return Vector3i(ground_tile.x, ground_tile.y, Level.GROUND)
-
-
 ## Takte für einen geraden Schritt ("ticks_per_tile" in units.json).
 static func ticks_per_tile() -> int:
 	return int(GameDefs.get_instance().units["resident"]["ticks_per_tile"])
@@ -147,10 +133,12 @@ static func retry_ticks() -> int:
 	return int(GameDefs.get_instance().units["resident"]["retry_ticks"])
 
 
-## Dauer eines seiner Schritte zwischen zwei benachbarten Positionen in Takten.
-func step_ticks(from: Vector3i, to: Vector3i) -> int:
-	var straight := SoldierType.ticks_per_tile(soldier_type) if is_soldier() else ticks_per_tile()
-	return roundi(straight * Pathfinder.step_cost(from, to))
+func straight_step_ticks() -> int:
+	return FighterType.ticks_per_tile(soldier_type) if is_soldier() else ticks_per_tile()
+
+
+func fighter_type() -> String:
+	return soldier_type
 
 
 ## Ohne Arbeitsstätte am Lagerfeuer bzw. auf dem Weg dorthin – nicht, wer erst ankommt
@@ -173,10 +161,6 @@ func is_arriving() -> bool:
 ## Geht er fort? Dann zählt er nicht mehr als Bewohner.
 func is_leaving() -> bool:
 	return task == Task.LEAVING
-
-
-func is_moving() -> bool:
-	return not path.is_empty()
 
 
 ## Wie sein Arbeitsschritt abläuft (TASK_PHASE).
@@ -227,78 +211,22 @@ func post_tile() -> Vector2i:
 	return Vector2i(post.x, post.y)
 
 
-## Aktuelle Position als Kachel + Ebene.
-func position() -> Vector3i:
-	return Vector3i(tile.x, tile.y, level)
-
-
-## Die Position, von der aus ein neuer Weg beginnt: mitten im Schritt die Kachel, auf die
-## er gerade tritt, sonst die aktuelle.
-func plan_start() -> Vector3i:
-	return path[0] if step_progress > 0 else position()
-
-
-## Die Kachel, auf der er nach seinem Weg steht (steht er, die aktuelle).
-func destination() -> Vector2i:
-	if path.is_empty():
-		return tile
-	var last: Vector3i = path.back()
-	return Vector2i(last.x, last.y)
-
-
-## Bleibt stehen; mitten im Schritt geht er den noch zu Ende.
-func stop() -> void:
-	if step_progress > 0:
-		path.resize(1)
-	else:
-		path.clear()
-
-
-## Ein Takt Bewegung; true, wenn er dabei am Ende seines Weges angekommen ist.
-func advance() -> bool:
-	if path.is_empty():
-		return false
-	step_progress += 1
-	if step_progress < step_ticks(position(), path[0]):
-		return false
-	var next: Vector3i = path.pop_front()
-	tile = Vector2i(next.x, next.y)
-	level = next.z as Level
-	step_progress = 0
-	return path.is_empty()
-
-
-## Position in Kachelkoordinaten zwischen zwei Takten, für die Darstellung: fraction ist
-## der Bruchteil bis zum nächsten Takt (0 bis 1).
-func tile_point(fraction: float) -> Vector2:
-	if path.is_empty():
-		return Vector2(tile)
-	var next := Vector2(path[0].x, path[0].y)
-	var weight := clampf((step_progress + fraction) / step_ticks(position(), path[0]), 0.0, 1.0)
-	return Vector2(tile).lerp(next, weight)
-
-
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
-	var path_data: Array[Array] = []
-	for step in path:
-		path_data.append([step.x, step.y, step.z])
-	return {
-		"id": id, "x": tile.x, "y": tile.y, "level": level, "workplace": workplace_id,
-		"path": path_data, "step_progress": step_progress, "task": task,
-		"deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
+	var data := _figure_data()
+	data.merge({
+		"workplace": workplace_id, "task": task, "deposit": [deposit_tile.x, deposit_tile.y], "storage": storage_id,
 		"good": carried_good, "amount": carried_amount, "timer": timer,
 		"soldier_type": soldier_type, "post": [post.x, post.y, post.z],
-	}
+	})
+	return data
 
 
 ## Gegenstück zu to_data().
 static func from_data(data: Dictionary) -> Resident:
-	var resident := create(int(data["id"]), Vector2i(int(data["x"]), int(data["y"])), int(data["level"]) as Level)
+	var resident := Resident.new()
+	resident._read_figure_data(data)
 	resident.workplace_id = int(data["workplace"])
-	for step: Array in data["path"]:
-		resident.path.append(Vector3i(int(step[0]), int(step[1]), int(step[2])))
-	resident.step_progress = int(data["step_progress"])
 	resident.task = int(data["task"]) as Task
 	var deposit: Array = data["deposit"]
 	resident.deposit_tile = Vector2i(int(deposit[0]), int(deposit[1]))

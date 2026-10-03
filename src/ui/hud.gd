@@ -117,7 +117,7 @@ func _ready() -> void:
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
 		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
-		+ "Soldaten: Linksklick/-ziehen wählen, Rechtsklick schickt sie hin  ·  Esc: Auswahl aufheben\n"
+		+ "Soldaten: Linksklick/-ziehen wählen, Rechtsklick schickt sie hin bzw. greift an  ·  Esc: Auswahl aufheben\n"
 		+ "WASD/Pfeile, zwei Finger, Rechtsziehen: Kamera  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
 		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
@@ -467,7 +467,7 @@ func _make_barracks_panel() -> PanelContainer:
 	column.add_child(row)
 	for type_id in SoldierType.ids():
 		var button := Button.new()
-		button.text = "%s anwerben\n%s" % [SoldierType.name_of(type_id),
+		button.text = "%s anwerben\n%s" % [FighterType.name_of(type_id),
 				_cost_text(SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id))]
 		button.focus_mode = Control.FOCUS_NONE
 		button.disabled = true

@@ -5,7 +5,8 @@ extends RefCounted
 ## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
 ## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
-## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0).
+## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0) und "enemies" (Feinde, die bei der Gründung
+## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -28,6 +29,8 @@ var start_residents := 0
 var start_popularity := DEFAULT_POPULARITY
 ## Gold im Schatz zu Beginn.
 var start_gold := 0
+## Feinde bei der Gründung, in der Reihenfolge der Datei.
+var start_enemies: Array[StartEnemy] = []
 var error := ""
 
 
@@ -92,6 +95,8 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 	else:
 		problems.append("„start_gold“ muss eine ganze Zahl ab 0 sein")
 
+	_read_enemies(scenario, data.get("enemies", []), problems)
+
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]
 	return scenario
@@ -117,6 +122,25 @@ static func _read_start_goods(scenario: Scenario, value: Variant, problems: Pack
 			problems.append("„start_goods“: Menge für „%s“ muss eine ganze Zahl ab 0 sein" % str(good))
 		else:
 			scenario.start_goods[str(good)] = int(amount)
+
+
+static func _read_enemies(scenario: Scenario, value: Variant, problems: PackedStringArray) -> void:
+	if not value is Array:
+		problems.append("„enemies“ muss eine Liste sein")
+		return
+	var entries: Array = value
+	for entry: Variant in entries:
+		var entry_dict: Dictionary = entry if entry is Dictionary else {}
+		var type_value: Variant = entry_dict.get("type")
+		var tile_value: Variant = entry_dict.get("tile")
+		var tile_array: Array = tile_value if tile_value is Array else []
+		if not (type_value is String and FighterType.is_enemy_type(type_value)):
+			problems.append("„enemies“: unbekannter Feindtyp „%s“" % str(type_value))
+		elif tile_array.size() != 2 or not _is_whole_number(tile_array[0]) or not _is_whole_number(tile_array[1]) \
+				or not Rect2i(Vector2i.ZERO, scenario.map_size).has_point(Vector2i(int(tile_array[0]), int(tile_array[1]))):
+			problems.append("„enemies“: „tile“ muss eine Kachel [x, y] auf der Karte sein")
+		else:
+			scenario.start_enemies.append(StartEnemy.create(str(type_value), Vector2i(int(tile_array[0]), int(tile_array[1]))))
 
 
 static func _failed(scenario_id: String, message: String) -> Scenario:

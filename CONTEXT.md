@@ -295,6 +295,14 @@ _Avoid_: Stellung, Wachposten
 Die Soldaten, die der Spieler gerade per Klick oder Rahmen gewählt hat und denen er Bewegen und Angreifen befiehlt.
 _Avoid_: Selektion, Gruppe
 
+**Figur**:
+Jeder, der sich auf der Karte bewegt: Bewohner und Feinde.
+_Avoid_: Einheit, Unit, Akteur
+
+**Kämpfer**:
+Eine Figur mit Lebenspunkten, die angreift und angegriffen wird: Soldaten und Feinde.
+_Avoid_: Einheit, Krieger
+
 **Feind**:
 Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
 _Avoid_: Gegner, Angreifer, Mob
