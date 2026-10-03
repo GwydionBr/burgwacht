@@ -8,14 +8,18 @@ const TEST_SCENARIO_DIR := "res://tests/scenarios/"
 const TEST_RANDOM_SEED := 12345
 
 var failures: PackedStringArray = []
+## Zahl der ausgeführten Prüfungen; ein Test ganz ohne Prüfung gilt als fehlgeschlagen.
+var checks := 0
 
 
 func assert_true(condition: bool, message := "") -> void:
+	checks += 1
 	if not condition:
 		failures.append(message if message != "" else "Bedingung ist falsch")
 
 
 func assert_eq(actual: Variant, expected: Variant, message := "") -> void:
+	checks += 1
 	if actual != expected:
 		failures.append("%s erwartet %s, war %s" % [message, str(expected), str(actual)])
 
@@ -125,6 +129,9 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	var residents: Array[Dictionary] = []
 	for resident in world.get_residents():
 		residents.append(resident.to_data())
+	var enemies: Array[Dictionary] = []
+	for enemy in world.get_enemies():
+		enemies.append(enemy.to_data())
 	var stock: Dictionary[String, int] = {}
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
@@ -134,6 +141,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	return {
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
 		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
+		"enemies": enemies,
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
 		"short_of_food": world.is_short_of_food(), "treasury": world.get_treasury(), "tax_rate": world.get_tax_rate(),
 		"factors": factors, "population": world.get_population(), "migration_ticks": world.get_migration_ticks(),

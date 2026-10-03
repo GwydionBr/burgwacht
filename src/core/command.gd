@@ -2,7 +2,7 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE }
+enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY }
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes; bei BUILD_LINE der Anfang der Linie.
@@ -23,10 +23,14 @@ var good: String
 var buying: bool
 ## Bei RECRUIT: der Soldatentyp aus units.json.
 var soldier_type: String
-## Bei MOVE: die IDs der Soldaten (die Auswahl).
+## Bei MOVE und ATTACK: die IDs der Soldaten (die Auswahl).
 var resident_ids: Array[int] = []
 ## Bei MOVE: das Ziel (Kachel + Ebene).
 var target: Vector3i
+## Bei ATTACK: die ID des Feinds.
+var enemy_id: int
+## Bei SPAWN_ENEMY: der Feindtyp aus units.json.
+var enemy_type: String
 
 
 ## Burg gründen: Bergfried mit Ursprung keep_origin, dazu das erste Warenlager.
@@ -106,4 +110,21 @@ static func move(soldier_ids: Array[int], target_position: Vector3i) -> Command:
 	command.kind = Kind.MOVE
 	command.resident_ids = soldier_ids.duplicate()
 	command.target = target_position
+	return command
+
+
+## Soldaten greifen einen Feind an: Sie verfolgen ihn, bis er tot ist.
+static func attack(soldier_ids: Array[int], target_enemy_id: int) -> Command:
+	var command := Command.new()
+	command.kind = Kind.ATTACK
+	command.resident_ids = soldier_ids.duplicate()
+	command.enemy_id = target_enemy_id
+	return command
+
+
+## Debug-Befehl: ein Feind dieses Typs erscheint am Kartenrand, der dem Bergfried am nächsten liegt.
+static func spawn_enemy(type_id: String) -> Command:
+	var command := Command.new()
+	command.kind = Kind.SPAWN_ENEMY
+	command.enemy_type = type_id
 	return command

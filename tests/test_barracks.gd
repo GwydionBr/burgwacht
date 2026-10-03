@@ -50,9 +50,9 @@ func test_soldier_types_come_from_data() -> void:
 	}
 	for type_id: String in expected:
 		var def: Dictionary = GameDefs.get_instance().units[type_id]
-		var actual: Array = [SoldierType.name_of(type_id), int(def["hp"]), int(def["damage"]), int(def["attack_ticks"]),
+		var actual: Array = [FighterType.name_of(type_id), int(def["hp"]), int(def["damage"]), int(def["attack_ticks"]),
 				bool(def.get("melee", false)), int(def.get("range", 0)), int(def["sight"]),
-				SoldierType.ticks_per_tile(type_id), SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id)]
+				FighterType.ticks_per_tile(type_id), SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id)]
 		assert_eq(actual, expected[type_id], "%s:" % type_id)
 		assert_true(def.has("color"), "Farbe für %s" % type_id)
 

@@ -19,6 +19,8 @@ extends Node2D
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
+##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
+##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -35,9 +37,10 @@ extends Node2D
 ## Ein Linksklick auf eine Kaserne (ohne Werkzeug) öffnet die Kasernenansicht (Esc schließt sie);
 ## ihre Knöpfe schicken den Befehl Anwerben.
 ## Ohne Werkzeug wählt ein Linksklick einen Soldaten (Ring), Linksziehen alle im Rahmen; ein
-## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Bewegen dorthin – auf den Wehrgang, wenn
-## unter der Maus eine Mauer liegt –, Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die
-## Auswahl auf.
+## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
+## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus eine Mauer liegt –;
+## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
+## einen Räuber am Rand nächst dem Bergfried erscheinen.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -48,6 +51,7 @@ var _scenario: Scenario
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
 var _resident_views: Dictionary[int, ResidentView] = {}
+var _enemy_views: Dictionary[int, EnemyView] = {}
 var _hovered := Vector2i(-1, -1)
 ## Gewählter Gebäudetyp im Baumodus, leer = kein Baumodus.
 var _build_type := ""
@@ -98,7 +102,9 @@ func _ready() -> void:
 	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	if args.has("load"):
-		_load_from(str(args["load"]))
+		var load_error := _load_from(str(args["load"]))
+		if load_error != "":
+			printerr("--load: ", load_error)
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
@@ -112,6 +118,10 @@ func _ready() -> void:
 			reason = world.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
 		if reason != "":
 			printerr("--place: ", reason)
+	if args.has("spawn") and OS.is_debug_build():
+		var spawn_reason := world.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
+		if spawn_reason != "":
+			printerr("--spawn: ", spawn_reason)
 	for i in int(args.get("ticks", 0)):
 		world.step()
 	if args.has("build"):
@@ -122,23 +132,38 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
+	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
 			if building.is_barracks():
 				_open_barracks(building.id)
 				break
+		if not _hud.is_barracks_open():
+			printerr("--barracks: keine Kaserne")
 	if args.has("select"):
 		_set_selection(_soldier_views())
-	if args.has("screenshot"):
-		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
-		set_process(false)
-		_hovered = world.map.center()
-		var hover := str(args.get("hover", "")).split(",")
-		if hover.size() == 2:
-			_hovered = Vector2i(int(hover[0]), int(hover[1]))
-		var box := str(args.get("box", "")).split(",")
+		if _selected.is_empty():
+			printerr("--select: keine Soldaten")
+	if args.has("focus"):
+		var focus := str(args["focus"]).split(",")
+		if focus.size() == 2:
+			_camera.focus_on(Iso.tile_to_world(Vector2i(int(focus[0]), int(focus[1]))))
+		else:
+			printerr("--focus: Format: --focus=x,y")
+	# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
+	var hover_tile := world.map.center()
+	var hover := str(args.get("hover", "")).split(",")
+	if hover.size() == 2:
+		hover_tile = Vector2i(int(hover[0]), int(hover[1]))
+	if args.has("box"):
+		var box := str(args["box"]).split(",")
 		if box.size() == 2:
-			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(_hovered))
+			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(hover_tile))
+		else:
+			printerr("--box: Format: --box=x,y")
+	if args.has("screenshot"):
+		set_process(false)
+		_hovered = hover_tile
 		var line := str(args.get("line", "")).split(",")
 		if line.size() == 2:
 			_drawing_line = true
@@ -196,19 +221,33 @@ static func _is_drag(from: Vector2, to: Vector2) -> bool:
 	return from.distance_to(to) > CameraController.CLICK_DISTANCE
 
 
-## Rechtsklick ohne Ziehen: beendet den Bau- bzw. Abrissmodus, sonst schickt er die Auswahl
-## an die Kachel unter der Maus.
+## Rechtsklick ohne Ziehen: beendet den Bau- bzw. Abrissmodus, sonst lässt er die Auswahl den
+## Feind unter der Maus angreifen bzw. schickt sie an die Kachel unter der Maus.
 func _right_click() -> void:
 	if _build_type != "" or _demolishing:
 		_select_build("")
 	elif not _selected.is_empty():
-		_execute_or_show(Command.move(_selected, _target_under_mouse()))
+		var enemy := _enemy_at(get_global_mouse_position())
+		if enemy != 0:
+			_execute_or_show(Command.attack(_selected, enemy))
+		else:
+			_execute_or_show(Command.move(_selected, _target_under_mouse()))
+
+
+## Der Feind, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
+func _enemy_at(point: Vector2) -> int:
+	var front := 0
+	for id: int in _enemy_views:
+		var view := _enemy_views[id]
+		if view.hit_rect().has_point(point) and (front == 0 or view.position.y > _enemy_views[front].position.y):
+			front = id
+	return front
 
 
 ## Das Ziel für Bewegen unter der Maus: eine Wehrgang-Kachel, wenn die Maus auf einer Mauer liegt
 ## (ihr Dach ist um die Mauerhöhe angehoben), sonst die Kachel am Boden.
 func _target_under_mouse() -> Vector3i:
-	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, ResidentView.wall_walk_height()))
+	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, FigureView.wall_walk_height()))
 	for tile: Vector2i in [raised, _hovered]:
 		if world.is_walkable(tile, Resident.Level.WALL_WALK):
 			return Vector3i(tile.x, tile.y, Resident.Level.WALL_WALK)
@@ -313,6 +352,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_quick_save()
 		KEY_F9:
 			_quick_load()
+		KEY_F8:
+			if OS.is_debug_build():
+				_execute_or_show(Command.spawn_enemy(FighterType.enemy_ids()[0]))
 		KEY_ESCAPE:
 			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
 			# offen, schließt Esc nur sie.
@@ -370,6 +412,10 @@ func _show_world(new_world: GameWorld) -> void:
 	world.resident_added.connect(_on_resident_added)
 	world.resident_removed.connect(_on_resident_removed)
 	world.resident_changed.connect(_on_resident_changed)
+	world.enemy_added.connect(_on_enemy_added)
+	world.enemy_removed.connect(_on_enemy_removed)
+	world.enemy_changed.connect(_on_enemy_changed)
+	world.shot_fired.connect(_on_shot_fired)
 	world.founded.connect(_on_founded)
 	world.popularity_changed.connect(_update_popularity)
 	world.factors_changed.connect(_update_popularity)
@@ -390,7 +436,7 @@ func _show_world(new_world: GameWorld) -> void:
 	var map := world.map
 	_terrain.show_map(map)
 
-	for view in _deposit_views.values():
+	for view: DepositView in _deposit_views.values():
 		view.queue_free()
 	_deposit_views.clear()
 	for tile in map.deposits:
@@ -405,6 +451,11 @@ func _show_world(new_world: GameWorld) -> void:
 	_resident_views.clear()
 	for resident in world.get_residents():
 		_add_resident_view(resident.id)
+	for view: EnemyView in _enemy_views.values():
+		view.queue_free()
+	_enemy_views.clear()
+	for enemy in world.get_enemies():
+		_add_enemy_view(enemy.id)
 
 	_camera.bounds = Iso.map_bounds(map.width, map.height)
 	_camera.focus_on(Iso.tile_to_world(map.center()))
@@ -435,17 +486,16 @@ func _quick_load() -> void:
 	_load_from(QUICKSAVE_PATH)
 
 
-## Lädt den Spielstand aus dieser Datei; Fehler als Meldung.
-func _load_from(path: String) -> void:
+## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
+func _load_from(path: String) -> String:
 	var file := FileAccess.open(path, FileAccess.READ)
 	var data: Variant = file.get_var() if file != null else null
-	if not data is Dictionary:
-		_hud.show_message("Spielstand ist beschädigt")
-		return
-	var error := GameWorld.data_error(data)
+	var error := "Spielstand ist beschädigt"
+	if data is Dictionary:
+		error = GameWorld.data_error(data)
 	if error != "":
 		_hud.show_message(error)
-		return
+		return error
 	var loaded := GameWorld.from_data(data)
 	# Neue Karte (N) danach im Szenario des Spielstands.
 	var scenario := Scenario.load_named(loaded.get_scenario_id())
@@ -453,6 +503,7 @@ func _load_from(path: String) -> void:
 		_scenario = scenario
 	_show_world(loaded)
 	_hud.show_message("Geladen (Tag %d)" % world.get_day())
+	return ""
 
 
 func _add_deposit_view(tile: Vector2i) -> void:
@@ -538,6 +589,37 @@ func _on_resident_changed(_id: int) -> void:
 	_update_hover()
 
 
+func _add_enemy_view(id: int) -> void:
+	var view := EnemyView.new()
+	view.setup(world.get_enemy(id), _clock)
+	_objects.add_child(view)
+	_enemy_views[id] = view
+
+
+func _on_enemy_added(id: int) -> void:
+	_add_enemy_view(id)
+	_update_hover()
+
+
+func _on_enemy_removed(id: int) -> void:
+	if _enemy_views.has(id):
+		_enemy_views[id].queue_free()
+		_enemy_views.erase(id)
+	_update_hover()
+
+
+func _on_enemy_changed(_id: int) -> void:
+	_update_hover()
+
+
+## Ein Pfeil fliegt sichtbar vom Schützen zum Ziel (über den Figuren).
+func _on_shot_fired(from: Vector3i, to: Vector3i) -> void:
+	var arrow := ArrowView.new()
+	arrow.z_index = 1
+	arrow.setup(Vector2i(from.x, from.y), Vector2i(to.x, to.y))
+	add_child(arrow)
+
+
 func _on_stock_changed(_building_id: int) -> void:
 	_update_stock()
 	# Vor dem ersten Tag hängt die Vorschau der Faktoren am Vorrat.
@@ -605,7 +687,7 @@ func _update_build_preview() -> void:
 		_preview.visible = false
 		var hint := ""
 		if not _selected.is_empty():
-			hint = "%s ausgewählt  ·  Rechtsklick: dorthin bewegen  ·  Esc: Auswahl aufheben" \
+			hint = "%s ausgewählt  ·  Rechtsklick: dorthin bewegen bzw. Feind angreifen  ·  Esc: Auswahl aufheben" \
 					% ("1 Soldat" if _selected.size() == 1 else "%d Soldaten" % _selected.size())
 		_hud.show_build_hint(hint, true)
 		return
@@ -786,10 +868,20 @@ func _update_hover() -> void:
 				text += "  ·  Nicht erreichbar"
 	var activities: PackedStringArray = []
 	for resident in world.get_residents_at(_hovered):
-		activities.append(world.activity_of(resident))
+		activities.append(world.activity_of(resident) + (_health_text(resident) if resident.is_soldier() else ""))
 	if not activities.is_empty():
 		text += "\nBewohner: %s" % ", ".join(activities)
+	var enemies: PackedStringArray = []
+	for enemy in world.get_enemies_at(_hovered):
+		enemies.append(world.enemy_activity_of(enemy) + _health_text(enemy))
+	if not enemies.is_empty():
+		text += "\nFeinde: %s" % ", ".join(enemies)
 	_hud.show_tile_info(text)
+
+
+## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
+static func _health_text(figure: Figure) -> String:
+	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
 
 
 func _parse_user_args() -> Dictionary:

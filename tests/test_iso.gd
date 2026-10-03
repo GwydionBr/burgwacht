@@ -11,7 +11,7 @@ func test_tile_world_roundtrip() -> void:
 func test_points_inside_diamond_belong_to_tile() -> void:
 	var tile := Vector2i(3, 7)
 	var c := Iso.tile_to_world(tile)
-	for offset in [Vector2(0, -15), Vector2(30, 0), Vector2(0, 15), Vector2(-30, 0), Vector2(14, 7)]:
+	for offset: Vector2 in [Vector2(0, -15), Vector2(30, 0), Vector2(0, 15), Vector2(-30, 0), Vector2(14, 7)]:
 		assert_eq(Iso.world_to_tile(c + offset), tile, "Versatz %s:" % offset)
 
 

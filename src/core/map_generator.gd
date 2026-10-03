@@ -42,7 +42,7 @@ static func generate(map_seed: int, width: int, height: int) -> MapData:
 			if deposit_type != "":
 				map.add_deposit(tile, Deposit.create(deposit_type, rng))
 
-	for type in ["stone", "iron"]:
+	for type: String in ["stone", "iron"]:
 		_ensure_near_start(map, type, rng)
 	# Eigener Zufall, damit Wild die übrige Karte eines Seeds nicht verändert.
 	var game_rng := RandomNumberGenerator.new()

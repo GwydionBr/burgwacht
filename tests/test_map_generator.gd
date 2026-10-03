@@ -38,7 +38,7 @@ func test_no_deposits_on_water() -> void:
 func test_stone_and_iron_near_start() -> void:
 	for map_seed in range(1, 21):
 		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
-		for type in ["stone", "iron"]:
+		for type: String in ["stone", "iron"]:
 			var found := false
 			for tile in map.deposits:
 				if map.deposits[tile].type == type \

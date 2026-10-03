@@ -145,13 +145,13 @@ func test_soldiers_spread_along_the_wall_walk() -> void:
 	_wall_with_stairs(world)
 	assert_eq(world.execute(Command.move([1, 2, 3] as Array[int], _on_wall(Vector2i(6, 12)))), "", "Bewegen:")
 	var posts: Array[Vector3i] = []
-	for id in [1, 2, 3]:
+	for id: int in [1, 2, 3]:
 		posts.append(world.get_resident(id).post)
 	# Ziel, dann die nächsten Wehrgang-Kacheln: oben, unten (rechts und links ist keiner).
 	assert_eq(posts, [_on_wall(Vector2i(6, 12)), _on_wall(Vector2i(6, 11)), _on_wall(Vector2i(6, 13))] as Array[Vector3i],
 			"Posten auf dem Wehrgang:")
 	_until_settled(world)
-	for id in [1, 2, 3]:
+	for id: int in [1, 2, 3]:
 		assert_eq(world.get_resident(id).position(), posts[id - 1], "Soldat %d am Posten:" % id)
 
 

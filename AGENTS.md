@@ -4,7 +4,7 @@ Burgenbau-Strategiespiel im Stil von Stronghold für macOS. Godot 4.7, GDScript,
 
 ## Befehle
 
-- `tools/test.sh` – alle Tests headless (muss vor jedem Commit grün sein)
+- `tools/test.sh` – alle Tests headless, danach der Rauchtest (muss vor jedem Commit grün sein)
 - `tools/run.sh` – Spiel starten (`tools/run.sh -- --seed=42` für feste Karte)
 - `tools/screenshot.sh /tmp/bild.png [seed]` – Screenshot, um Grafikänderungen zu prüfen
 
@@ -13,7 +13,7 @@ Burgenbau-Strategiespiel im Stil von Stronghold für macOS. Godot 4.7, GDScript,
 - `src/core/` ist reine Logik und kennt nichts aus `view/` oder `ui/`.
 - Neue Gelände-, Vorkommens-, Waren- oder Gebäudetypen gehören nach `data/*.json`, nicht in den Code.
 - Bezeichner auf Englisch, Kommentare und Spieltexte auf Deutsch.
-- Statische Typisierung überall, keine Variant-Inferenz.
+- Statische Typisierung überall, keine Variant-Inferenz (fehlende Typangabe ist ein Parse-Fehler).
 - Logik in `core/` testen; Grafik per Screenshot prüfen. Kleine Commits pro Feature.
 
 ## Weiterlesen bei Bedarf
