@@ -1,9 +1,11 @@
 class_name Hud
 extends CanvasLayer
-## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Bestand und Bewohnern, Meldungen oben
+## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Belegung je Lagerart, Bewohnern und Gold, Meldungen oben
 ## rechts darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
+## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis; sie ist zugleich die
+## Bestandsübersicht. Verwaltung und Marktansicht schließen sich gegenseitig.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
@@ -35,7 +37,7 @@ var _message_label: Label
 var _message_panel: PanelContainer
 var _message_timer: Timer
 var _info_panel: PanelContainer
-var _stock_label: Label
+var _storage_label: Label
 var _residents_label: Label
 var _popularity_label: Label
 var _gold_label: Label
@@ -45,6 +47,9 @@ var _tax_rate_label: Label
 var _eaten_label: Label
 var _factors_label: Label
 var _factor_sum_label: Label
+var _market_panel: PanelContainer
+## Ware → Feld für ihren Bestand in der Marktansicht.
+var _market_stock_labels: Dictionary[String, Label] = {}
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -66,8 +71,8 @@ func _ready() -> void:
 	row.add_child(_day_label)
 	_speed_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_speed_label)
-	_stock_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_stock_label)
+	_storage_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_storage_label)
 	_residents_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_residents_label)
 	_popularity_label = _make_label("", TEXT_COLOR, 16)
@@ -95,7 +100,7 @@ func _ready() -> void:
 		"Linksklick: gründen/bauen/abreißen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
 		+ "WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
-		+ "V: Verwaltung  ·  F5/F9: speichern/laden  ·  F: Vollbild",
+		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))
 	add_child(help_panel)
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
@@ -145,6 +150,13 @@ func _ready() -> void:
 	_admin_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_admin_panel.visible = false
 
+	_market_panel = _make_market_panel()
+	add_child(_market_panel)
+	_market_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_market_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_market_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_market_panel.visible = false
+
 
 func set_seed(map_seed: int) -> void:
 	_seed_label.text = "Karte #%d" % map_seed
@@ -172,9 +184,9 @@ func show_tile_info(text: String) -> void:
 	_info_panel.reset_size()
 
 
-## Bestand und Lagerbelegung in der Titelleiste, z. B. „Holz 100 · Stein 50 · Warenlager 150/200“.
-func show_stock(text: String) -> void:
-	_stock_label.text = text
+## Belegung je Lagerart in der Titelleiste, z. B. „Warenlager 150/200 · Kornspeicher 40/100“.
+func show_storage(text: String) -> void:
+	_storage_label.text = text
 
 
 ## Bewohnerzahl und Wohnraum in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“.
@@ -194,9 +206,10 @@ func show_treasury(gold: int) -> void:
 	_gold_label.text = "Gold %d" % gold
 
 
-## Verwaltung öffnen bzw. schließen (Taste V).
+## Verwaltung öffnen bzw. schließen (Taste V); schließt die Marktansicht.
 func toggle_administration() -> void:
 	_admin_panel.visible = not _admin_panel.visible
+	_market_panel.visible = false
 
 
 func close_administration() -> void:
@@ -205,6 +218,26 @@ func close_administration() -> void:
 
 func is_administration_open() -> bool:
 	return _admin_panel.visible
+
+
+## Marktansicht öffnen bzw. schließen (Taste M); schließt die Verwaltung.
+func toggle_market() -> void:
+	_market_panel.visible = not _market_panel.visible
+	_admin_panel.visible = false
+
+
+func close_market() -> void:
+	_market_panel.visible = false
+
+
+func is_market_open() -> bool:
+	return _market_panel.visible
+
+
+## Bestand je Ware in der Marktansicht.
+func show_market(stock: Dictionary[String, int]) -> void:
+	for good: String in stock:
+		_market_stock_labels[good].text = str(stock[good])
 
 
 ## Inhalt der Verwaltung: eingestellte Ration, die tatsächlich gegessene (leer = dieselbe),
@@ -292,6 +325,59 @@ func _make_admin_panel() -> PanelContainer:
 	column.add_child(_factor_sum_label)
 	column.add_child(_make_label("V/Esc: schließen", HINT_COLOR, 13))
 	return panel
+
+
+## Die Marktansicht: je Ware eine Zeile mit Name, Bestand, Kauf- und Verkaufspreis und den
+## Handelsknöpfen. Gehandelt wird noch nicht: Die Knöpfe sind gesperrt, oben steht der Grund.
+func _make_market_panel() -> PanelContainer:
+	var defs := GameDefs.get_instance()
+	var panel := _make_panel()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	column.add_child(_make_label("Markt", TEXT_COLOR, 20))
+	column.add_child(_make_label("Kein Markt gebaut", BLOCKED_COLOR, 15))
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 6)
+	column.add_child(grid)
+	for title: String in ["Ware", "Bestand", "Kauf", "Verkauf", "", ""]:
+		var header := _make_label(title, HINT_COLOR, 14)
+		if title in ["Bestand", "Kauf", "Verkauf"]:
+			header.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(header)
+	for good: String in defs.goods:
+		grid.add_child(_make_label(str(defs.goods[good]["name"]), TEXT_COLOR, 16))
+		var stock_label := _make_number_label("0")
+		grid.add_child(stock_label)
+		_market_stock_labels[good] = stock_label
+		var tradable := Market.is_tradable(good)
+		grid.add_child(_make_number_label(str(Market.buy_price(good)) if tradable else "–"))
+		grid.add_child(_make_number_label(str(Market.sell_price(good)) if tradable else "–"))
+		grid.add_child(_make_trade_button("Kaufen %d" % Market.TRADE_AMOUNT, tradable))
+		grid.add_child(_make_trade_button("Verkaufen %d" % Market.TRADE_AMOUNT, tradable))
+	column.add_child(_make_label("Preise in Gold pro Stück  ·  M/Esc: schließen", HINT_COLOR, 13))
+	return panel
+
+
+## Rechtsbündige Zahl in der Marktansicht.
+func _make_number_label(text: String) -> Label:
+	var label := _make_label(text, TEXT_COLOR, 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return label
+
+
+## Handelsknopf, noch gesperrt; bei nicht handelbaren Waren unsichtbar (hält aber die Spalte).
+func _make_trade_button(text: String, tradable: bool) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.disabled = true
+	button.add_theme_font_size_override("font_size", 14)
+	if not tradable:
+		button.modulate = Color.TRANSPARENT
+	return button
 
 
 ## Eine Zeile der Verwaltung: Name, ◀ Wert ▶ und Tastenhinweis; die Pfeile senden step

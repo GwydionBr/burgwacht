@@ -165,6 +165,17 @@ static func storage_name(storage_type: String) -> String:
 	return storage_type
 
 
+## Die Lagerarten der Waren, in der Reihenfolge ihrer ersten Ware in den Daten.
+static func storage_types() -> Array[String]:
+	var result: Array[String] = []
+	var goods := GameDefs.get_instance().goods
+	for good: String in goods:
+		var storage_type := str(goods[good]["storage"])
+		if not result.has(storage_type):
+			result.append(storage_type)
+	return result
+
+
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.
 static func size_of(type_id: String) -> Vector2i:
 	return _vec(GameDefs.get_instance().buildings[type_id]["size"])

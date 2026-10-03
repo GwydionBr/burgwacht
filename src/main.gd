@@ -13,6 +13,7 @@ extends Node2D
 ##   --demolish            nach der Gründung gleich mit dem Abriss-Werkzeug (für Screenshots)
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
 ##   --admin               Verwaltung geöffnet (für Screenshots)
+##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -24,6 +25,7 @@ extends Node2D
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
 ## V öffnet und schließt die Verwaltung (Esc schließt sie auch); darin stellen ◀ ▶ bzw. −/+
 ## die Ration und ◀ ▶ bzw. ,/. den Steuersatz per Befehl ein.
+## M öffnet und schließt die Marktansicht mit dem Bestand aller Waren (Esc schließt sie auch).
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -86,6 +88,8 @@ func _ready() -> void:
 		_select_demolish()
 	if args.has("admin"):
 		_hud.toggle_administration()
+	if args.has("market"):
+		_hud.toggle_market()
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -146,13 +150,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F9:
 			_quick_load()
 		KEY_ESCAPE:
-			# Ist die Verwaltung offen, schließt Esc nur sie.
+			# Ist die Verwaltung oder die Marktansicht offen, schließt Esc nur sie.
 			if _hud.is_administration_open():
 				_hud.close_administration()
+			elif _hud.is_market_open():
+				_hud.close_market()
 			else:
 				_select_build("")
 		KEY_V:
 			_hud.toggle_administration()
+		KEY_M:
+			_hud.toggle_market()
 		KEY_MINUS, KEY_KP_SUBTRACT:
 			if _hud.is_administration_open():
 				_step_ration(-1)
@@ -431,21 +439,17 @@ func _update_demolish_preview() -> void:
 		_hud.show_build_hint("Abriss: %s" % reason, false)
 
 
-## Titelleiste: je Lagerart (Warenlager, Kornspeicher) der Bestand ihrer Waren und die Belegung.
+## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher); Marktansicht: Bestand je Ware.
 func _update_stock() -> void:
-	var defs := GameDefs.get_instance()
-	var groups: Dictionary[String, PackedStringArray] = {}
-	for good: String in defs.goods:
-		var storage_type := str(defs.goods[good]["storage"])
-		if not groups.has(storage_type):
-			groups[storage_type] = PackedStringArray()
-		groups[storage_type].append("%s %d" % [defs.goods[good]["name"], world.get_stock(good)])
 	var parts: PackedStringArray = []
-	for storage_type: String in groups:
-		parts.append_array(groups[storage_type])
+	for storage_type in Building.storage_types():
 		parts.append("%s %d/%d" % [Building.storage_name(storage_type), world.get_storage_used(storage_type),
 				world.get_storage_capacity(storage_type)])
-	_hud.show_stock("  ·  ".join(parts))
+	_hud.show_storage("  ·  ".join(parts))
+	var stock: Dictionary[String, int] = {}
+	for good: String in GameDefs.get_instance().goods:
+		stock[good] = world.get_stock(good)
+	_hud.show_market(stock)
 
 
 ## Titelleiste: Bewohner, Wohnraum und Untätige.
