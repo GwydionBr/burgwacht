@@ -104,7 +104,7 @@ static func neighbors(position: Vector3i, walkable: Callable, ascents := Callabl
 		if walkable.call(position + step):
 			candidates.append(position + step)
 	for step in DIAGONAL_STEPS:
-		if walkable.call(position + step) and (position.z != Resident.Level.GROUND
+		if walkable.call(position + step) and (position.z != Figure.Level.GROUND
 				or walkable.call(position + Vector3i(step.x, 0, 0)) and walkable.call(position + Vector3i(0, step.y, 0))):
 			candidates.append(position + step)
 	if ascents.is_valid():

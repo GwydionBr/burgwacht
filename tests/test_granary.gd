@@ -58,7 +58,7 @@ func test_founding_keeps_all_entrances_free() -> void:
 			continue
 		var front := Building.front_of_entrance(building.type, building.origin)
 		assert_eq(world.get_building_at(front), null, "Vor dem Eingang von %s:" % building.type)
-		assert_true(world.is_walkable(front, Resident.Level.GROUND), "Vor dem Eingang von %s begehbar" % building.type)
+		assert_true(world.is_walkable(front, Figure.Level.GROUND), "Vor dem Eingang von %s begehbar" % building.type)
 
 
 func test_start_goods_go_to_storage_of_their_kind() -> void:

@@ -8,7 +8,7 @@ const KEEP_ORIGIN := Vector2i(2, 2)
 const WAREHOUSE := 2
 const ARMORY_SITE := Vector2i(10, 10)
 const BARRACKS_SITE := Vector2i(14, 2)
-const WALL_WALK := Resident.Level.WALL_WALK
+const WALL_WALK := Figure.Level.WALL_WALK
 ## Turm (2×2) frei auf der Wiese; Eingang unten links bei (6, 13), davor (6, 14).
 const TOWER_SITE := Vector2i(6, 12)
 const TOWER_ENTRANCE := Vector2i(6, 13)
@@ -80,8 +80,8 @@ func test_whole_tower_is_wall_walk() -> void:
 	for tile: Vector2i in Building.footprint("tower", TOWER_SITE):
 		assert_true(world.is_walkable(tile, WALL_WALK), "Wehrgang auf %s" % str(tile))
 	# Am Boden nur der Eingang.
-	assert_true(world.is_walkable(TOWER_ENTRANCE, Resident.Level.GROUND), "Eingang am Boden")
-	assert_true(not world.is_walkable(TOWER_SITE, Resident.Level.GROUND), "Turm versperrt den Boden")
+	assert_true(world.is_walkable(TOWER_ENTRANCE, Figure.Level.GROUND), "Eingang am Boden")
+	assert_true(not world.is_walkable(TOWER_SITE, Figure.Level.GROUND), "Turm versperrt den Boden")
 
 
 func test_soldier_climbs_the_tower_through_its_entrance() -> void:
@@ -92,14 +92,14 @@ func test_soldier_climbs_the_tower_through_its_entrance() -> void:
 	var visited := _until_settled(world)
 	assert_eq(world.get_resident(1).position(), top, "Oben angekommen:")
 	# Hinauf nur am Eingang: vom Boden auf den Wehrgang derselben Kachel.
-	var up := visited.find(Resident.ground(TOWER_ENTRANCE))
+	var up := visited.find(Figure.ground(TOWER_ENTRANCE))
 	assert_true(up >= 0 and visited[up + 1] == _on_wall(TOWER_ENTRANCE), "Über den Eingang: %s" % str(visited))
 	# Und wieder hinab.
-	_move(world, Resident.ground(Vector2i(6, 15)))
+	_move(world, Figure.ground(Vector2i(6, 15)))
 	visited = _until_settled(world)
-	assert_eq(world.get_resident(1).position(), Resident.ground(Vector2i(6, 15)), "Unten angekommen:")
+	assert_eq(world.get_resident(1).position(), Figure.ground(Vector2i(6, 15)), "Unten angekommen:")
 	var down := visited.find(_on_wall(TOWER_ENTRANCE))
-	assert_true(down >= 0 and visited[down + 1] == Resident.ground(TOWER_ENTRANCE), "Hinab über den Eingang: %s" % str(visited))
+	assert_true(down >= 0 and visited[down + 1] == Figure.ground(TOWER_ENTRANCE), "Hinab über den Eingang: %s" % str(visited))
 
 
 func test_tower_wall_walk_continues_onto_walls_also_diagonally() -> void:
@@ -133,15 +133,15 @@ func test_gate_carries_the_wall_walk_and_lets_soldiers_through_below() -> void:
 	_wall(world, Vector2i(6, 13), Vector2i(6, 14))
 	var gate := Vector2i(6, 12)
 	build(world, "gate", gate)
-	assert_true(world.is_walkable(gate, Resident.Level.GROUND), "Tor am Boden begehbar")
+	assert_true(world.is_walkable(gate, Figure.Level.GROUND), "Tor am Boden begehbar")
 	assert_true(world.is_walkable(gate, WALL_WALK), "Tor trägt Wehrgang")
 	# Am Boden hindurch: von rechts nach links.
-	_move(world, Resident.ground(Vector2i(7, 12)))
+	_move(world, Figure.ground(Vector2i(7, 12)))
 	_until_settled(world)
-	_move(world, Resident.ground(Vector2i(5, 12)))
+	_move(world, Figure.ground(Vector2i(5, 12)))
 	var visited := _until_settled(world)
-	assert_eq(world.get_resident(1).position(), Resident.ground(Vector2i(5, 12)), "Hindurch:")
-	assert_true(visited.has(Resident.ground(gate)), "Durch das Tor: %s" % str(visited))
+	assert_eq(world.get_resident(1).position(), Figure.ground(Vector2i(5, 12)), "Hindurch:")
+	assert_true(visited.has(Figure.ground(gate)), "Durch das Tor: %s" % str(visited))
 	# Oben über das Tor: von einer Treppe an der oberen Mauerkachel zur unteren.
 	build(world, "stairs", Vector2i(5, 11))
 	_move(world, _on_wall(Vector2i(6, 14)))
@@ -199,7 +199,7 @@ func test_workers_leave_the_walls_through_a_gate() -> void:
 		world.step()
 		var worker := _worker_of(world, woodcutter)
 		if worker != null:
-			assert_true(worker.level == Resident.Level.GROUND, "Arbeiter bleibt am Boden")
+			assert_true(worker.level == Figure.Level.GROUND, "Arbeiter bleibt am Boden")
 			crossed = crossed or worker.tile == gate
 	var worker := _worker_of(world, woodcutter)
 	assert_true(worker != null, "Arbeiter zugeteilt")

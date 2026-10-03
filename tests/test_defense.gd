@@ -8,7 +8,7 @@ const KEEP_ORIGIN := Vector2i(2, 2)
 const WAREHOUSE := 2
 const ARMORY_SITE := Vector2i(10, 10)
 const BARRACKS_SITE := Vector2i(14, 2)
-const WALL_WALK := Resident.Level.WALL_WALK
+const WALL_WALK := Figure.Level.WALL_WALK
 ## Dort wartet ein Räuber vom Rand (2, 0) aus am Bergfried.
 const KEEP_SPOT := Vector2i(2, 1)
 ## Ring um den Bergfried: Mauer bei x = 6 (y 0..7) und y = 7 (x 0..6); der Kartenrand schließt ihn.

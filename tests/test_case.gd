@@ -106,7 +106,7 @@ func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
 ## Testvorbereitung: Ein Feind dieses Typs erscheint auf der Kachel (wie einer aus dem Szenario)
 ## und läuft gleich zum Bergfried.
 func add_enemy(world: GameWorld, type_id: String, tile: Vector2i) -> Enemy:
-	return world._add_enemy(type_id, tile)
+	return world._combat()._add_enemy(type_id, tile)
 
 
 ## Testvorbereitung: Felsen rechts neben einem Steinbruch (3×3) mit diesem Ursprung,

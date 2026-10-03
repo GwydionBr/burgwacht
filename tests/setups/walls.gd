@@ -32,9 +32,9 @@ static func create() -> GameWorld:
 	helper.build(world, "gate", GATE)
 	helper.build(world, "tower", TOWER_SITE)
 	helper.build(world, "stairs", STAIRS)
-	_ok(world.execute(Command.move([1] as Array[int], Vector3i(9, 10, Resident.Level.WALL_WALK))), "Bewegen")
-	_ok(world.execute(Command.move([2] as Array[int], Vector3i(15, 13, Resident.Level.WALL_WALK))), "Bewegen")
-	_ok(world.execute(Command.move([3] as Array[int], Resident.ground(GATE))), "Bewegen")
+	_ok(world.execute(Command.move([1] as Array[int], Vector3i(9, 10, Figure.Level.WALL_WALK))), "Bewegen")
+	_ok(world.execute(Command.move([2] as Array[int], Vector3i(15, 13, Figure.Level.WALL_WALK))), "Bewegen")
+	_ok(world.execute(Command.move([3] as Array[int], Figure.ground(GATE))), "Bewegen")
 	for i in TICKS:
 		world.step()
 	return world

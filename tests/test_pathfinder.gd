@@ -2,7 +2,7 @@ extends TestCase
 ## Einzeltests der Wegfindung (A*, 8 Richtungen) auf einem kleinen Raster.
 ## Positionen sind Vector3i: Kachel (x, y) und Ebene (z).
 
-const GROUND := Resident.Level.GROUND
+const GROUND := Figure.Level.GROUND
 const SIZE := Vector2i(10, 10)
 
 ## Gesperrte Kacheln des Testrasters.

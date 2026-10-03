@@ -40,7 +40,7 @@ func test_start_residents_stand_idle_next_to_campfire() -> void:
 	assert_eq(_tiles(residents), expected, "Kacheln:")
 	for resident in residents:
 		assert_true(resident.is_idle(), "Bewohner %d sollte untätig sein" % resident.id)
-		assert_eq(resident.level, Resident.Level.GROUND, "Ebene von Bewohner %d:" % resident.id)
+		assert_eq(resident.level, Figure.Level.GROUND, "Ebene von Bewohner %d:" % resident.id)
 
 
 func test_residents_get_ascending_ids() -> void:
@@ -111,7 +111,7 @@ func test_residents_are_reported_before_founded() -> void:
 
 func test_walkability() -> void:
 	var world := _founded()
-	var ground := Resident.Level.GROUND
+	var ground := Figure.Level.GROUND
 	assert_true(world.is_walkable(_campfire(world), ground), "Lagerfeuer ist begehbar")
 	assert_true(world.is_walkable(Building.entrance_of("keep", ORIGIN), ground), "Eingang des Bergfrieds ist begehbar")
 	assert_true(not world.is_walkable(ORIGIN, ground), "Grundfläche des Bergfrieds ist nicht begehbar")
@@ -140,7 +140,7 @@ func test_every_task_has_phase_and_goal() -> void:
 
 
 func test_blocked_and_waiting_follow_from_phase() -> void:
-	var resident := Resident.create(1, Vector2i(3, 3), Resident.Level.GROUND)
+	var resident := Resident.create(1, Vector2i(3, 3), Figure.Level.GROUND)
 	resident.timer = 5
 	resident.task = Resident.Task.TO_STORAGE
 	assert_true(resident.is_waiting() and resident.is_blocked(), "Laufschritt mit Wartezeit: Weg versperrt")

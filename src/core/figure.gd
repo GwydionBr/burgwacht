@@ -9,6 +9,9 @@ extends RefCounted
 ## Höhenstufe einer Position: Boden oder Wehrgang (oben auf Mauern, nur für Soldaten).
 enum Level { GROUND = 0, WALL_WALK = 1 }
 
+## Toleranz beim Vergleich von Abständen (Reichweite, Sichtweite).
+const DISTANCE_SLACK := 0.0001
+
 var id: int
 var tile: Vector2i
 var level := Level.GROUND
@@ -47,6 +50,28 @@ func is_fighter() -> bool:
 ## Hat ein Kämpfer Lebenspunkte verloren?
 func is_wounded() -> bool:
 	return is_fighter() and hp < FighterType.max_hp(fighter_type())
+
+
+## Ist target in seiner Reichweite? Nahkampf: Nachbarkachel (auch schräg) auf derselben Ebene;
+## Fernkampf: Abstand der Kachelmitten höchstens die Reichweite samt range_bonus, auch über
+## Ebenen hinweg. Den Bonus von Wehrgang und Gebäude liefert Combat.
+func in_reach(target: Figure, range_bonus := 0) -> bool:
+	var type := fighter_type()
+	if FighterType.is_melee(type):
+		var offset := (target.tile - tile).abs()
+		return level == target.level and maxi(offset.x, offset.y) <= 1
+	return distance_to(target) <= FighterType.range_of(type) + range_bonus + DISTANCE_SLACK
+
+
+## Abstand der Kachelmitten zu einer anderen Figur.
+func distance_to(other: Figure) -> float:
+	return Vector2(tile - other.tile).length()
+
+
+## Ein Angriff hat ihn getroffen (Lebenspunkte schon abgezogen): Combat entscheidet je nach Art
+## der Figur, was aus ihm wird.
+func report_hit(_combat: Combat) -> void:
+	assert(false, "report_hit() fehlt")
 
 
 ## Dauer eines seiner Schritte zwischen zwei benachbarten Positionen in Takten.

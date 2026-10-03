@@ -9,17 +9,11 @@ const KIND := "soldier"
 
 ## Die Soldatentypen in Datenreihenfolge.
 static func ids() -> Array[String]:
-	var result: Array[String] = []
-	var units := GameDefs.get_instance().units
-	for unit_id: String in units:
-		if is_soldier_type(unit_id):
-			result.append(unit_id)
-	return result
+	return FighterType.ids_of_kind(KIND)
 
 
 static func is_soldier_type(type_id: String) -> bool:
-	var def: Dictionary = GameDefs.get_instance().units.get(type_id, {})
-	return def.get("kind", "") == KIND
+	return FighterType.is_kind(type_id, KIND)
 
 
 ## Anwerbekosten in Waren: Ware → Menge (ohne Gold).

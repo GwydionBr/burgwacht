@@ -8,7 +8,7 @@ const KEEP_ORIGIN := Vector2i(2, 2)
 const WAREHOUSE := 2
 const ARMORY_SITE := Vector2i(10, 10)
 const BARRACKS_SITE := Vector2i(14, 2)
-const WALL_WALK := Resident.Level.WALL_WALK
+const WALL_WALK := Figure.Level.WALL_WALK
 ## Senkrechte Mauer von (6, 11) bis (6, 14), Treppe links daneben.
 const WALL_TOP := Vector2i(6, 11)
 const WALL_BOTTOM := Vector2i(6, 14)
@@ -52,7 +52,7 @@ func _until_settled(world: GameWorld, watched := 1) -> Array[Vector3i]:
 		var moving := false
 		for resident in world.get_residents():
 			moving = moving or resident.is_moving()
-			assert_true(resident.is_soldier() or resident.level == Resident.Level.GROUND,
+			assert_true(resident.is_soldier() or resident.level == Figure.Level.GROUND,
 					"Bewohner %d auf dem Wehrgang" % resident.id)
 		var soldier := world.get_resident(watched)
 		if soldier != null and (visited.is_empty() or visited.back() != soldier.position()):
@@ -78,13 +78,13 @@ func test_soldier_climbs_the_stairs_onto_the_wall_walk() -> void:
 	_until_settled(world)
 	_wall_with_stairs(world)
 	assert_true(world.is_walkable(WALL_BOTTOM, WALL_WALK), "Wehrgang auf der Mauer")
-	assert_true(not world.is_walkable(WALL_BOTTOM, Resident.Level.GROUND), "Mauer versperrt den Boden")
+	assert_true(not world.is_walkable(WALL_BOTTOM, Figure.Level.GROUND), "Mauer versperrt den Boden")
 	assert_true(not world.is_walkable(STAIRS, WALL_WALK), "Auf der Treppe kein Wehrgang")
 	assert_eq(world.execute(Command.move([1] as Array[int], _on_wall(WALL_BOTTOM))), "", "Bewegen:")
 	var visited := _until_settled(world)
 	assert_eq(world.get_resident(1).position(), _on_wall(WALL_BOTTOM), "Oben angekommen:")
 	# Hinauf nur von der Treppe auf die Mauerkachel daneben.
-	var up := visited.find(Resident.ground(STAIRS))
+	var up := visited.find(Figure.ground(STAIRS))
 	assert_true(up >= 0 and visited[up + 1] == _on_wall(STAIRS + Vector2i(1, 0)), "Über die Treppe: %s" % str(visited))
 
 
@@ -108,7 +108,7 @@ func test_diagonal_wall_is_closed_on_the_ground() -> void:
 	_until_settled(world)
 	# Schneidet die Ecke unten links ab; dahinter liegt (0, 15).
 	_wall(world, Vector2i(0, 12), Vector2i(3, 15))
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(Vector2i(0, 15)))), "Kein Weg dorthin",
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(0, 15)))), "Kein Weg dorthin",
 			"Kein Weg durch die schräge Mauer:")
 
 
@@ -171,8 +171,8 @@ func test_soldier_on_a_demolished_wall_moves_to_the_next_wall_walk_else_down() -
 	# Ohne Wehrgang daneben geht es auf den Boden derselben Kachel.
 	world.execute(Command.demolish(world.get_building_at(above + Vector2i(0, -1)).id))
 	world.execute(Command.demolish(world.get_building_at(above).id))
-	assert_eq(soldier.position(), Resident.ground(above), "Auf den Boden:")
-	assert_eq(soldier.post, Resident.ground(above), "Posten am Boden:")
+	assert_eq(soldier.position(), Figure.ground(above), "Auf den Boden:")
+	assert_eq(soldier.post, Figure.ground(above), "Posten am Boden:")
 	assert_true(not soldier.is_moving(), "Steht")
 
 
@@ -221,7 +221,7 @@ func test_soldier_on_the_way_up_replans_when_the_stairs_are_demolished() -> void
 	assert_eq(world.execute(Command.demolish(world.get_building_at(STAIRS).id)), "", "Abriss der Treppe:")
 	for i in 100:
 		world.step()
-	assert_eq(soldier.level, Resident.Level.GROUND, "Ohne Treppe kein Weg hinauf")
+	assert_eq(soldier.level, Figure.Level.GROUND, "Ohne Treppe kein Weg hinauf")
 	assert_true(soldier.is_blocked(), "Wartet: Weg versperrt")
 
 

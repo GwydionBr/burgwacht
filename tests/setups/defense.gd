@@ -30,9 +30,9 @@ static func create() -> GameWorld:
 	_ok(world.execute(Command.build_line("wall", Vector2i(0, 10), Vector2i(10, 10))), "Mauerlinie")
 	helper.build(world, "stairs", INNER_STAIRS)
 	helper.build(world, "stairs", OUTER_STAIRS)
-	_ok(world.execute(Command.move([1] as Array[int], Vector3i(5, 10, Resident.Level.WALL_WALK))), "Bewegen")
-	_ok(world.execute(Command.move([2] as Array[int], Vector3i(8, 10, Resident.Level.WALL_WALK))), "Bewegen")
-	_ok(world.execute(Command.move([3] as Array[int], Resident.ground(Vector2i(7, 12)))), "Bewegen")
+	_ok(world.execute(Command.move([1] as Array[int], Vector3i(5, 10, Figure.Level.WALL_WALK))), "Bewegen")
+	_ok(world.execute(Command.move([2] as Array[int], Vector3i(8, 10, Figure.Level.WALL_WALK))), "Bewegen")
+	_ok(world.execute(Command.move([3] as Array[int], Figure.ground(Vector2i(7, 12)))), "Bewegen")
 	for i in 400:
 		world.step()
 	for tile in BANDITS:
