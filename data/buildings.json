@@ -131,5 +131,41 @@
     "decor": "trees",
     "color": "#7a9a3a",
     "height": 6
+  },
+  "wheat_farm": {
+    "name": "Weizenfarm",
+    "behavior": "farm",
+    "workers": 1,
+    "worker_name": "Bauer",
+    "work_text": "baut Weizen an",
+    "work_ticks": 250,
+    "product": "wheat",
+    "load": 4,
+    "size": [4, 4],
+    "entrance": [1, 3],
+    "cost": { "wood": 10 },
+    "rules": [{ "kind": "on_terrain", "terrain": ["grass", "meadow"], "reason": "Nur auf Wiese" }],
+    "hotkey": "W",
+    "decor": "wheat",
+    "color": "#c9a93e",
+    "height": 4
+  },
+  "iron_mine": {
+    "name": "Eisenmine",
+    "behavior": "gather",
+    "workers": 1,
+    "worker_name": "Bergarbeiter",
+    "deposit": "iron",
+    "mine_ticks": 80,
+    "process_ticks": 20,
+    "load": 2,
+    "range": 6,
+    "size": [2, 2],
+    "entrance": [0, 1],
+    "cost": { "wood": 20 },
+    "rules": [{ "kind": "next_to_deposit", "deposit": "iron", "reason": "Muss an ein Eisenvorkommen grenzen" }],
+    "hotkey": "E",
+    "color": "#5a5550",
+    "height": 22
   }
 }
