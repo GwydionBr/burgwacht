@@ -66,6 +66,7 @@ func _ready() -> void:
 	_hud.demolish_selected.connect(_select_demolish)
 	_hud.ration_step.connect(_step_ration)
 	_hud.tax_rate_step.connect(_step_tax_rate)
+	_hud.trade_requested.connect(_trade)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -311,6 +312,7 @@ func _add_building_view(id: int) -> void:
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
 	_update_residents()
+	_update_market()
 	_update_hover()
 	_update_preview()
 
@@ -320,6 +322,7 @@ func _on_building_removed(id: int) -> void:
 		_building_views[id].queue_free()
 		_building_views.erase(id)
 	_update_residents()
+	_update_market()
 	_update_hover()
 	_update_preview()
 
@@ -450,6 +453,22 @@ func _update_stock() -> void:
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
 	_hud.show_market_stock(stock)
+	_update_market()
+
+
+## Marktansicht: Handelsknöpfe je Ware mit dem Grund, warum Kauf bzw. Verkauf gerade nicht geht.
+func _update_market() -> void:
+	var buy_errors: Dictionary[String, String] = {}
+	var sell_errors: Dictionary[String, String] = {}
+	for good: String in GameDefs.get_instance().goods:
+		buy_errors[good] = world.trade_error(good, true)
+		sell_errors[good] = world.trade_error(good, false)
+	_hud.show_trade_errors(world.has_market(), buy_errors, sell_errors)
+
+
+## Handel aus der Marktansicht als Befehl abschicken.
+func _trade(good: String, buying: bool) -> void:
+	_execute_or_show(Command.trade(good, buying))
 
 
 ## Titelleiste: Bewohner, Wohnraum und Untätige.
@@ -490,6 +509,7 @@ func _update_popularity() -> void:
 ## Titelleiste: Gold im Schatz.
 func _update_treasury() -> void:
 	_hud.show_treasury(world.get_treasury())
+	_update_market()
 
 
 func _update_hover() -> void:

@@ -39,3 +39,9 @@ func test_a_trade_is_five_units() -> void:
 
 func test_storage_types_in_goods_order() -> void:
 	assert_eq(Building.storage_types(), ["warehouse", "granary"] as Array[String], "Lagerarten:")
+
+
+func test_missing_storage_text_from_the_data() -> void:
+	assert_eq(Building.storage_missing_text("warehouse"), "Kein Warenlager", "Warenlager:")
+	assert_eq(Building.storage_missing_text("granary"), "Kein Kornspeicher", "Kornspeicher:")
+	assert_eq(Building.storage_missing_text("armory"), "Kein Lager für armory", "Ohne Daten:")

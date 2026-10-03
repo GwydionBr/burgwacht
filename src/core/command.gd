@@ -2,7 +2,7 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE }
+enum Kind { FOUND, BUILD, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE }
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes.
@@ -15,6 +15,10 @@ var building_id: int
 var ration: String
 ## Bei SET_TAX_RATE: der Steuersatz aus population.json.
 var tax_rate: String
+## Bei TRADE: die Ware aus goods.json.
+var good: String
+## Bei TRADE: kaufen (true) oder verkaufen (false).
+var buying: bool
 
 
 ## Burg gründen: Bergfried mit Ursprung keep_origin, dazu das erste Warenlager.
@@ -56,4 +60,13 @@ static func set_tax_rate(tax_rate_id: String) -> Command:
 	var command := Command.new()
 	command.kind = Kind.SET_TAX_RATE
 	command.tax_rate = tax_rate_id
+	return command
+
+
+## Am Markt handeln: die Menge je Handel (market.json) einer Ware kaufen oder verkaufen.
+static func trade(good_id: String, buy: bool) -> Command:
+	var command := Command.new()
+	command.kind = Kind.TRADE
+	command.good = good_id
+	command.buying = buy
 	return command

@@ -169,6 +169,16 @@ static func storage_name(storage_type: String) -> String:
 	return storage_type
 
 
+## Grund, wenn ein Lager dieser Lagerart fehlt, z. B. „Kein Kornspeicher“: `missing_text` des
+## ersten Gebäudetyps (Reihenfolge in den Daten), der Waren dieser Lagerart lagert.
+static func storage_missing_text(storage_type: String) -> String:
+	var buildings := GameDefs.get_instance().buildings
+	for type_id: String in buildings:
+		if storage_type_of(type_id) == storage_type and buildings[type_id].has("missing_text"):
+			return str(buildings[type_id]["missing_text"])
+	return "Kein Lager für %s" % storage_name(storage_type)
+
+
 ## Die Lagerarten der Waren, in der Reihenfolge ihrer ersten Ware in den Daten.
 static func storage_types() -> Array[String]:
 	var result: Array[String] = []
