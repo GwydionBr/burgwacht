@@ -151,7 +151,7 @@ func test_soldier_walks_to_a_free_post_at_the_barracks() -> void:
 	world.execute(Command.recruit(barracks, "archer"))
 	var first := world.get_resident(1)
 	var second := world.get_resident(2)
-	assert_eq(first.post, Resident.ground(BARRACKS_FRONT), "Erster Posten vor dem Eingang:")
+	assert_eq(first.post, Figure.ground(BARRACKS_FRONT), "Erster Posten vor dem Eingang:")
 	assert_true(second.post != first.post, "Zweiter Posten ist ein anderer")
 	var adjacent := Building.adjacent_tiles("barracks", BARRACKS_SITE)
 	assert_true(second.post_tile() in adjacent, "Zweiter Posten grenzt an die Kaserne")
@@ -164,11 +164,11 @@ func test_soldier_walks_to_a_free_post_at_the_barracks() -> void:
 
 
 func test_soldiers_walk_at_their_own_speed() -> void:
-	var swordsman := Resident.create(1, Vector2i.ZERO, Resident.Level.GROUND)
+	var swordsman := Resident.create(1, Vector2i.ZERO, Figure.Level.GROUND)
 	swordsman.soldier_type = "swordsman"
-	var archer := Resident.create(2, Vector2i.ZERO, Resident.Level.GROUND)
+	var archer := Resident.create(2, Vector2i.ZERO, Figure.Level.GROUND)
 	archer.soldier_type = "archer"
-	var resident := Resident.create(3, Vector2i.ZERO, Resident.Level.GROUND)
+	var resident := Resident.create(3, Vector2i.ZERO, Figure.Level.GROUND)
 	var from := Vector3i(0, 0, 0)
 	var to := Vector3i(1, 0, 0)
 	assert_eq([swordsman.step_ticks(from, to), archer.step_ticks(from, to), resident.step_ticks(from, to)],
@@ -242,7 +242,7 @@ func test_building_over_a_post_moves_the_post() -> void:
 	_until_settled(world, soldier)
 	# Ein Wohnhaus (2×2) genau auf den Posten vor der Kaserne.
 	build(world, "house", BARRACKS_FRONT)
-	assert_true(world.is_walkable(soldier.post_tile(), Resident.Level.GROUND),
+	assert_true(world.is_walkable(soldier.post_tile(), Figure.Level.GROUND),
 			"Neuer Posten ist begehbar")
 	_until_settled(world, soldier)
 	assert_eq(soldier.position(), soldier.post, "Steht am neuen Posten:")

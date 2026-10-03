@@ -51,8 +51,8 @@ func test_moved_soldier_gets_the_target_as_post_and_walks_there() -> void:
 	var soldier := world.get_resident(1)
 	var changed: Array[int] = []
 	world.resident_changed.connect(func(id: int) -> void: changed.append(id))
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(TARGET))), "", "Bewegen:")
-	assert_eq(soldier.post, Resident.ground(TARGET), "Neuer Posten:")
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(TARGET))), "", "Bewegen:")
+	assert_eq(soldier.post, Figure.ground(TARGET), "Neuer Posten:")
 	assert_true(soldier.is_moving(), "Läuft los")
 	assert_eq(changed, [1] as Array[int], "Gemeldet:")
 	assert_eq(world.activity_of(soldier), "Schwertkämpfer – geht zum Posten", "Unterwegs:")
@@ -64,7 +64,7 @@ func test_moved_soldier_gets_the_target_as_post_and_walks_there() -> void:
 func test_soldiers_spread_to_the_nearest_free_tiles_in_id_order() -> void:
 	var world := _soldiers(3)
 	# Die Reihenfolge im Befehl spielt keine Rolle.
-	assert_eq(world.execute(Command.move([3, 1, 2] as Array[int], Resident.ground(TARGET))), "", "Bewegen:")
+	assert_eq(world.execute(Command.move([3, 1, 2] as Array[int], Figure.ground(TARGET))), "", "Bewegen:")
 	# Ziel, dann die nächsten Kacheln im Uhrzeigersinn ab „oben“ (0, -1): oben, rechts.
 	assert_eq(_posts(world, [1, 2, 3]), [TARGET, TARGET + Vector2i(0, -1), TARGET + Vector2i(1, 0)] as Array[Vector2i],
 			"Posten nach ID:")
@@ -76,10 +76,10 @@ func test_soldiers_spread_to_the_nearest_free_tiles_in_id_order() -> void:
 
 func test_posts_of_other_soldiers_and_buildings_are_not_free() -> void:
 	var world := _soldiers(3)
-	world.execute(Command.move([1] as Array[int], Resident.ground(TARGET)))
+	world.execute(Command.move([1] as Array[int], Figure.ground(TARGET)))
 	# Wohnhaus (2×2) rechts neben dem Ziel; rechts (11, 7) ist damit belegt.
 	build(world, "house", TARGET + Vector2i(1, 0))
-	assert_eq(world.execute(Command.move([2, 3] as Array[int], Resident.ground(TARGET))), "", "Bewegen:")
+	assert_eq(world.execute(Command.move([2, 3] as Array[int], Figure.ground(TARGET))), "", "Bewegen:")
 	# Ziel ist Posten von 1; oben frei; rechts Wohnhaus; dann unten.
 	assert_eq(_posts(world, [1, 2, 3]), [TARGET, TARGET + Vector2i(0, -1), TARGET + Vector2i(0, 1)] as Array[Vector2i],
 			"Posten:")
@@ -87,9 +87,9 @@ func test_posts_of_other_soldiers_and_buildings_are_not_free() -> void:
 
 func test_moving_again_frees_the_old_posts() -> void:
 	var world := _soldiers(2)
-	world.execute(Command.move([1, 2] as Array[int], Resident.ground(TARGET)))
+	world.execute(Command.move([1, 2] as Array[int], Figure.ground(TARGET)))
 	# Wer selbst mitgeht, gibt seinen Posten frei: dieselben Kacheln noch einmal.
-	world.execute(Command.move([1, 2] as Array[int], Resident.ground(TARGET)))
+	world.execute(Command.move([1, 2] as Array[int], Figure.ground(TARGET)))
 	assert_eq(_posts(world, [1, 2]), [TARGET, TARGET + Vector2i(0, -1)] as Array[Vector2i], "Posten:")
 
 
@@ -99,7 +99,7 @@ func test_only_tiles_reachable_from_the_target_count() -> void:
 	# Eine einzelne Mauerkachel mit Treppe: Der Wehrgang dort ist nur eine Kachel groß, die
 	# Kacheln daneben sind von ihm aus nicht erreichbar – der zweite behält seinen Posten.
 	put_goods(world, WAREHOUSE, "stone", 10)
-	var target := Vector3i(4, 13, Resident.Level.WALL_WALK)
+	var target := Vector3i(4, 13, Figure.Level.WALL_WALK)
 	assert_eq(world.execute(Command.build_line("wall", Vector2i(4, 13), Vector2i(4, 13))), "", "Mauer:")
 	build(world, "stairs", Vector2i(3, 13))
 	assert_eq(world.execute(Command.move([1, 2] as Array[int], target)), "", "Bewegen:")
@@ -109,33 +109,33 @@ func test_only_tiles_reachable_from_the_target_count() -> void:
 
 func test_move_reasons() -> void:
 	var world := _soldiers(1)
-	var target := Resident.ground(TARGET)
+	var target := Figure.ground(TARGET)
 	assert_eq(world.execute(Command.move([] as Array[int], target)), "Keine Soldaten ausgewählt", "Leer:")
 	assert_eq(world.execute(Command.move([99] as Array[int], target)), "Kein Soldat", "Unbekannt:")
 	# Bewohner 2 ist ein Untätiger.
 	assert_eq(world.execute(Command.move([1, 2] as Array[int], target)), "Kein Soldat", "Untätiger:")
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(Vector2i(-1, 3)))),
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(-1, 3)))),
 			"Dort kann kein Soldat stehen", "Außerhalb der Karte:")
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(KEEP_ORIGIN))),
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(KEEP_ORIGIN))),
 			"Dort kann kein Soldat stehen", "Bergfried:")
 	# Felsen schließen eine Kachel ein: Dort kann man stehen, aber niemand kommt hin.
 	var enclosed := Vector2i(4, 13)
 	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0),
 			Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
 		add_deposit(world, enclosed + offset, "stone")
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(enclosed))), "Kein Weg dorthin", "Eingeschlossen:")
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(enclosed))), "Kein Weg dorthin", "Eingeschlossen:")
 
 
 func test_rejected_move_changes_nothing() -> void:
 	var world := _soldiers(1)
 	var before := world.to_data()
-	assert_eq(world.execute(Command.move([1, 2] as Array[int], Resident.ground(TARGET))), "Kein Soldat", "Abgelehnt:")
+	assert_eq(world.execute(Command.move([1, 2] as Array[int], Figure.ground(TARGET))), "Kein Soldat", "Abgelehnt:")
 	assert_eq(world.to_data(), before, "Unverändert:")
 
 
 func test_moved_post_is_kept_when_building_over_it() -> void:
 	var world := _soldiers(1)
-	world.execute(Command.move([1] as Array[int], Resident.ground(TARGET)))
+	world.execute(Command.move([1] as Array[int], Figure.ground(TARGET)))
 	_until_settled(world)
 	build(world, "house", TARGET)
 	var soldier := world.get_resident(1)
@@ -146,7 +146,7 @@ func test_moved_post_is_kept_when_building_over_it() -> void:
 
 func test_save_and_load_keeps_moved_post() -> void:
 	var world := _soldiers(2)
-	world.execute(Command.move([1, 2] as Array[int], Resident.ground(TARGET)))
+	world.execute(Command.move([1, 2] as Array[int], Figure.ground(TARGET)))
 	for i in 9:
 		world.step()
 	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))

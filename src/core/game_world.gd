@@ -32,7 +32,8 @@ extends RefCounted
 ##
 ## Feinde (z. B. Räuber) erscheinen aus dem Szenario bei der Gründung oder per Debug-Befehl am
 ## Kartenrand und laufen zum Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen
-## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt.
+## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt. Die Regeln dafür stehen in
+## Combat; den Zustand hält weiter die Spielwelt.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -72,8 +73,6 @@ signal notice(text: String)
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
 const SAVE_VERSION := 11
-## Toleranz beim Vergleich von Abständen (Reichweite, Sichtweite).
-const DISTANCE_SLACK := 0.0001
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -255,7 +254,7 @@ func step() -> void:
 	_spread_deposits()
 	_assign_workers()
 	_update_residents()
-	_update_enemies()
+	_combat().update_enemies()
 	_migrate()
 	if _tick % TICKS_PER_DAY == 0:
 		_start_day()
@@ -284,9 +283,9 @@ func execute(command: Command) -> String:
 	if command.kind == Command.Kind.MOVE:
 		return _move(command.resident_ids, command.target)
 	if command.kind == Command.Kind.ATTACK:
-		return _attack(command.resident_ids, command.enemy_id)
+		return _combat().attack(command.resident_ids, command.enemy_id)
 	if command.kind == Command.Kind.SPAWN_ENEMY:
-		return _spawn_enemy(command.enemy_type)
+		return _combat().spawn_enemy(command.enemy_type)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -470,7 +469,7 @@ func spawn_enemy_error(type_id: String) -> String:
 		return FOUNDING_FIRST
 	if not FighterType.is_enemy_type(type_id):
 		return "Unbekannter Feind „%s“" % type_id
-	if _spawn_tile().is_empty():
+	if _combat().spawn_tile().is_empty():
 		return "Kein freier Kartenrand"
 	return ""
 
@@ -629,8 +628,7 @@ func enemy_activity_of(enemy: Enemy) -> String:
 	var enemy_name := FighterType.name_of(enemy.type)
 	var target := get_resident(enemy.target_id)
 	if target != null:
-		var verb := "verfolgt %s" if enemy.is_moving() else "greift %s an"
-		return "%s – %s" % [enemy_name, verb % FighterType.name_of(target.soldier_type)]
+		return "%s – %s" % [enemy_name, Combat.fight_text(enemy, target)]
 	return "%s – %s" % [enemy_name, "läuft zum Bergfried" if enemy.is_moving() else "wartet"]
 
 
@@ -721,8 +719,7 @@ func _soldier_text(soldier: Resident) -> String:
 		return "wartet: Weg versperrt"
 	var enemy := get_enemy(soldier.target_id)
 	if enemy != null:
-		var verb := "verfolgt %s" if soldier.is_moving() else "greift %s an"
-		return verb % FighterType.name_of(enemy.type)
+		return Combat.fight_text(soldier, enemy)
 	return "geht zum Posten" if soldier.is_moving() else "auf Posten"
 
 
@@ -761,12 +758,21 @@ func get_housing() -> int:
 	return total
 
 
+## Begehbar, wenn man Gebäude außer Acht lässt: Gelände und Vorkommen lassen durch.
+func _is_open_ground(position: Vector3i) -> bool:
+	var tile := Vector2i(position.x, position.y)
+	if position.z != Figure.Level.GROUND or not map.is_walkable(tile):
+		return false
+	var deposit := map.get_deposit(tile)
+	return deposit == null or deposit.is_walkable()
+
+
 ## Kann jemand auf dieser Kachel und Ebene stehen? Am Boden: Gelände begehbar, kein
 ## nicht begehbares Vorkommen, keine Grundfläche – außer Eingängen und begehbaren Gebäuden
 ## (Lagerfeuer, Treppe). Auf dem Wehrgang: oben auf einem Gebäude mit Wehrgang (Mauer). Wer
 ## welche Ebene betreten darf, regelt Walker.
-func is_walkable(tile: Vector2i, level: Resident.Level) -> bool:
-	if level == Resident.Level.WALL_WALK:
+func is_walkable(tile: Vector2i, level: Figure.Level) -> bool:
+	if level == Figure.Level.WALL_WALK:
 		var below := get_building_at(tile)
 		return below != null and below.has_walkway()
 	if not _is_open_ground(Vector3i(tile.x, tile.y, level)):
@@ -994,7 +1000,7 @@ func _found(origin: Vector2i) -> String:
 	_emit_stock_changed(changed)
 	assert(campfire != null, "Unter den Begleitgebäuden des Bergfrieds fehlt das Lagerfeuer")
 	_add_start_residents(campfire)
-	_add_start_enemies()
+	_combat().add_start_enemies(_start_enemies)
 	_founding = false
 	founded.emit()
 	return ""
@@ -1008,13 +1014,13 @@ func _add_start_residents(campfire: Building) -> void:
 		var found := _search_outward(campfire.origin, _is_free_tile)
 		if found.is_empty():
 			return
-		_add_resident(found[0], Resident.Level.GROUND)
+		_add_resident(found[0], Figure.Level.GROUND)
 
 
 ## Kann hier ein Bewohner neu hingestellt werden? Begehbar, aber nicht auf Eingänge oder das
 ## Lagerfeuer selbst; schon Besetzte zählen als belegt.
 func _is_free_tile(tile: Vector2i) -> bool:
-	return is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
+	return is_walkable(tile, Figure.Level.GROUND) and get_building_at(tile) == null \
 			and get_residents_at(tile).is_empty()
 
 
@@ -1066,7 +1072,7 @@ func _assign_workers() -> void:
 			var idle := get_workers(0)
 			var assigned := false
 			for resident in idle:
-				if _route_to(resident, Resident.ground(building.entrance())):
+				if _route_to(resident, Figure.ground(building.entrance())):
 					resident.workplace_id = building.id
 					resident.task = Resident.Task.TO_WORKPLACE
 					# Ein Untätiger kann noch auf einen neuen Versuch zum Lagerfeuer warten.
@@ -1152,7 +1158,7 @@ func _start_leaving(resident: Resident) -> void:
 ## dort oder ist keine erreichbar, ist er sofort fort.
 func _send_to_edge(resident: Resident) -> void:
 	var edge := _nearest_edge(resident.plan_start())
-	if edge.is_empty() or not _route_to(resident, Resident.ground(edge[0])) or not resident.is_moving():
+	if edge.is_empty() or not _route_to(resident, Figure.ground(edge[0])) or not resident.is_moving():
 		_remove_resident(resident)
 
 
@@ -1161,12 +1167,12 @@ func _send_to_edge(resident: Resident) -> void:
 ## Lagerfeuer (Reihenfolge wie bei den Startbewohnern).
 func _add_newcomer() -> void:
 	var campfire := _campfire()
-	var edge := _nearest_edge(Resident.ground(campfire.origin))
+	var edge := _nearest_edge(Figure.ground(campfire.origin))
 	if edge.is_empty():
 		var found := _search_outward(campfire.origin, _is_free_tile)
-		_add_resident(campfire.origin if found.is_empty() else found[0], Resident.Level.GROUND)
+		_add_resident(campfire.origin if found.is_empty() else found[0], Figure.Level.GROUND)
 		return
-	var newcomer := _add_resident(edge[0], Resident.Level.GROUND, Resident.Task.ARRIVING)
+	var newcomer := _add_resident(edge[0], Figure.Level.GROUND, Resident.Task.ARRIVING)
 	_report_change(newcomer, _send_newcomer.bind(newcomer))
 
 
@@ -1203,12 +1209,32 @@ func _remove_resident(resident: Resident) -> void:
 	resident_removed.emit(resident.id)
 
 
+## Kampf und Feinde (Combat); ohne eigenen Zustand, daher für jeden Aufruf neu.
+func _combat() -> Combat:
+	return Combat.new(self)
+
+
+## Ein neuer Feind mit vollen Lebenspunkten (losschicken: Combat).
+func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
+	var enemy := Enemy.create(_next_enemy_id, type_id, tile)
+	_next_enemy_id += 1
+	_enemies[enemy.id] = enemy
+	enemy_added.emit(enemy.id)
+	return enemy
+
+
+## Ein Feind ist gestorben.
+func _remove_enemy(enemy: Enemy) -> void:
+	_enemies.erase(enemy.id)
+	enemy_removed.emit(enemy.id)
+
+
 ## Ein Takt für einen Bewohner (siehe _update_residents()).
 func _update_resident(resident: Resident) -> void:
 	if resident.cooldown > 0:
 		resident.cooldown -= 1
 	if resident.target_id != 0:
-		_update_attacker(resident)
+		_combat().update_attacker(resident)
 		return
 	if resident.is_targeting_deposit(resident.deposit_tile) \
 			and not _has_deposit_for(resident.deposit_tile, get_building(resident.workplace_id)):
@@ -1363,7 +1389,7 @@ func _has_deposit_for(tile: Vector2i, workplace: Building) -> bool:
 func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
 	resident.task = task
 	resident.timer = 0
-	if not _route_to(resident, Resident.ground(tile)):
+	if not _route_to(resident, Figure.ground(tile)):
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 	elif not resident.is_moving():
@@ -1395,7 +1421,7 @@ func _seek_deposit(resident: Resident, workplace: Building) -> void:
 func _nearest_deposit(resident: Resident, workplace: Building) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
-	var distances := _distances(Resident.ground(workplace.entrance()), Walker.GROUND_ONLY, workplace.gather_range())
+	var distances := _distances(Figure.ground(workplace.entrance()), Walker.GROUND_ONLY, workplace.gather_range())
 	for position: Vector3i in distances:
 		var stand := Vector2i(position.x, position.y)
 		var length := distances[position]
@@ -1456,7 +1482,7 @@ func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Bui
 	var best: Building = null
 	var best_length := INF
 	for storage in _storages(_storage_type_of(good)):
-		var entrance := Resident.ground(storage.entrance())
+		var entrance := Figure.ground(storage.entrance())
 		if not distances.has(entrance) or not accept.call(storage):
 			continue
 		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
@@ -1563,16 +1589,16 @@ func _send_to_campfire(resident: Resident) -> void:
 	for other: Resident in _residents.values():
 		if other != resident:
 			taken[other.destination()] = true
-	var ground := Resident.Level.GROUND
+	var ground := Figure.Level.GROUND
 	# Erreicht er das Lagerfeuer gar nicht, braucht er die Kacheln drumherum nicht zu prüfen.
-	if _find_path(resident.plan_start(), Resident.ground(campfire.origin), Walker.GROUND_ONLY).is_empty():
+	if _find_path(resident.plan_start(), Figure.ground(campfire.origin), Walker.GROUND_ONLY).is_empty():
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 		return
 	# Die Bedingung schickt ihn schon los, sobald es einen Weg gibt.
 	var routed := _search_outward(campfire.origin, func(tile: Vector2i) -> bool:
 		return not taken.has(tile) and is_walkable(tile, ground) and get_building_at(tile) == null \
-				and _route_to(resident, Resident.ground(tile)))
+				and _route_to(resident, Figure.ground(tile)))
 	if routed.is_empty():
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
@@ -1588,7 +1614,7 @@ func _campfire() -> Building:
 
 
 func _is_walkable_position(position: Vector3i) -> bool:
-	return is_walkable(Vector2i(position.x, position.y), position.z as Resident.Level)
+	return is_walkable(Vector2i(position.x, position.y), position.z as Figure.Level)
 
 
 ## Wer die Figur beim Gehen ist (Walker).
@@ -1599,7 +1625,7 @@ static func _walker_of(figure: Figure) -> Walker:
 
 ## Darf walker auf dieser Position stehen? Bewohner nur am Boden, Soldaten auch auf dem Wehrgang.
 func _can_stand(position: Vector3i, walker: Walker) -> bool:
-	return (walker == Walker.SOLDIER or position.z == Resident.Level.GROUND) and _is_walkable_position(position)
+	return (walker == Walker.SOLDIER or position.z == Figure.Level.GROUND) and _is_walkable_position(position)
 
 
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten nehmen dabei Treppen.
@@ -1625,10 +1651,10 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 	var tile := Vector2i(position.x, position.y)
 	for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
 		var next := tile + Vector2i(step.x, step.y)
-		if position.z == Resident.Level.GROUND and _is_stairs(tile):
-			result.append(Vector3i(next.x, next.y, Resident.Level.WALL_WALK))
-		elif position.z == Resident.Level.WALL_WALK and _is_stairs(next):
-			result.append(Resident.ground(next))
+		if position.z == Figure.Level.GROUND and _is_stairs(tile):
+			result.append(Vector3i(next.x, next.y, Figure.Level.WALL_WALK))
+		elif position.z == Figure.Level.WALL_WALK and _is_stairs(next):
+			result.append(Figure.ground(next))
 	return result
 
 
@@ -1647,7 +1673,7 @@ func _can_step(resident: Resident) -> bool:
 	return next.z == resident.level or _ascents(resident.position()).has(next)
 
 
-func _add_resident(tile: Vector2i, level: Resident.Level, task := Resident.Task.NONE) -> Resident:
+func _add_resident(tile: Vector2i, level: Figure.Level, task := Resident.Task.NONE) -> Resident:
 	var resident := Resident.create(_next_resident_id, tile, level)
 	resident.task = task
 	_next_resident_id += 1
@@ -1667,7 +1693,7 @@ func _build(type_id: String, origin: Vector2i) -> String:
 	_emit_stock_changed(changed)
 	_change_treasury(-gold_cost_of(type_id))
 	_make_way(_add_building(type_id, origin))
-	_replan_enemies()
+	_combat().replan_enemies()
 	return ""
 
 
@@ -1716,7 +1742,7 @@ func _make_way(building: Building) -> void:
 func _crosses(resident: Resident, building: Building) -> bool:
 	for position in resident.path:
 		var tile := Vector2i(position.x, position.y)
-		if get_building_at(tile) == building and not is_walkable(tile, position.z as Resident.Level):
+		if get_building_at(tile) == building and not is_walkable(tile, position.z as Figure.Level):
 			return true
 	return false
 
@@ -1729,8 +1755,8 @@ func _anchor_of(resident: Resident) -> Vector3i:
 		return resident.post
 	var workplace := get_building(resident.workplace_id)
 	if workplace != null:
-		return Resident.ground(workplace.entrance())
-	return Resident.ground(_campfire().origin)
+		return Figure.ground(workplace.entrance())
+	return Figure.ground(_campfire().origin)
 
 
 ## Die nächste begehbare Kachel am Boden, von der aus walker anchor erreicht: Suche nach
@@ -1739,17 +1765,17 @@ func _anchor_of(resident: Resident) -> Vector3i:
 ## gibt es gar keine, die Kachel selbst.
 func _nearest_reachable(tile: Vector2i, anchor: Vector3i, reach: int, walker: Walker) -> Vector2i:
 	var nearest := _search_outward(tile, func(candidate: Vector2i) -> bool:
-		return is_walkable(candidate, Resident.Level.GROUND))
+		return is_walkable(candidate, Figure.Level.GROUND))
 	if nearest.is_empty():
 		return tile
 	# Meist erreicht schon die nächste begehbare Kachel den Anker (ein Weg). Sonst wird
 	# einmal alles gemessen, was vom Anker aus erreichbar ist (selten, aber die ganze Burg).
-	if not _find_path(Resident.ground(nearest[0]), anchor, walker).is_empty():
+	if not _find_path(Figure.ground(nearest[0]), anchor, walker).is_empty():
 		return nearest[0]
 	var reachable := _distances(anchor, walker)
 	for offset in _offsets_within(reach):
 		var candidate := tile + offset
-		if is_walkable(candidate, Resident.Level.GROUND) and reachable.has(Resident.ground(candidate)):
+		if is_walkable(candidate, Figure.Level.GROUND) and reachable.has(Figure.ground(candidate)):
 			return candidate
 	return nearest[0]
 
@@ -1776,7 +1802,7 @@ func _demolish(id: int) -> String:
 		resident_changed.emit(worker.id)
 	# Mit einem Wohnhaus kann Wohnraum fehlen.
 	_send_away_surplus()
-	_replan_enemies()
+	_combat().replan_enemies()
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
 	var cost := goods_cost_of(building.type)
 	var changed: Dictionary[int, bool] = {}
@@ -1796,7 +1822,7 @@ func _demolish(id: int) -> String:
 func _leave_lost_wall_walk() -> void:
 	var taken := _posts_except({})
 	for resident: Resident in _residents.values():
-		if resident.level == Resident.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
+		if resident.level == Figure.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
 			taken.erase(resident.post)
 			var refuge := _wall_walk_refuge(resident.position(), taken)
 			resident.place_at(refuge)
@@ -1818,7 +1844,7 @@ func _wall_walk_refuge(position: Vector3i, taken: Dictionary[Vector3i, bool]) ->
 	for step: Vector3i in Pathfinder.STRAIGHT_STEPS + Pathfinder.DIAGONAL_STEPS:
 		if _is_walkable_position(position + step) and not taken.has(position + step):
 			return position + step
-	return Resident.ground(Vector2i(position.x, position.y))
+	return Figure.ground(Vector2i(position.x, position.y))
 
 
 ## Anwerben: Waren und Gold sofort abziehen (ältestes Lager zuerst); der Untätige mit der
@@ -1859,118 +1885,6 @@ func _tiles_around_barracks(barracks: Building) -> Array[Vector2i]:
 	return result
 
 
-## Angreifen: Die Soldaten verfolgen den Feind ohne Leine, bis er tot ist (_update_attacker()).
-func _attack(soldier_ids: Array[int], enemy_id: int) -> String:
-	var reason := attack_error(soldier_ids, enemy_id)
-	if reason != "":
-		return reason
-	var ids := soldier_ids.duplicate()
-	ids.sort()
-	for id: int in ids:
-		var soldier := get_resident(id)
-		if soldier.target_id == enemy_id:
-			continue
-		soldier.target_id = enemy_id
-		soldier.task = Resident.Task.ON_DUTY
-		# Wer gerade auf einen neuen Versuch wartet, legt gleich los.
-		soldier.timer = 0
-		resident_changed.emit(soldier.id)
-	return ""
-
-
-## Ein Takt für einen Soldaten mit Angriffsbefehl: Er verfolgt den Feind und kämpft (_fight()).
-## Erreicht er ihn nicht, bleibt er stehen und versucht es nach der Wartezeit erneut.
-func _update_attacker(soldier: Resident) -> void:
-	var enemy := get_enemy(soldier.target_id)
-	if enemy == null:
-		_end_attack(soldier)
-		return
-	if soldier.timer > 0:
-		soldier.timer -= 1
-		return
-	if not _fight(soldier, enemy):
-		soldier.timer = Resident.retry_ticks()
-
-
-## Das Ziel eines Soldaten ist tot: Er bleibt stehen (mitten im Schritt geht er den noch zu
-## Ende), und sein Posten wird seine Position.
-func _end_attack(soldier: Resident) -> void:
-	_report_change(soldier, func() -> void:
-		soldier.target_id = 0
-		soldier.timer = 0
-		soldier.stop()
-		soldier.post = soldier.plan_start())
-
-
-## Ein Takt Kampf gegen target. Nur zwischen zwei Schritten wird entschieden: Ist das Ziel in
-## Reichweite (_in_reach()), bleibt er stehen und greift an, sobald die Angriffsdauer seit dem
-## letzten Angriff um ist (_hit()); sonst läuft er zu dessen Kachel und plant neu, wenn das Ziel
-## weitergezogen oder der Weg versperrt ist. false, wenn es keinen Weg zum Ziel gibt (er steht dann).
-func _fight(figure: Figure, target: Figure) -> bool:
-	if figure.step_progress == 0:
-		if _in_reach(figure, target):
-			figure.path.clear()
-			if figure.cooldown == 0:
-				_hit(figure, target)
-			return true
-		if not figure.is_moving() or figure.path.back() != target.position() or not _is_walkable_position(figure.path[0]):
-			if not _route_to(figure, target.position()):
-				figure.path.clear()
-				return false
-	figure.advance()
-	return true
-
-
-## Ist target in Reichweite von figure? Nahkampf: Nachbarkachel (auch schräg) auf derselben Ebene;
-## Fernkampf: Abstand der Kachelmitten höchstens die Reichweite, auch über Ebenen hinweg.
-func _in_reach(figure: Figure, target: Figure) -> bool:
-	var type := figure.fighter_type()
-	if FighterType.is_melee(type):
-		var offset := (target.tile - figure.tile).abs()
-		return figure.level == target.level and maxi(offset.x, offset.y) <= 1
-	return _distance(figure, target) <= FighterType.range_of(type) + DISTANCE_SLACK
-
-
-## Abstand der Kachelmitten zweier Figuren.
-static func _distance(a: Figure, b: Figure) -> float:
-	return Vector2(a.tile - b.tile).length()
-
-
-## Ein Angriff trifft sofort und ohne Zufall: Schaden abziehen, Angriffsdauer beginnt von vorn.
-## Fernkämpfer melden den Schuss für die Darstellung. Bei 0 Lebenspunkten stirbt das Ziel.
-func _hit(figure: Figure, target: Figure) -> void:
-	var type := figure.fighter_type()
-	figure.cooldown = FighterType.attack_ticks(type)
-	target.hp = maxi(target.hp - FighterType.damage_of(type), 0)
-	if not FighterType.is_melee(type):
-		shot_fired.emit(figure.position(), target.position())
-	if target.hp == 0:
-		_kill(target)
-	elif target is Resident:
-		resident_changed.emit(target.id)
-	else:
-		enemy_changed.emit(target.id)
-
-
-## Ein Kämpfer stirbt. Ein Soldat ist kein Bewohner mehr (seine Waffe ist verloren); Feinde, die
-## ihn angegriffen haben, laufen weiter zum Bergfried. Ein Feind verschwindet; Soldaten, die ihn
-## angegriffen haben, bleiben stehen (_end_attack()).
-func _kill(figure: Figure) -> void:
-	if figure is Resident:
-		var soldier := figure as Resident
-		_remove_resident(soldier)
-		notice.emit("Ein %s ist gefallen" % FighterType.name_of(soldier.soldier_type))
-		for enemy: Enemy in _enemies.values():
-			if enemy.target_id == soldier.id:
-				_drop_enemy_target(enemy)
-		return
-	_enemies.erase(figure.id)
-	enemy_removed.emit(figure.id)
-	for resident: Resident in _residents.values():
-		if resident.target_id == figure.id:
-			_end_attack(resident)
-
-
 ## Bewegen: Die Soldaten bekommen nach ID aufsteigend je eine eigene Kachel als Posten – das
 ## Ziel, dann die nächsten (_search_outward()) freien Kacheln, die vom Ziel aus auf seiner Ebene
 ## erreichbar sind; frei heißt ohne Gebäude und nicht Posten eines anderen Soldaten (Posten der
@@ -2007,12 +1921,12 @@ func _move(soldier_ids: Array[int], target: Vector3i) -> String:
 ## center (_search_outward()), die vom Lagerfeuer aus erreichbar ist, auf der kein Gebäude
 ## steht und die nicht Posten eines anderen Soldaten ist. Gibt es keine, bleibt er, wo er ist.
 func _free_post(soldier: Resident, center: Vector2i, preferred: Array[Vector2i]) -> Vector3i:
-	var accept := _free_post_filter(Resident.ground(_campfire().origin), _posts_except({soldier.id: true}))
+	var accept := _free_post_filter(Figure.ground(_campfire().origin), _posts_except({soldier.id: true}))
 	for tile in preferred:
 		if accept.call(tile):
-			return Resident.ground(tile)
+			return Figure.ground(tile)
 	var found := _search_outward(center, accept)
-	return Resident.ground(found[0]) if not found.is_empty() else soldier.position()
+	return Figure.ground(found[0]) if not found.is_empty() else soldier.position()
 
 
 ## Die Posten aller Soldaten außer denen mit diesen IDs.
@@ -2032,7 +1946,7 @@ func _free_post_filter(origin: Vector3i, taken: Dictionary[Vector3i, bool]) -> C
 	return func(tile: Vector2i) -> bool:
 		var position := Vector3i(tile.x, tile.y, origin.z)
 		return reachable.has(position) and not taken.has(position) \
-				and (origin.z != Resident.Level.GROUND or get_building_at(tile) == null)
+				and (origin.z != Figure.Level.GROUND or get_building_at(tile) == null)
 
 
 ## Schickt einen Soldaten zu seinem Posten; steht er schon dort, bleibt er. Gibt es keinen Weg,
@@ -2308,217 +2222,3 @@ func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 				and (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \
 				and _rng.randf() < chance and not standing.has(tile):
 			map.add_deposit(tile, Deposit.create(type, _rng))
-
-
-## Feinde laufen in ID-Reihenfolge einen Takt weiter: Ein Feind ohne Ziel sucht zwischen zwei
-## Schritten den nächsten Soldaten in Sichtweite, den er erreicht (_enemy_target()), und greift
-## ihn an (_fight()); verliert er ihn aus der Sicht oder erreicht ihn nicht mehr, läuft er weiter
-## zum Bergfried (_send_enemy_to_keep()).
-func _update_enemies() -> void:
-	for enemy: Enemy in _enemies.values():
-		if _enemies.has(enemy.id):
-			_update_enemy(enemy)
-
-
-func _update_enemy(enemy: Enemy) -> void:
-	if enemy.cooldown > 0:
-		enemy.cooldown -= 1
-	var target := get_resident(enemy.target_id)
-	if enemy.step_progress == 0:
-		if target != null and _distance(enemy, target) > FighterType.sight_of(enemy.type) + DISTANCE_SLACK:
-			_drop_enemy_target(enemy)
-			target = null
-		if target == null:
-			target = _enemy_target(enemy)
-			if target != null:
-				enemy.target_id = target.id
-				enemy_changed.emit(enemy.id)
-	if target != null:
-		if not _fight(enemy, target):
-			_drop_enemy_target(enemy)
-		return
-	if enemy.is_moving() and enemy.step_progress == 0 and not _is_walkable_position(enemy.path[0]):
-		_send_enemy_to_keep(enemy)
-	enemy.advance()
-
-
-## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei
-## Gleichstand kleinere ID), den er erreicht – mit einem Weg von höchstens doppelter Sichtweite,
-## damit Soldaten hinter Hindernissen nicht jeden Takt die ganze Karte durchsuchen lassen. null,
-## wenn es keinen gibt.
-func _enemy_target(enemy: Enemy) -> Resident:
-	var sight := FighterType.sight_of(enemy.type)
-	var candidates: Array[Resident] = []
-	for resident: Resident in _residents.values():
-		if resident.is_soldier() and _distance(enemy, resident) <= sight + DISTANCE_SLACK:
-			candidates.append(resident)
-	if candidates.is_empty():
-		return null
-	candidates.sort_custom(func(a: Resident, b: Resident) -> bool:
-		var da := _distance(enemy, a)
-		var db := _distance(enemy, b)
-		return da < db if absf(da - db) > DISTANCE_SLACK else a.id < b.id)
-	var reachable := _distances(enemy.position(), Walker.GROUND_ONLY, 2.0 * sight)
-	for candidate in candidates:
-		if reachable.has(candidate.position()):
-			return candidate
-	return null
-
-
-## Der Feind gibt sein Ziel auf und läuft weiter zum Bergfried.
-func _drop_enemy_target(enemy: Enemy) -> void:
-	enemy.target_id = 0
-	_send_enemy_to_keep(enemy)
-	enemy_changed.emit(enemy.id)
-
-
-## Schickt einen Feind zur erreichbaren Kachel, die dem Bergfried am nächsten liegt
-## (_keep_goal()); steht er schon dort oder gibt es keine, bleibt er stehen und wartet.
-func _send_enemy_to_keep(enemy: Enemy) -> void:
-	if enemy.is_moving() and not _is_walkable_position(enemy.path[0]):
-		# Die Kachel, auf die er gerade tritt, ist versperrt: zurück auf seine.
-		enemy.step_progress = 0
-	var goal := _keep_goal(enemy.plan_start())
-	if goal.is_empty() or not _route_to(enemy, goal[0]):
-		enemy.stop()
-
-
-## Die von start aus erreichbare Kachel außerhalb des Bergfrieds, die seiner Grundfläche am
-## nächsten liegt (Abstand der Kachelmitten); bei Gleichstand die mit dem kürzeren Weg, dann die
-## kleinere (zeilenweise). Ist der Weg frei, ist das eine Kachel direkt am Bergfried. Als
-## [Position], leer, wenn es keine gibt.
-func _keep_goal(start: Vector3i) -> Array[Vector3i]:
-	var keep := _keep()
-	var best: Array[Vector3i] = []
-	var best_distance := INF
-	var best_length := INF
-	var distances := _distances(start, Walker.GROUND_ONLY)
-	for position: Vector3i in distances:
-		var tile := Vector2i(position.x, position.y)
-		if get_building_at(tile) == keep:
-			continue
-		var distance := _distance_to_building(tile, keep)
-		var length := distances[position]
-		var better := distance < best_distance - DISTANCE_SLACK
-		if not better and absf(distance - best_distance) <= DISTANCE_SLACK:
-			better = length < best_length and not Pathfinder.same_length(length, best_length)
-			if not better and Pathfinder.same_length(length, best_length):
-				better = _row_order(tile, Vector2i(best[0].x, best[0].y))
-		if better:
-			best = [position]
-			best_distance = distance
-			best_length = length
-	return best
-
-
-## Abstand einer Kachel zur nächsten Kachel der Grundfläche eines Gebäudes (0 auf ihr).
-static func _distance_to_building(tile: Vector2i, building: Building) -> float:
-	var nearest := tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
-	return Vector2(tile - nearest).length()
-
-
-## Der Bergfried (entsteht bei der Gründung).
-func _keep() -> Building:
-	for building: Building in _buildings.values():
-		if building.type == FOUNDING_TYPE:
-			return building
-	assert(false, "Kein Bergfried in der Spielwelt")
-	return null
-
-
-## Debug-Befehl: Ein Feind erscheint am Kartenrand nächst dem Bergfried (_spawn_tile()).
-func _spawn_enemy(type_id: String) -> String:
-	var reason := spawn_enemy_error(type_id)
-	if reason != "":
-		return reason
-	_add_enemy(type_id, _spawn_tile()[0])
-	return ""
-
-
-## Die Randkachel, auf der ein Feind erscheint: die freie, die der Grundfläche des Bergfrieds am
-## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
-## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
-## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
-## nächste freie. Als [Kachel], leer, wenn es keine freie gibt.
-func _spawn_tile() -> Array[Vector2i]:
-	var keep := _keep()
-	var reaching := _reaches_keep()
-	var best: Array[Vector2i] = []
-	var best_distance := INF
-	var best_reaches := false
-	for y in map.height:
-		for x in map.width:
-			var tile := Vector2i(x, y)
-			if not map.is_edge(tile) or not _is_free_enemy_tile(tile):
-				continue
-			var reaches := reaching.has(Figure.ground(tile))
-			var distance := _distance_to_building(tile, keep)
-			if (reaches and not best_reaches) or (reaches == best_reaches and distance < best_distance - DISTANCE_SLACK):
-				best = [tile]
-				best_distance = distance
-				best_reaches = reaches
-	return best
-
-
-## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
-## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (_is_open_ground()). Je
-## Zusammenhangsgebiet genügt eine Suche.
-func _reaches_keep() -> Dictionary[Vector3i, float]:
-	var keep := _keep()
-	var result: Dictionary[Vector3i, float] = {}
-	for tile in Building.adjacent_tiles(keep.type, keep.origin):
-		var start := Figure.ground(tile)
-		if _is_open_ground(start) and not result.has(start):
-			result.merge(Pathfinder.distances(start, _is_open_ground))
-	return result
-
-
-## Begehbar, wenn man Gebäude außer Acht lässt: Gelände und Vorkommen lassen durch.
-func _is_open_ground(position: Vector3i) -> bool:
-	var tile := Vector2i(position.x, position.y)
-	if position.z != Figure.Level.GROUND or not map.is_walkable(tile):
-		return false
-	var deposit := map.get_deposit(tile)
-	return deposit == null or deposit.is_walkable()
-
-
-## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).
-func _is_free_enemy_tile(tile: Vector2i) -> bool:
-	return is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null
-
-
-## Die Feinde des Szenarios bei der Gründung: auf ihrer Kachel oder, ist sie nicht frei, der
-## nächsten freien (Reihenfolge wie bei den Startbewohnern); gibt es keine, entfällt er.
-func _add_start_enemies() -> void:
-	for entry: StartEnemy in _start_enemies:
-		var found: Array[Vector2i] = [entry.tile]
-		if not _is_free_enemy_tile(entry.tile):
-			found = _search_outward(entry.tile, _is_free_enemy_tile)
-		if not found.is_empty():
-			_add_enemy(entry.type_id, found[0])
-
-
-## Ein neuer Feind mit vollen Lebenspunkten; er läuft gleich zum Bergfried.
-func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
-	var enemy := Enemy.create(_next_enemy_id, type_id, tile)
-	_next_enemy_id += 1
-	_enemies[enemy.id] = enemy
-	enemy_added.emit(enemy.id)
-	_send_enemy_to_keep(enemy)
-	return enemy
-
-
-## Nach Bau oder Abriss: Wer auf einer neuen Grundfläche steht, weicht auf die nächste begehbare
-## Kachel aus; wer kein Ziel hat, plant den Weg zum Bergfried neu.
-func _replan_enemies() -> void:
-	for enemy: Enemy in _enemies.values():
-		if not _is_walkable_position(enemy.position()):
-			var found := _search_outward(enemy.tile, func(tile: Vector2i) -> bool:
-				return is_walkable(tile, Resident.Level.GROUND))
-			if not found.is_empty():
-				enemy.tile = found[0]
-				enemy.level = Figure.Level.GROUND
-				enemy.step_progress = 0
-				enemy.path.clear()
-		if enemy.target_id == 0:
-			_send_enemy_to_keep(enemy)

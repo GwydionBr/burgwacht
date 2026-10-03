@@ -25,6 +25,10 @@ func fighter_type() -> String:
 	return type
 
 
+func report_hit(combat: Combat) -> void:
+	combat.enemy_hit(self)
+
+
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
 	var data := _figure_data()

@@ -10,16 +10,27 @@ const ENEMY_KIND := "enemy"
 
 ## Die Feindtypen in Datenreihenfolge.
 static func enemy_ids() -> Array[String]:
+	return ids_of_kind(ENEMY_KIND)
+
+
+static func is_enemy_type(type_id: String) -> bool:
+	return is_kind(type_id, ENEMY_KIND)
+
+
+## Die Einträge aus units.json mit diesem "kind" (z. B. "enemy", SoldierType.KIND) in
+## Datenreihenfolge.
+static func ids_of_kind(kind: String) -> Array[String]:
 	var result: Array[String] = []
 	for unit_id: String in GameDefs.get_instance().units:
-		if is_enemy_type(unit_id):
+		if is_kind(unit_id, kind):
 			result.append(unit_id)
 	return result
 
 
-static func is_enemy_type(type_id: String) -> bool:
+## Hat der Eintrag type_id aus units.json dieses "kind"? false für unbekannte.
+static func is_kind(type_id: String, kind: String) -> bool:
 	var def: Dictionary = GameDefs.get_instance().units.get(type_id, {})
-	return def.get("kind", "") == ENEMY_KIND
+	return def.get("kind", "") == kind
 
 
 ## Anzeigename, z. B. „Schwertkämpfer“ oder „Räuber“.

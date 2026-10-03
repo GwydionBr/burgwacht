@@ -62,6 +62,32 @@ func test_bandit_comes_from_data() -> void:
 			["Räuber", 80, 12, 10, true, 6, 6], "Räuber:")
 
 
+func test_fighter_kinds_share_one_check() -> void:
+	assert_eq(FighterType.ids_of_kind(FighterType.ENEMY_KIND), FighterType.enemy_ids(), "Feinde:")
+	assert_eq(FighterType.ids_of_kind(SoldierType.KIND), SoldierType.ids(), "Soldaten:")
+	assert_true(FighterType.is_kind("bandit", FighterType.ENEMY_KIND), "Räuber ist Feind")
+	assert_true(not FighterType.is_kind("bandit", SoldierType.KIND), "Räuber ist kein Soldat")
+	assert_true(not FighterType.is_kind("unknown", FighterType.ENEMY_KIND), "Unbekannt ist nichts")
+
+
+func test_reach_of_melee_and_ranged_fighters() -> void:
+	var swordsman := Resident.create(1, Vector2i(5, 5), Figure.Level.GROUND)
+	swordsman.soldier_type = "swordsman"
+	var archer := Resident.create(2, Vector2i(5, 5), Figure.Level.GROUND)
+	archer.soldier_type = "archer"
+	var bandit := Enemy.create(1, "bandit", Vector2i(6, 6))
+	assert_true(swordsman.in_reach(bandit), "Nahkampf schräg nebenan")
+	bandit.place_at(Vector3i(6, 6, Figure.Level.WALL_WALK))
+	assert_true(not swordsman.in_reach(bandit), "Nahkampf nicht über Ebenen hinweg")
+	assert_true(archer.in_reach(bandit), "Fernkampf über Ebenen hinweg")
+	var far := Vector2i(5 + FighterType.range_of("archer"), 5)
+	bandit.place_at(Figure.ground(far))
+	assert_eq(archer.distance_to(bandit), float(FighterType.range_of("archer")), "Abstand der Kachelmitten:")
+	assert_true(archer.in_reach(bandit), "Fernkampf genau in Reichweite")
+	bandit.place_at(Figure.ground(far + Vector2i(1, 0)))
+	assert_true(not archer.in_reach(bandit), "Fernkampf außer Reichweite")
+
+
 func test_scenario_bandits_appear_at_founding_and_are_no_residents() -> void:
 	var world := empty_world("tiny_bandits")
 	assert_eq(world.get_enemies().size(), 0, "Vor der Gründung:")

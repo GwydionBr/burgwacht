@@ -86,7 +86,7 @@ func test_hunter_data() -> void:
 func test_residents_walk_over_game() -> void:
 	var world := _founded()
 	add_deposit(world, GAME, "game")
-	assert_true(world.is_walkable(GAME, Resident.Level.GROUND), "Wild versperrt keinen Weg")
+	assert_true(world.is_walkable(GAME, Figure.Level.GROUND), "Wild versperrt keinen Weg")
 
 
 func test_worker_walks_through_game() -> void:

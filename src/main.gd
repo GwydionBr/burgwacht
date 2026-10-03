@@ -258,9 +258,9 @@ func _enemy_at(point: Vector2) -> int:
 func _target_under_mouse() -> Vector3i:
 	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, FigureView.wall_walk_height()))
 	for tile: Vector2i in [raised, _hovered]:
-		if world.is_walkable(tile, Resident.Level.WALL_WALK):
-			return Vector3i(tile.x, tile.y, Resident.Level.WALL_WALK)
-	return Resident.ground(_hovered)
+		if world.is_walkable(tile, Figure.Level.WALL_WALK):
+			return Vector3i(tile.x, tile.y, Figure.Level.WALL_WALK)
+	return Figure.ground(_hovered)
 
 
 ## Linke Taste gedrückt: gründet, baut oder reißt ab; ohne Werkzeug beginnt die Auswahl

@@ -450,7 +450,7 @@ func test_displaced_resident_skips_closed_pocket() -> void:
 	build(world, "woodcutter", POCKET_SITE)
 	_assert_all_walkable(world, "Nach dem Bau")
 	assert_true(idle.tile != pocket, "Nicht in die abgeschlossene Tasche")
-	var campfire := Resident.ground(world.get_building(CAMPFIRE).origin)
+	var campfire := Figure.ground(world.get_building(CAMPFIRE).origin)
 	assert_true(not Pathfinder.find_path(idle.position(), campfire, world._is_walkable_position).is_empty(),
 			"Erreicht von %s aus das Lagerfeuer" % str(idle.tile))
 	# Über ihm die Tasche, rechts die Grundfläche, darunter der Eingang.
@@ -479,7 +479,7 @@ func test_displaced_worker_measures_way_to_workplace() -> void:
 	_wall_in_campfire(world)
 	build(world, "woodcutter", POCKET_SITE)
 	assert_true(worker.tile != pocket, "Nicht in die abgeschlossene Tasche")
-	assert_true(not Pathfinder.find_path(worker.position(), Resident.ground(world.get_building(id).entrance()),
+	assert_true(not Pathfinder.find_path(worker.position(), Figure.ground(world.get_building(id).entrance()),
 			world._is_walkable_position).is_empty(), "Erreicht von %s aus die Arbeitsstätte" % str(worker.tile))
 
 

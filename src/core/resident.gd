@@ -141,6 +141,10 @@ func fighter_type() -> String:
 	return soldier_type
 
 
+func report_hit(combat: Combat) -> void:
+	combat.soldier_hit(self)
+
+
 ## Ohne Arbeitsstätte am Lagerfeuer bzw. auf dem Weg dorthin – nicht, wer erst ankommt
 ## oder geht, und kein Soldat.
 func is_idle() -> bool:
