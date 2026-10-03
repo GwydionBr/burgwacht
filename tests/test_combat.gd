@@ -134,6 +134,20 @@ func test_spawn_command_puts_bandit_on_the_edge_nearest_the_keep() -> void:
 	assert_eq(bandit.tile, KEEP_SPOT, "Am Bergfried:")
 
 
+func test_spawn_skips_edge_tiles_cut_off_from_the_keep() -> void:
+	var world := empty_world("tiny_production")
+	# Felsen schließen den oberen Rand (0..5, 0) ab; der linke Rand bleibt offen.
+	for x in range(0, 7):
+		add_deposit(world, Vector2i(x, 1), "stone")
+	add_deposit(world, Vector2i(6, 0), "stone")
+	world.execute(Command.found(KEEP_ORIGIN))
+	assert_eq(world.execute(Command.spawn_enemy("bandit")), "", "Erscheinen:")
+	var bandit := world.get_enemy(1)
+	assert_eq(bandit.tile, Vector2i(0, 2), "Nächster Rand mit Weg zum Bergfried:")
+	_until_still(world, bandit)
+	assert_eq(_keep_distance(bandit.tile), 1.0, "Am Bergfried:")
+
+
 func test_spawn_reasons() -> void:
 	var world := empty_world("tiny_production")
 	assert_eq(world.execute(Command.spawn_enemy("bandit")), GameWorld.FOUNDING_FIRST, "Gründung:")

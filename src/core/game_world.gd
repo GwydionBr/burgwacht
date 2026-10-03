@@ -2251,22 +2251,40 @@ func _spawn_enemy(type_id: String) -> String:
 	return ""
 
 
-## Die begehbare Randkachel, die der Grundfläche des Bergfrieds am nächsten liegt; bei
-## Gleichstand die kleinere (zeilenweise). Als [Kachel], leer, wenn es keine gibt.
+## Die Randkachel, auf der ein Feind erscheint: die freie, von der aus er den Bergfried erreicht
+## (_reaches_keep()) und die dessen Grundfläche am nächsten liegt; bei Gleichstand die kleinere
+## (zeilenweise). Erreicht keine den Bergfried, die nächste freie. Als [Kachel], leer, wenn es
+## keine freie gibt.
 func _spawn_tile() -> Array[Vector2i]:
 	var keep := _keep()
+	var reaching := _reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
+	var best_reaches := false
 	for y in map.height:
 		for x in map.width:
 			var tile := Vector2i(x, y)
 			if not map.is_edge(tile) or not _is_free_enemy_tile(tile):
 				continue
+			var reaches := reaching.has(Figure.ground(tile))
 			var distance := _distance_to_building(tile, keep)
-			if distance < best_distance - DISTANCE_SLACK:
+			if (reaches and not best_reaches) or (reaches == best_reaches and distance < best_distance - DISTANCE_SLACK):
 				best = [tile]
 				best_distance = distance
+				best_reaches = reaches
 	return best
+
+
+## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
+## mit seiner Grundfläche). Je Zusammenhangsgebiet genügt eine Suche.
+func _reaches_keep() -> Dictionary[Vector3i, float]:
+	var keep := _keep()
+	var result: Dictionary[Vector3i, float] = {}
+	for tile in Building.adjacent_tiles(keep.type, keep.origin):
+		var start := Figure.ground(tile)
+		if _is_walkable_position(start) and not result.has(start):
+			result.merge(Pathfinder.distances(start, _is_walkable_position))
+	return result
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).
