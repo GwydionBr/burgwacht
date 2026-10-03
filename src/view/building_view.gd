@@ -29,6 +29,9 @@ var _type: String
 var _origin: Vector2i
 var _campfire := false
 var _walkway := false
+## Umriss des Blocks (Welt) und sein umschließendes Rechteck, für covers_figure().
+var _outline := PackedVector2Array()
+var _bounds := Rect2()
 
 
 func setup(building: Building) -> void:
@@ -38,7 +41,29 @@ func setup(building: Building) -> void:
 	_walkway = building.has_walkway()
 	var size := Building.size_of(_type)
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
+	_outline = PackedVector2Array() if _campfire else _block_outline()
+	_bounds = Rect2(position, Vector2.ZERO)
+	for corner in _outline:
+		_bounds = _bounds.expand(corner)
 	queue_redraw()
+
+
+## Verdeckt der Block eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe foot_y
+## liegt? Nur, wenn er nach ihr gezeichnet wird (Sortierpunkt tiefer) und sein Umriss die
+## Fläche schneidet. Das Lagerfeuer verdeckt nichts.
+func covers_figure(rect: Rect2, foot_y: float) -> bool:
+	if _outline.is_empty() or position.y <= foot_y or not _bounds.intersects(rect):
+		return false
+	var area := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
+	return not Geometry2D.intersect_polygons(_outline, area).is_empty()
+
+
+## Umriss des Blocks in Weltkoordinaten: Dach oben, links und rechts, Wände unten.
+func _block_outline() -> PackedVector2Array:
+	var base := footprint_corners(_type, _origin, Vector2.ZERO, 0.0 if _walkway else INSET)
+	var height := float(GameDefs.get_instance().buildings[_type]["height"])
+	var roof := block_faces(base, height)[2]
+	return PackedVector2Array([roof[0], roof[1], base[1], base[2], base[3], roof[3]])
 
 
 func _draw() -> void:
