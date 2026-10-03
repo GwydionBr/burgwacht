@@ -184,6 +184,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.building_removed.connect(_on_building_removed)
 	world.stock_changed.connect(_on_stock_changed)
 	world.resident_added.connect(_on_resident_added)
+	world.resident_removed.connect(_on_resident_removed)
 	world.resident_changed.connect(_on_resident_changed)
 	world.founded.connect(_on_founded)
 	world.popularity_changed.connect(_update_popularity)
@@ -319,6 +320,14 @@ func _on_resident_added(id: int) -> void:
 	_update_hover()
 
 
+func _on_resident_removed(id: int) -> void:
+	if _resident_views.has(id):
+		_resident_views[id].queue_free()
+		_resident_views.erase(id)
+	_update_residents()
+	_update_hover()
+
+
 func _on_resident_changed(_id: int) -> void:
 	_update_residents()
 	_update_hover()
@@ -432,7 +441,7 @@ func _update_stock() -> void:
 
 ## Titelleiste: Bewohner, Wohnraum und Untätige.
 func _update_residents() -> void:
-	_hud.show_residents(world.get_residents().size(), world.get_housing(), world.get_idle_count())
+	_hud.show_residents(world.get_population(), world.get_housing(), world.get_idle_count())
 
 
 ## Ration um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.

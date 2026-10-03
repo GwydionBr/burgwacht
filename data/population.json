@@ -7,6 +7,7 @@
     { "id": "double", "name": "doppelt", "consumption": 2,   "factor": 8 }
   ],
   "default_ration": "normal",
+  "migration": { "balance": 50, "base_ticks": 300, "ticks_per_point": 6, "min_ticks": 10 },
   "factors": {
     "ration":  { "name": "Ration" },
     "variety": { "name": "Vielfalt", "per_extra_kind": 1 }

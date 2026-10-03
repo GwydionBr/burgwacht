@@ -18,6 +18,11 @@ extends RefCounted
 ##
 ## Zu Beginn jedes Tags essen die Bewohner gemäß der Ration aus den Kornspeichern, und die
 ## Beliebtheit ändert sich um die Summe der Faktoren (Ration, Vielfalt).
+##
+## Nach der Beliebtheit kommen und gehen Bewohner: Liegt sie über dem Gleichgewicht
+## (population.json), kommt in regelmäßigem Abstand ein neuer vom Kartenrand zum Lagerfeuer,
+## solange Wohnraum frei ist; liegt sie darunter, geht einer zum Kartenrand. Mehr Bewohner als
+## Wohnraum: Die Überzähligen gehen sofort.
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -29,6 +34,8 @@ signal building_removed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
+## Ein gehender Bewohner hat die Burg verlassen und ist fort.
+signal resident_removed(id: int)
 ## Tätigkeit oder getragene Ware eines Bewohners hat sich geändert (zugeteilt, angekommen,
 ## Abbau, Verarbeitung, abgeliefert, wieder untätig …).
 signal resident_changed(id: int)
@@ -45,7 +52,7 @@ signal notice(text: String)
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -84,6 +91,9 @@ var _eaten_ration := ""
 var _short_of_food := false
 ## Die Faktoren des letzten Tags; leer vor dem ersten Tag.
 var _factors: Array[Factor] = []
+## Takte seit der letzten Ankunft bzw. dem letzten Abgang; ruht, solange niemand kommen oder
+## gehen kann.
+var _migration_ticks := 0
 
 
 ## Was zu Tagesbeginn gegessen wird: die tatsächliche Ration und je Nahrungsware die Menge.
@@ -132,6 +142,7 @@ func to_data() -> Dictionary:
 		"eaten_ration": _eaten_ration,
 		"short_of_food": _short_of_food,
 		"factors": _factors.map(func(factor: Factor) -> Dictionary: return factor.to_data()),
+		"migration_ticks": _migration_ticks,
 	}
 
 
@@ -177,6 +188,7 @@ static func from_data(data: Dictionary) -> GameWorld:
 	world._short_of_food = bool(data["short_of_food"])
 	for entry: Dictionary in data["factors"]:
 		world._factors.append(Factor.from_data(entry))
+	world._migration_ticks = int(data["migration_ticks"])
 	world._rebuild_index()
 	return world
 
@@ -189,6 +201,7 @@ func step() -> void:
 	_spread_deposits()
 	_assign_workers()
 	_update_residents()
+	_migrate()
 	if _tick % TICKS_PER_DAY == 0:
 		_start_day()
 		day_started.emit(get_day())
@@ -346,7 +359,8 @@ func get_building_at(tile: Vector2i) -> Building:
 	return _buildings.get(_occupied.get(tile, 0))
 
 
-## Alle Bewohner nach ID aufsteigend.
+## Alle Bewohner nach ID aufsteigend – auch die gehenden, die nicht mehr mitzählen
+## (get_population()).
 func get_residents() -> Array[Resident]:
 	var result: Array[Resident] = []
 	result.assign(_residents.values())
@@ -367,11 +381,12 @@ func get_residents_at(tile: Vector2i) -> Array[Resident]:
 	return result
 
 
-## Die Arbeiter einer Arbeitsstätte nach ID aufsteigend (0: die Untätigen).
+## Die Arbeiter einer Arbeitsstätte nach ID aufsteigend (0: die Untätigen – ohne Ankommende
+## und Gehende).
 func get_workers(building_id: int) -> Array[Resident]:
 	var result: Array[Resident] = []
 	for resident: Resident in _residents.values():
-		if resident.workplace_id == building_id:
+		if resident.workplace_id == building_id and (building_id != 0 or resident.is_idle()):
 			result.append(resident)
 	return result
 
@@ -379,6 +394,10 @@ func get_workers(building_id: int) -> Array[Resident]:
 ## Was ein Bewohner gerade tut, als Spieltext für die Kachel-Info,
 ## z. B. „Holzfäller – trägt 4 Holz“.
 func activity_of(resident: Resident) -> String:
+	if resident.is_arriving():
+		return "kommt an – wartet: Weg versperrt" if resident.is_blocked() else "kommt an"
+	if resident.is_leaving():
+		return "verlässt die Burg"
 	if resident.is_idle():
 		return "Untätig – geht zum Lagerfeuer" if resident.is_moving() else "Untätig"
 	var workplace := get_building(resident.workplace_id)
@@ -410,7 +429,16 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 	return "geht zur Arbeitsstätte" if resident.is_moving() else "an der Arbeitsstätte"
 
 
-## Wie viele Bewohner ohne Arbeitsstätte sind.
+## Wie viele Bewohner die Burg hat: alle außer den gehenden, Ankommende ab ihrem Erscheinen.
+func get_population() -> int:
+	var count := 0
+	for resident: Resident in _residents.values():
+		if not resident.is_leaving():
+			count += 1
+	return count
+
+
+## Wie viele Bewohner ohne Arbeitsstätte am Lagerfeuer sind (ohne Ankommende und Gehende).
 func get_idle_count() -> int:
 	var count := 0
 	for resident: Resident in _residents.values():
@@ -469,6 +497,11 @@ func get_storage_capacity(storage_type: String) -> int:
 ## Beliebtheit, 0–100.
 func get_popularity() -> int:
 	return _popularity
+
+
+## Takte seit der letzten Ankunft bzw. dem letzten Abgang (Zähler für Kommen und Gehen).
+func get_migration_ticks() -> int:
+	return _migration_ticks
 
 
 ## Die eingestellte Ration.
@@ -567,7 +600,7 @@ func _plan_meal() -> Meal:
 	meal.ration = rations[0]
 	var need := 0
 	for i in range(rations.find(_ration), -1, -1):
-		var ration_need := ceili(_residents.size() * Population.consumption(rations[i]))
+		var ration_need := ceili(get_population() * Population.consumption(rations[i]))
 		if ration_need <= total:
 			meal.ration = rations[i]
 			need = ration_need
@@ -630,16 +663,18 @@ func _found(origin: Vector2i) -> String:
 ## Kacheln zuerst, bei gleichem Abstand im Uhrzeigersinn ab „oben“ (kleineres y). Passen
 ## nicht alle auf die Karte, entstehen nur so viele, wie Platz haben.
 func _add_start_residents(campfire: Building) -> void:
-	# Nicht auf Eingänge oder das Lagerfeuer selbst, obwohl begehbar; schon Besetzte zählen
-	# als belegt.
-	var is_free := func(tile: Vector2i) -> bool:
-		return is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
-				and get_residents_at(tile).is_empty()
 	for _i in _start_residents:
-		var found := _search_outward(campfire.origin, is_free)
+		var found := _search_outward(campfire.origin, _is_free_tile)
 		if found.is_empty():
 			return
 		_add_resident(found[0], Resident.Level.GROUND)
+
+
+## Kann hier ein Bewohner neu hingestellt werden? Begehbar, aber nicht auf Eingänge oder das
+## Lagerfeuer selbst; schon Besetzte zählen als belegt.
+func _is_free_tile(tile: Vector2i) -> bool:
+	return is_walkable(tile, Resident.Level.GROUND) and get_building_at(tile) == null \
+			and get_residents_at(tile).is_empty()
 
 
 ## Die erste Kachel um center, für die accept (Kachel → bool) gilt, als [Kachel], sonst
@@ -713,6 +748,117 @@ func _update_residents() -> void:
 		_report_change(resident, _update_resident.bind(resident))
 
 
+## Kommen und Gehen (nach den Bewohnern, in jedem Takt): Erst gehen Überzählige sofort. Dann
+## läuft der Zähler, solange jemand kommen (Beliebtheit über dem Gleichgewicht, Wohnraum frei)
+## oder gehen kann (darunter, noch Bewohner da); nach Ablauf des Abstands
+## (Population.migration_ticks()) kommt bzw. geht einer, und der Zähler beginnt von vorn.
+func _migrate() -> void:
+	_send_away_surplus()
+	var balance := Population.balance_popularity()
+	var arriving := _popularity > balance and get_population() < get_housing()
+	var leaving := _popularity < balance and get_population() > 0
+	if not arriving and not leaving:
+		return
+	_migration_ticks += 1
+	if _migration_ticks < Population.migration_ticks(_popularity):
+		return
+	_migration_ticks = 0
+	if arriving:
+		_add_newcomer()
+	else:
+		_start_leaving(_next_to_leave())
+
+
+## Übersteigt die Zahl der Bewohner den Wohnraum, gehen die Überzähligen sofort
+## (Reihenfolge wie bei _next_to_leave()).
+func _send_away_surplus() -> void:
+	for _i in get_population() - get_housing():
+		_start_leaving(_next_to_leave())
+
+
+## Wer als Nächster geht: der Untätige mit der größten ID, sonst der Arbeiter der jüngsten
+## besetzten Arbeitsstätte (größte ID; dort der mit der größten ID), sonst der Ankommende mit
+## der größten ID. Es muss noch jemand da sein (get_population() > 0).
+func _next_to_leave() -> Resident:
+	var worker: Resident = null
+	var newcomer: Resident = null
+	var residents := get_residents()
+	residents.reverse()
+	for resident in residents:
+		if resident.is_idle():
+			return resident
+		if resident.workplace_id != 0 and (worker == null or resident.workplace_id > worker.workplace_id):
+			worker = resident
+		elif resident.is_arriving() and newcomer == null:
+			newcomer = resident
+	return worker if worker != null else newcomer
+
+
+## Ein Bewohner bricht auf: Seine Arbeitsstätte wird frei, Reservierung und getragene Ware
+## verfallen, und er geht zum nächsten Rand (_send_to_edge()).
+func _start_leaving(resident: Resident) -> void:
+	_report_change(resident, func() -> void:
+		resident.workplace_id = 0
+		resident.clear_work()
+		resident.task = Resident.Task.LEAVING
+		_send_to_edge(resident))
+
+
+## Schickt einen Gehenden zur nach Weglänge nächsten erreichbaren Randkachel; steht er schon
+## dort oder ist keine erreichbar, ist er sofort fort.
+func _send_to_edge(resident: Resident) -> void:
+	var edge := _nearest_edge(resident.plan_start())
+	if edge.is_empty() or not _route_to(resident, Resident.ground(edge[0])) or not resident.is_moving():
+		_remove_resident(resident)
+
+
+## Ein neuer Bewohner erscheint auf der Randkachel mit dem kürzesten Weg zum Lagerfeuer und geht
+## als Ankommender dorthin; ist kein Rand erreichbar, erscheint er als Untätiger direkt am
+## Lagerfeuer (Reihenfolge wie bei den Startbewohnern).
+func _add_newcomer() -> void:
+	var campfire := _campfire()
+	var edge := _nearest_edge(Resident.ground(campfire.origin))
+	if edge.is_empty():
+		var found := _search_outward(campfire.origin, _is_free_tile)
+		_add_resident(campfire.origin if found.is_empty() else found[0], Resident.Level.GROUND)
+		return
+	var newcomer := _add_resident(edge[0], Resident.Level.GROUND, Resident.Task.ARRIVING)
+	_report_change(newcomer, _send_newcomer.bind(newcomer))
+
+
+## Schickt einen Ankommenden zu einer freien Kachel am Lagerfeuer (_send_to_campfire()); steht
+## er schon dort, ist er gleich Untätiger.
+func _send_newcomer(newcomer: Resident) -> void:
+	_send_to_campfire(newcomer)
+	if not newcomer.is_moving() and newcomer.timer == 0:
+		newcomer.task = Resident.Task.NONE
+
+
+## Die begehbare Randkachel mit dem kürzesten Weg von start als [Kachel]; bei gleicher Länge
+## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist.
+func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
+	var best: Array[Vector2i] = []
+	var best_length := INF
+	var distances := Pathfinder.distances(start, _is_walkable_position)
+	for position: Vector3i in distances:
+		var tile := Vector2i(position.x, position.y)
+		if not map.is_edge(tile):
+			continue
+		var length := distances[position]
+		var better := length < best_length and not Pathfinder.same_length(length, best_length)
+		if not better and Pathfinder.same_length(length, best_length):
+			better = _row_order(tile, best[0])
+		if better:
+			best = [tile]
+			best_length = length
+	return best
+
+
+func _remove_resident(resident: Resident) -> void:
+	_residents.erase(resident.id)
+	resident_removed.emit(resident.id)
+
+
 ## Ein Takt für einen Bewohner (siehe _update_residents()).
 func _update_resident(resident: Resident) -> void:
 	if resident.is_targeting_deposit(resident.deposit_tile) \
@@ -721,6 +867,9 @@ func _update_resident(resident: Resident) -> void:
 		_seek_deposit(resident, get_building(resident.workplace_id))
 	if resident.is_moving() and not _is_walkable_position(resident.path[0]):
 		_reroute(resident)
+		if not _residents.has(resident.id):
+			# Ein Gehender ohne erreichbaren Rand ist fort.
+			return
 	if resident.is_moving():
 		# Wer eine Wartezeit vor sich hat, wartet nach der Ankunft erst (_work()).
 		if resident.advance() and not resident.is_waiting():
@@ -734,7 +883,7 @@ func _update_resident(resident: Resident) -> void:
 func _report_change(resident: Resident, change: Callable) -> void:
 	var before := _visible_state(resident)
 	change.call()
-	if _visible_state(resident) != before:
+	if _visible_state(resident) != before and _residents.has(resident.id):
 		resident_changed.emit(resident.id)
 
 
@@ -743,9 +892,16 @@ func _visible_state(resident: Resident) -> Array:
 	return [resident.workplace_id, resident.task, resident.carried_good, resident.carried_amount, resident.is_moving()]
 
 
-## Ein Arbeiter ist am Ende seines Weges angekommen: der nächste Schritt im Arbeitsablauf.
-## Am Hof arbeitet er in der Arbeitsstätte, beim Sammler sucht er ein Vorkommen.
+## Ein Bewohner ist am Ende seines Weges angekommen: Ein Ankommender wird am Lagerfeuer
+## Untätiger, ein Gehender verschwindet am Rand. Für einen Arbeiter der nächste Schritt im
+## Arbeitsablauf: Am Hof arbeitet er in der Arbeitsstätte, beim Sammler sucht er ein Vorkommen.
 func _arrive(resident: Resident) -> void:
+	if resident.is_arriving():
+		resident.task = Resident.Task.NONE
+		return
+	if resident.is_leaving():
+		_remove_resident(resident)
+		return
 	var workplace := get_building(resident.workplace_id)
 	if workplace == null or not workplace.is_workplace():
 		return
@@ -795,10 +951,16 @@ func _work(resident: Resident) -> void:
 
 
 ## Nimmt den Arbeitsschritt wieder auf – nach der Wartezeit oder wenn der Weg versperrt und
-## das Ziel nicht mehr erreichbar ist: Untätige gehen zum Lagerfeuer, Arbeiter suchen ihr
-## Vorkommen bzw. Lager neu oder gehen (wieder) zur Arbeitsstätte. Ist auch das nicht
-## erreichbar, greift die jeweilige Warteregel.
+## das Ziel nicht mehr erreichbar ist: Untätige und Ankommende gehen zum Lagerfeuer, Gehende
+## zum nächsten Rand, Arbeiter suchen ihr Vorkommen bzw. Lager neu oder gehen (wieder) zur
+## Arbeitsstätte. Ist auch das nicht erreichbar, greift die jeweilige Warteregel.
 func _resume(resident: Resident) -> void:
+	if resident.goal() == Resident.Goal.CAMPFIRE:
+		_send_newcomer(resident)
+		return
+	if resident.goal() == Resident.Goal.EDGE:
+		_send_to_edge(resident)
+		return
 	var workplace := get_building(resident.workplace_id)
 	if workplace == null:
 		_send_to_campfire(resident)
@@ -997,8 +1159,9 @@ func _is_walkable_position(position: Vector3i) -> bool:
 	return is_walkable(Vector2i(position.x, position.y), position.z as Resident.Level)
 
 
-func _add_resident(tile: Vector2i, level: Resident.Level) -> Resident:
+func _add_resident(tile: Vector2i, level: Resident.Level, task := Resident.Task.NONE) -> Resident:
 	var resident := Resident.create(_next_resident_id, tile, level)
+	resident.task = task
 	_next_resident_id += 1
 	_residents[resident.id] = resident
 	resident_added.emit(resident.id)
@@ -1098,6 +1261,8 @@ func _demolish(id: int) -> String:
 		worker.clear_work()
 		_send_to_campfire(worker)
 		resident_changed.emit(worker.id)
+	# Mit einem Wohnhaus kann Wohnraum fehlen.
+	_send_away_surplus()
 	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
 	var cost := _cost_of(building.type)
 	var changed: Dictionary[int, bool] = {}
