@@ -3,12 +3,12 @@ extends RefCounted
 ## Ein Bewohner der Burg. Position = Kachel + Ebene (ADR 0004); Verweise über IDs (ADR 0002).
 ## Läuft Kachel für Kachel einen Weg ab: Ein gerader Schritt dauert "ticks_per_tile" Takte
 ## (units.json), ein schräger √2-mal so lange (gerundet).
-## Arbeiter eines Sammlers oder Hofs gehen dazu den Arbeitsablauf in Task durch; die
-## Spielwelt treibt ihn an, hier steht nur der Zustand.
+## Arbeiter eines Sammlers, Hofs oder Herstellungsbetriebs gehen dazu den Arbeitsablauf in
+## Task durch; die Spielwelt treibt ihn an, hier steht nur der Zustand.
 
 ## Höhenstufe einer Position; bisher gibt es nur den Boden.
 enum Level { GROUND = 0 }
-## Schritt im Arbeitsablauf eines Sammlers bzw. Hofs. Gewartet und gearbeitet wird erst, wenn er steht.
+## Schritt im Arbeitsablauf eines Sammlers, Hofs bzw. Herstellungsbetriebs. Gewartet und gearbeitet wird erst, wenn er steht.
 enum Task {
 	## Untätig oder noch ohne Auftrag.
 	NONE,
@@ -18,7 +18,7 @@ enum Task {
 	TO_DEPOSIT,
 	## Baut das Vorkommen auf deposit_tile ab (timer).
 	MINING,
-	## Bringt die abgebaute Ware zur Arbeitsstätte.
+	## Bringt die abgebaute Ware bzw. die volle Eingangsware zur Arbeitsstätte.
 	RETURNING,
 	## Verarbeitet die Ware unsichtbar in der Arbeitsstätte (timer).
 	PROCESSING,
@@ -31,6 +31,15 @@ enum Task {
 	WAITING_FOR_STORAGE,
 	## Hof: arbeitet unsichtbar in der Arbeitsstätte (timer), danach trägt er die Ware heraus.
 	FARMING,
+	## Herstellungsbetrieb: geht zum Lager storage_id, um Eingangsware zu holen; trägt dabei
+	## schon Geholtes.
+	FETCHING,
+	## Herstellungsbetrieb: zu wenig Eingangsware in den Lagern; wartet in der Arbeitsstätte
+	## (timer), auch mit schon geholter Ware.
+	WAITING_FOR_INPUT,
+	## Herstellungsbetrieb: stellt unsichtbar in der Arbeitsstätte das Erzeugnis her (timer);
+	## die getragene Eingangsware ist danach verbraucht.
+	PRODUCING,
 	## Neuer Bewohner: geht vom Kartenrand zum Lagerfeuer und wird dort Untätiger.
 	ARRIVING,
 	## Verlässt die Burg: geht zum Kartenrand und verschwindet dort; zählt nicht mehr mit.
@@ -40,7 +49,8 @@ enum Task {
 enum Phase { NONE, WALK, WORK, WAIT }
 ## Worum es im Arbeitsschritt geht; danach richtet sich, was er beim Wiederaufnehmen neu
 ## sucht bzw. wohin er geht.
-enum Goal { WORKPLACE, DEPOSIT, STORAGE, CAMPFIRE, EDGE }
+## INPUT: Eingangsware holen; STORAGE: Ware abliefern.
+enum Goal { WORKPLACE, DEPOSIT, STORAGE, INPUT, CAMPFIRE, EDGE }
 
 ## Die Bedeutung der Arbeitsschritte an einer Stelle; ein neuer Schritt braucht hier je
 ## einen Eintrag.
@@ -55,6 +65,9 @@ const TASK_PHASE: Dictionary[Task, Phase] = {
 	Task.WAITING_FOR_DEPOSIT: Phase.WAIT,
 	Task.WAITING_FOR_STORAGE: Phase.WAIT,
 	Task.FARMING: Phase.WORK,
+	Task.FETCHING: Phase.WALK,
+	Task.WAITING_FOR_INPUT: Phase.WAIT,
+	Task.PRODUCING: Phase.WORK,
 	Task.ARRIVING: Phase.WALK,
 	Task.LEAVING: Phase.WALK,
 }
@@ -69,11 +82,15 @@ const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.WAITING_FOR_DEPOSIT: Goal.DEPOSIT,
 	Task.WAITING_FOR_STORAGE: Goal.STORAGE,
 	Task.FARMING: Goal.WORKPLACE,
+	Task.FETCHING: Goal.INPUT,
+	Task.WAITING_FOR_INPUT: Goal.INPUT,
+	Task.PRODUCING: Goal.WORKPLACE,
 	Task.ARRIVING: Goal.CAMPFIRE,
 	Task.LEAVING: Goal.EDGE,
 }
 ## Bei diesen Schritten ist er im Stehen unsichtbar in seiner Arbeitsstätte.
-const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING]
+const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING, Task.WAITING_FOR_INPUT,
+		Task.PRODUCING]
 
 var id: int
 var tile: Vector2i
@@ -88,7 +105,8 @@ var task := Task.NONE
 ## Bei TO_DEPOSIT und MINING: Kachel des Vorkommens. Exklusive Vorkommen (Bäume) gelten
 ## damit als reserviert.
 var deposit_tile := Vector2i.ZERO
-## Bei TO_STORAGE: ID des Lagers; 0, wenn er versperrt auf einen neuen Versuch wartet.
+## Bei TO_STORAGE und FETCHING: ID des Lagers; bei TO_STORAGE 0, wenn er versperrt auf
+## einen neuen Versuch wartet.
 var storage_id := 0
 ## Getragene Ware und Menge; leer bzw. 0, wenn er nichts trägt.
 var carried_good := ""

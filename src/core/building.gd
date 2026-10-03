@@ -74,23 +74,41 @@ func is_farm() -> bool:
 	return def()["behavior"] == "farm"
 
 
-## Hof: Takte Arbeit in der Arbeitsstätte je Gang ("work_ticks").
+## Herstellungsbetrieb (Verhalten „produce“): Arbeiter holen die Eingangsware aus einem Lager
+## und stellen daraus in der Arbeitsstätte das Erzeugnis her.
+func is_producer() -> bool:
+	return def()["behavior"] == "produce"
+
+
+## Herstellungsbetrieb: die Eingangsware ("input").
+func input_good() -> String:
+	return str(def()["input"])
+
+
+## Herstellungsbetrieb: so viel Eingangsware verbraucht ein Arbeitsgang ("input_amount").
+func input_amount() -> int:
+	return int(def()["input_amount"])
+
+
+## Hof und Herstellungsbetrieb: Takte Arbeit in der Arbeitsstätte je Gang ("work_ticks").
 func work_ticks() -> int:
 	return int(def()["work_ticks"])
 
 
-## Hof: die Ware, die ein Arbeiter nach der Arbeit herausträgt ("product").
+## Hof und Herstellungsbetrieb: das Erzeugnis, das ein Arbeiter nach der Arbeit herausträgt
+## ("product").
 func product() -> String:
 	return str(def()["product"])
 
 
-## Hof: Tätigkeitstext während der Arbeit, z. B. „arbeitet in der Plantage“ ("work_text").
+## Hof und Herstellungsbetrieb: Tätigkeitstext während der Arbeit, z. B. „mahlt Weizen“
+## ("work_text").
 func work_text() -> String:
 	return str(def()["work_text"])
 
 
-## Sammler und Hof: so viel trägt ein Arbeiter je Gang höchstens ("load"); beim Sammler
-## aus dem Vorkommen entnommen.
+## Sammler, Hof und Herstellungsbetrieb: so viel trägt ein Arbeiter je Gang höchstens
+## ("load"); beim Sammler aus dem Vorkommen entnommen, sonst die Menge des Erzeugnisses.
 func carry_load() -> int:
 	return int(def()["load"])
 
@@ -118,6 +136,17 @@ func store(good: String, amount: int) -> int:
 		return 0
 	contents[good] = contents.get(good, 0) + added
 	return added
+
+
+## Entnimmt bis zu amount einer Ware, so viel vorrätig ist; liefert die entnommene Menge.
+func take(good: String, amount: int) -> int:
+	var taken := mini(amount, contents.get(good, 0))
+	if taken <= 0:
+		return 0
+	contents[good] -= taken
+	if contents[good] == 0:
+		contents.erase(good)
+	return taken
 
 
 ## Lagerart bei Lagern, sonst leer.

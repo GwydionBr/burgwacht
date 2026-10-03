@@ -535,6 +535,9 @@ func _update_hover() -> void:
 			text += " (%d/%d): %s" % [building.stored(), building.capacity(), ", ".join(stored) if not stored.is_empty() else "leer"]
 		if building.housing() > 0:
 			text += "  ·  Wohnraum +%d" % building.housing()
+		if building.is_producer():
+			text += "  ·  %d %s → %d %s" % [building.input_amount(), defs.goods[building.input_good()]["name"],
+					building.carry_load(), defs.goods[building.product()]["name"]]
 		if building.is_workplace():
 			text += "  ·  Arbeiter %d/%d" % [world.get_workers(building.id).size(), building.worker_slots()]
 			if building.unreachable:

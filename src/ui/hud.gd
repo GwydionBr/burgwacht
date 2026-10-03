@@ -131,8 +131,11 @@ func _ready() -> void:
 	_build_panel.visible = false
 
 	_build_bar = _make_panel()
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 8)
+	# Zwei Zeilen, damit auch viele Gebäude in die Fensterbreite passen (+ 1 für den Abriss).
+	var buttons := GridContainer.new()
+	buttons.columns = ceili((GameWorld.buildable_types().size() + 1) / 2.0)
+	buttons.add_theme_constant_override("h_separation", 8)
+	buttons.add_theme_constant_override("v_separation", 8)
 	_build_bar.add_child(buttons)
 	for type_id in GameWorld.buildable_types():
 		var button := _make_build_button(type_id)

@@ -96,7 +96,7 @@ Das Gold der Burg; liegt im Bergfried und ist keine Ware.
 _Avoid_: Gold als Ware, Kasse
 
 **Nahrung**:
-Eine Ware, die Bewohner essen (Äpfel, Fleisch, später Brot); ihre Lagerart ist der Kornspeicher.
+Eine Ware, die Bewohner essen (Äpfel, Fleisch, Brot); ihre Lagerart ist der Kornspeicher.
 _Avoid_: Essen, Proviant, Lebensmittel
 
 **Kornspeicher**:
