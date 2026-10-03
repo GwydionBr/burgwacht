@@ -15,6 +15,7 @@
     { "id": "very_high", "name": "sehr hoch", "gold": 1.2, "factor": -8 }
   ],
   "default_tax_rate": "none",
+  "migration": { "balance": 50, "base_ticks": 300, "ticks_per_point": 6, "min_ticks": 10 },
   "factors": {
     "ration":  { "name": "Ration" },
     "variety": { "name": "Vielfalt", "per_extra_kind": 1 },

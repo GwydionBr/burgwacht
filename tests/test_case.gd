@@ -136,7 +136,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
 		"short_of_food": world.is_short_of_food(), "treasury": world.get_treasury(), "tax_rate": world.get_tax_rate(),
-		"factors": factors,
+		"factors": factors, "population": world.get_population(), "migration_ticks": world.get_migration_ticks(),
 	}
 
 

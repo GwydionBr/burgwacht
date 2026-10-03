@@ -26,6 +26,11 @@ func in_bounds(tile: Vector2i) -> bool:
 	return tile.x >= 0 and tile.y >= 0 and tile.x < width and tile.y < height
 
 
+## Liegt die Kachel auf dem Kartenrand (erste oder letzte Zeile bzw. Spalte)?
+func is_edge(tile: Vector2i) -> bool:
+	return in_bounds(tile) and (tile.x == 0 or tile.y == 0 or tile.x == width - 1 or tile.y == height - 1)
+
+
 @warning_ignore("integer_division")
 func center() -> Vector2i:
 	return Vector2i(width / 2, height / 2)

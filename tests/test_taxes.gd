@@ -86,24 +86,23 @@ func test_residents_pay_taxes_at_day_start() -> void:
 	assert_eq(count[0], 1, "Signal Schatz geändert:")
 
 
+## Steuern nach dem ersten Tag bei diesem Steuersatz. Jede Stufe in einer eigenen Welt: Bis
+## zum zweiten Tag ändert sich die Beliebtheit, und Bewohner kommen oder gehen.
+func _first_day_taxes(tax_rate: String, scenario_id := "tiny") -> int:
+	var world := _founded(scenario_id)
+	world.execute(Command.set_tax_rate(tax_rate))
+	_next_day(world)
+	return world.get_treasury()
+
+
 func test_taxes_are_rounded_down() -> void:
-	var world := _founded()
-	world.execute(Command.set_tax_rate("very_high"))
-	_next_day(world)
-	assert_eq(world.get_treasury(), 4, "4 × 1,2 = 4,8 → 4:")
-	world.execute(Command.set_tax_rate("low"))
-	_next_day(world)
-	assert_eq(world.get_treasury(), 6, "4 × 0,6 = 2,4 → 2:")
+	assert_eq(_first_day_taxes("very_high"), 4, "4 × 1,2 = 4,8 → 4:")
+	assert_eq(_first_day_taxes("low"), 2, "4 × 0,6 = 2,4 → 2:")
 
 
 func test_exact_taxes_are_not_lost_to_rounding() -> void:
-	var world := _founded("tiny_five")
-	world.execute(Command.set_tax_rate("low"))
-	_next_day(world)
-	assert_eq(world.get_treasury(), 3, "5 × 0,6 = 3:")
-	world.execute(Command.set_tax_rate("medium"))
-	_next_day(world)
-	assert_eq(world.get_treasury(), 7, "5 × 0,8 = 4:")
+	assert_eq(_first_day_taxes("low", "tiny_five"), 3, "5 × 0,6 = 3:")
+	assert_eq(_first_day_taxes("medium", "tiny_five"), 4, "5 × 0,8 = 4:")
 
 
 func test_no_tax_means_no_gold_and_no_signal() -> void:

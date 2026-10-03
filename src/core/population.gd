@@ -2,7 +2,7 @@ class_name Population
 extends RefCounted
 ## Regelwerte der Bevölkerung aus data/population.json: Rationsstufen (Verbrauch je Bewohner
 ## und Tag, Faktor), Steuersätze (Gold je Bewohner und Tag, Faktor), die Faktoren der
-## Beliebtheit samt Namen und die Voreinstellungen.
+## Beliebtheit samt Namen, die Voreinstellungen und die Regel für Kommen und Gehen.
 
 
 ## Die Rationsstufen von der kleinsten zur größten (Reihenfolge der Daten).
@@ -61,6 +61,19 @@ static func default_tax_rate() -> String:
 	return str(GameDefs.get_instance().population["default_tax_rate"])
 
 
+## Bei dieser Beliebtheit kommt und geht niemand; darüber kommen Bewohner, darunter gehen sie.
+static func balance_popularity() -> int:
+	return int(_migration()["balance"])
+
+
+## Abstand in Takten zwischen zwei Ankünften bzw. Abgängen bei dieser Beliebtheit:
+## max(min_ticks, base_ticks − ticks_per_point · |B − balance|).
+static func migration_ticks(popularity: int) -> int:
+	var migration := _migration()
+	var distance := absi(popularity - balance_popularity())
+	return maxi(int(migration["min_ticks"]), int(migration["base_ticks"]) - int(migration["ticks_per_point"]) * distance)
+
+
 ## Faktor der Vielfalt: je gegessener Sorte über die erste hinaus "per_extra_kind",
 ## ohne gegessene Sorte 0.
 static func variety_factor(kinds: int) -> int:
@@ -70,6 +83,10 @@ static func variety_factor(kinds: int) -> int:
 ## Spielname eines Faktors, z. B. „Vielfalt“.
 static func factor_name(factor_id: String) -> String:
 	return str(_factor_def(factor_id)["name"])
+
+
+static func _migration() -> Dictionary:
+	return GameDefs.get_instance().population["migration"]
 
 
 ## Eine Liste von Stufen aus den Daten, z. B. "rations".

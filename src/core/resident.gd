@@ -31,12 +31,16 @@ enum Task {
 	WAITING_FOR_STORAGE,
 	## Hof: arbeitet unsichtbar in der Arbeitsstätte (timer), danach trägt er die Ware heraus.
 	FARMING,
+	## Neuer Bewohner: geht vom Kartenrand zum Lagerfeuer und wird dort Untätiger.
+	ARRIVING,
+	## Verlässt die Burg: geht zum Kartenrand und verschwindet dort; zählt nicht mehr mit.
+	LEAVING,
 }
 ## Wie ein Arbeitsschritt abläuft: unterwegs, Arbeit vor Ort oder Warten (beides mit timer).
 enum Phase { NONE, WALK, WORK, WAIT }
 ## Worum es im Arbeitsschritt geht; danach richtet sich, was er beim Wiederaufnehmen neu
 ## sucht bzw. wohin er geht.
-enum Goal { WORKPLACE, DEPOSIT, STORAGE }
+enum Goal { WORKPLACE, DEPOSIT, STORAGE, CAMPFIRE, EDGE }
 
 ## Die Bedeutung der Arbeitsschritte an einer Stelle; ein neuer Schritt braucht hier je
 ## einen Eintrag.
@@ -51,6 +55,8 @@ const TASK_PHASE: Dictionary[Task, Phase] = {
 	Task.WAITING_FOR_DEPOSIT: Phase.WAIT,
 	Task.WAITING_FOR_STORAGE: Phase.WAIT,
 	Task.FARMING: Phase.WORK,
+	Task.ARRIVING: Phase.WALK,
+	Task.LEAVING: Phase.WALK,
 }
 const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.NONE: Goal.WORKPLACE,
@@ -63,6 +69,8 @@ const TASK_GOAL: Dictionary[Task, Goal] = {
 	Task.WAITING_FOR_DEPOSIT: Goal.DEPOSIT,
 	Task.WAITING_FOR_STORAGE: Goal.STORAGE,
 	Task.FARMING: Goal.WORKPLACE,
+	Task.ARRIVING: Goal.CAMPFIRE,
+	Task.LEAVING: Goal.EDGE,
 }
 ## Bei diesen Schritten ist er im Stehen unsichtbar in seiner Arbeitsstätte.
 const TASKS_INSIDE: Array[Task] = [Task.PROCESSING, Task.WAITING_FOR_DEPOSIT, Task.FARMING]
@@ -117,8 +125,21 @@ static func step_ticks(from: Vector3i, to: Vector3i) -> int:
 	return roundi(ticks_per_tile() * Pathfinder.step_cost(from, to))
 
 
+## Ohne Arbeitsstätte am Lagerfeuer bzw. auf dem Weg dorthin – nicht, wer erst ankommt
+## oder geht.
 func is_idle() -> bool:
-	return workplace_id == 0
+	return workplace_id == 0 and task == Task.NONE
+
+
+## Kommt er gerade neu in die Burg? Dann zählt er schon als Bewohner, ist aber noch kein
+## Untätiger.
+func is_arriving() -> bool:
+	return task == Task.ARRIVING
+
+
+## Geht er fort? Dann zählt er nicht mehr als Bewohner.
+func is_leaving() -> bool:
+	return task == Task.LEAVING
 
 
 func is_moving() -> bool:

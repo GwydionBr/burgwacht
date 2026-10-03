@@ -1,0 +1,8 @@
+{
+  "name": "Kleine Testkarte mit knapp zu niedriger Startbeliebtheit und Startnahrung",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50, "apples": 20 },
+  "start_residents": 4,
+  "start_popularity": 49
+}

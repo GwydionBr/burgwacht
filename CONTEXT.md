@@ -162,8 +162,16 @@ Ein Bewohner, der einer Arbeitsstätte zugeteilt ist.
 _Avoid_: Angestellter, Worker
 
 **Untätiger**:
-Ein Bewohner ohne Arbeitsstätte, der am Lagerfeuer auf Arbeit wartet; er wird automatisch einer freien Arbeitsstätte zugeteilt.
+Ein Bewohner ohne Arbeitsstätte, der am Lagerfeuer auf Arbeit wartet; er wird automatisch einer freien Arbeitsstätte zugeteilt. Ankommende und Gehende sind keine Untätigen.
 _Avoid_: Arbeitsloser, Faulenzer
+
+**Ankommender**:
+Ein neuer Bewohner, der bei hoher Beliebtheit am Kartenrand erscheint und zum Lagerfeuer geht, wo er Untätiger wird; er zählt ab seinem Erscheinen als Bewohner.
+_Avoid_: Ankömmling, Neuling, Zuwanderer
+
+**Gehender**:
+Ein Bewohner, der bei niedriger Beliebtheit oder zu wenig Wohnraum die Burg verlässt und zum Kartenrand geht, wo er verschwindet; er zählt schon ab dem Aufbruch nicht mehr als Bewohner.
+_Avoid_: Auswanderer, Flüchtling
 
 **Lagerfeuer**:
 Das Gebäude, das mit dem Bergfried bei der Gründung entsteht und an dem die Untätigen stehen; weder baubar noch abreißbar.

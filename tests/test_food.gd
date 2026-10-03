@@ -99,7 +99,9 @@ func test_need_is_rounded_up() -> void:
 	assert_eq(world.get_stock("apples"), 14, "4 × 1,5 = 6:")
 	world.execute(Command.set_ration("half"))
 	_next_day(world)
-	assert_eq(world.get_stock("apples"), 12, "4 × 0,5 = 2:")
+	# Bei Beliebtheit 54 sind inzwischen zwei Bewohner dazugekommen.
+	assert_eq(world.get_population(), 6, "Bewohner:")
+	assert_eq(world.get_stock("apples"), 11, "6 × 0,5 = 3:")
 
 
 func test_rounding_up_with_odd_residents() -> void:
@@ -178,7 +180,9 @@ func test_full_ration_after_shortage_ends() -> void:
 	put_goods(world, GRANARY, "apples", 20)
 	_next_day(world)
 	assert_eq(world.get_eaten_ration(), "normal", "Wieder normal:")
-	assert_eq(world.get_stock("apples"), 16, "Äpfel:")
+	# Bei Beliebtheit 46 sind inzwischen zwei Bewohner gegangen.
+	assert_eq(world.get_population(), 2, "Bewohner:")
+	assert_eq(world.get_stock("apples"), 18, "Äpfel:")
 
 
 func test_variety_counts_eaten_kinds() -> void:
