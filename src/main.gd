@@ -628,10 +628,11 @@ func _update_line_preview() -> void:
 	var plan := world.line_plan(_build_type, _line_start if _drawing_line else _hovered, _hovered)
 	_preview.show_line(_build_type, plan)
 	var building_name: String = GameDefs.get_instance().buildings[_build_type]["name"]
-	var built := plan.values().count("")
-	if built == 0:
-		_hud.show_build_hint("%s: %s" % [building_name, plan.values()[0]], false)
+	var reason := GameWorld.line_error(plan)
+	if reason != "":
+		_hud.show_build_hint("%s: %s" % [building_name, reason], false)
 	elif _drawing_line:
+		var built := plan.values().count("")
 		_hud.show_build_hint("%s: %d von %d Kacheln (Loslassen baut)" % [building_name, built, plan.size()], true)
 	else:
 		_hud.show_build_hint("%s ziehen (Linksziehen)  ·  Rechtsklick/Esc: beenden" % building_name, true)

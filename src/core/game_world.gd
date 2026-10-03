@@ -300,6 +300,17 @@ func _build_error(type_id: String, origin: Vector2i, spent_goods: Dictionary[Str
 	return _gold_error(gold_cost_of(type_id), spent_gold)
 
 
+## Grund, aus dem der Befehl Mauerlinie mit diesem line_plan() abgelehnt wird: leer, wenn
+## mindestens eine Kachel entsteht, sonst der Grund der ersten Kachel.
+static func line_error(plan: Dictionary[Vector2i, String]) -> String:
+	for tile: Vector2i in plan:
+		if plan[tile] == "":
+			return ""
+	for tile: Vector2i in plan:
+		return plan[tile]
+	return ""
+
+
 ## Was der Befehl Mauerlinie jetzt bauen würde, ohne etwas zu ändern: je Kachel der Linie
 ## (line_tiles(), in Reihenfolge ab dem Start) leer, wenn dort ein Gebäude entsteht, sonst
 ## der Grund. Unbebaubare Kacheln werden übersprungen; reichen die Kosten nach den früheren
@@ -1565,8 +1576,9 @@ func _build(type_id: String, origin: Vector2i) -> String:
 ## Abgelehnt nur, wenn keine einzige entsteht – mit dem Grund der ersten Kachel.
 func _build_line(type_id: String, line_start: Vector2i, line_end: Vector2i) -> String:
 	var plan := line_plan(type_id, line_start, line_end)
-	if not plan.values().has(""):
-		return plan.values()[0]
+	var reason := line_error(plan)
+	if reason != "":
+		return reason
 	for tile: Vector2i in plan:
 		if plan[tile] == "":
 			_build(type_id, tile)

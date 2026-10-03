@@ -1,5 +1,5 @@
 extends TestCase
-## Simulationstests: Wehrgang auf Mauern, Treppen als Aufgang. Soldaten gehen auf beiden Ebenen
+## Simulationstests: Wehrgang auf Mauern, Treppen verbinden Boden und Wehrgang. Soldaten gehen auf beiden Ebenen
 ## und wechseln sie nur über Treppen, alle anderen Bewohner bleiben am Boden. Leere Karte (nur
 ## Wiese, 20×16), tiny_production mit 100 Stein; Bergfried (ID 1) bei (2, 2), Lagerfeuer bei
 ## (3, 8), Waffenkammer bei (10, 10) und Kaserne bei (14, 2) wie in test_move.
