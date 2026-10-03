@@ -190,7 +190,7 @@ Ein Faktor: wie viele Nahrungssorten die Bewohner an einem Tag gegessen haben; j
 _Avoid_: Abwechslung
 
 **Verwaltung**:
-Die Ansicht, in der der Spieler Ration (später Steuersatz) einstellt und die Faktoren der Beliebtheit aufgeschlüsselt sieht.
+Die Ansicht, in der der Spieler Ration und Steuersatz einstellt und die Faktoren der Beliebtheit aufgeschlüsselt sieht.
 _Avoid_: Menü, Burgverwaltung
 
 **Hof**:

@@ -1,11 +1,12 @@
 class_name Factor
 extends RefCounted
 ## Ein Faktor: ein Beitrag zur täglichen Änderung der Beliebtheit (z. B. Ration, Vielfalt).
-## Ein weiterer Faktor (Steuersatz, später Religion, Bier) braucht eine eigene ID hier, einen
+## Ein weiterer Faktor (später Religion, Bier) braucht eine eigene ID hier, einen
 ## Eintrag unter "factors" in population.json und einen in GameWorld._factors_of().
 
 const RATION := "ration"
 const VARIETY := "variety"
+const TAX_RATE := "tax_rate"
 
 var id: String
 var value: int

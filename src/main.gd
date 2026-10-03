@@ -23,7 +23,7 @@ extends Node2D
 ## Das Abriss-Werkzeug (Bauleiste oder X) hebt das Gebäude unter der Maus hervor, rot mit
 ## Grund, wenn es nicht abreißbar ist; Linksklick reißt ohne Rückfrage ab.
 ## V öffnet und schließt die Verwaltung (Esc schließt sie auch); darin stellen ◀ ▶ bzw. −/+
-## die Ration per Befehl ein.
+## die Ration und ◀ ▶ bzw. ,/. den Steuersatz per Befehl ein.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -63,6 +63,7 @@ func _ready() -> void:
 	_hud.build_selected.connect(_select_build)
 	_hud.demolish_selected.connect(_select_demolish)
 	_hud.ration_step.connect(_step_ration)
+	_hud.tax_rate_step.connect(_step_tax_rate)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -158,6 +159,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_PLUS, KEY_EQUAL, KEY_KP_ADD:
 			if _hud.is_administration_open():
 				_step_ration(1)
+		KEY_COMMA:
+			if _hud.is_administration_open():
+				_step_tax_rate(-1)
+		KEY_PERIOD:
+			if _hud.is_administration_open():
+				_step_tax_rate(1)
 		KEY_X:
 			_select_demolish()
 		KEY_F:
@@ -189,6 +196,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.popularity_changed.connect(_update_popularity)
 	world.factors_changed.connect(_update_popularity)
 	world.settings_changed.connect(_update_popularity)
+	world.treasury_changed.connect(_update_treasury)
 	world.notice.connect(_hud.show_message)
 	_clock.world = world
 	_build_type = ""
@@ -221,6 +229,7 @@ func _show_world(new_world: GameWorld) -> void:
 	_update_stock()
 	_update_residents()
 	_update_popularity()
+	_update_treasury()
 	_update_hover()
 	_update_preview()
 
@@ -437,19 +446,37 @@ func _update_residents() -> void:
 
 ## Ration um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
 func _step_ration(delta: int) -> void:
-	var rations := Population.ration_ids()
-	var index := clampi(rations.find(world.get_ration()) + delta, 0, rations.size() - 1)
-	var reason := world.execute(Command.set_ration(rations[index]))
+	_execute_or_show(Command.set_ration(_stepped(Population.ration_ids(), world.get_ration(), delta)))
+
+
+## Steuersatz um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
+func _step_tax_rate(delta: int) -> void:
+	_execute_or_show(Command.set_tax_rate(_stepped(Population.tax_rate_ids(), world.get_tax_rate(), delta)))
+
+
+## Die Stufe delta Schritte neben current, begrenzt auf die Liste.
+static func _stepped(levels: Array[String], current: String, delta: int) -> String:
+	return levels[clampi(levels.find(current) + delta, 0, levels.size() - 1)]
+
+
+func _execute_or_show(command: Command) -> void:
+	var reason := world.execute(command)
 	if reason != "":
 		_hud.show_message(reason)
 
 
-## Titelleiste (Beliebtheit, Tendenz) und Verwaltung (Ration, Faktoren).
+## Titelleiste (Beliebtheit, Tendenz) und Verwaltung (Ration, Steuersatz, Faktoren).
 func _update_popularity() -> void:
 	var total := world.get_factor_sum()
 	_hud.show_popularity(world.get_popularity(), total)
 	var eaten := Population.ration_name(world.get_eaten_ration()) if world.is_short_of_food() else ""
-	_hud.show_administration(Population.ration_name(world.get_ration()), eaten, world.get_factors(), total)
+	_hud.show_administration(Population.ration_name(world.get_ration()), eaten,
+			Population.tax_rate_name(world.get_tax_rate()), world.get_factors(), total)
+
+
+## Titelleiste: Gold im Schatz.
+func _update_treasury() -> void:
+	_hud.show_treasury(world.get_treasury())
 
 
 func _update_hover() -> void:
