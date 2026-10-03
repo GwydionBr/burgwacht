@@ -263,7 +263,7 @@ func _finish_selection(release: Vector2) -> void:
 				picked.append(id)
 	else:
 		var building := world.get_building_at(_hovered)
-		var front := _soldier_at(get_global_mouse_position(), building != null)
+		var front := _soldier_at(get_global_mouse_position(), null if building == null else _building_views[building.id])
 		if front != 0:
 			picked.append(front)
 		elif building != null and building.is_barracks():
@@ -281,13 +281,15 @@ func _soldier_views() -> Array[int]:
 
 
 ## Der Soldat, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
-## Über einem Gebäude zählt nur, wer auf der Kachel unter der Maus steht oder verdeckt ist
-## (seine Silhouette liegt über dem Gebäude): Figuren davor ragen sonst in die Kaserne hinein.
-func _soldier_at(point: Vector2, on_tile_only: bool) -> int:
+## Über einem Gebäude (building) zählt nur, wer auf der Kachel unter der Maus steht oder von
+## ihm verdeckt wird (seine Silhouette liegt darüber): Figuren davor ragen sonst in die
+## Kaserne hinein.
+func _soldier_at(point: Vector2, building: BuildingView) -> int:
 	var front := 0
 	for id in _soldier_views():
 		var view := _resident_views[id]
-		if on_tile_only and world.get_resident(id).tile != _hovered and not view.covered:
+		if building != null and world.get_resident(id).tile != _hovered \
+				and not building.covers_figure(view.hit_rect(), view.position.y):
 			continue
 		if view.hit_rect().has_point(point) and (front == 0 or view.position.y > _resident_views[front].position.y):
 			front = id

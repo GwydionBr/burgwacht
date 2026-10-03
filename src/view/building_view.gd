@@ -27,41 +27,40 @@ const EAR_COLOR := Color("#ecd27a")
 var _type: String
 var _origin: Vector2i
 var _campfire := false
+## Umriss des Blocks (Welt) und sein umschließendes Rechteck, für covers_figure().
+var _outline := PackedVector2Array()
+var _bounds := Rect2()
 
 
 func setup(building: Building) -> void:
 	_type = building.type
 	_origin = building.origin
 	_campfire = building.is_campfire()
-	position = sort_point(_type, _origin)
+	var size := Building.size_of(_type)
+	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
+	_outline = PackedVector2Array() if _campfire else _block_outline()
+	_bounds = Rect2(position, Vector2.ZERO)
+	for corner in _outline:
+		_bounds = _bounds.expand(corner)
 	queue_redraw()
 
 
-## Verdeckt dieses Gebäude eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe
-## foot_y liegt? Siehe covers().
+## Verdeckt der Block eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe foot_y
+## liegt? Nur, wenn er nach ihr gezeichnet wird (Sortierpunkt tiefer) und sein Umriss die
+## Fläche schneidet. Das Lagerfeuer verdeckt nichts.
 func covers_figure(rect: Rect2, foot_y: float) -> bool:
-	return covers(_type, _origin, rect, foot_y)
-
-
-## Sortierpunkt eines Gebäudes im y-sortierten Container (Welt).
-static func sort_point(type_id: String, origin: Vector2i) -> Vector2:
-	var size := Building.size_of(type_id)
-	return Iso.tile_to_world(origin + Vector2i(mini(size.x, size.y) - 1, 0))
-
-
-## Verdeckt der Block eines Gebäudes vom Typ type_id bei origin eine Figur mit der Fläche
-## rect (Welt), deren Fußpunkt auf Höhe foot_y liegt? Nur, wenn das Gebäude nach ihr
-## gezeichnet wird (Sortierpunkt tiefer) und sein Umriss die Fläche schneidet. Das
-## Lagerfeuer verdeckt nichts.
-static func covers(type_id: String, origin: Vector2i, rect: Rect2, foot_y: float) -> bool:
-	var def: Dictionary = GameDefs.get_instance().buildings[type_id]
-	if str(def["behavior"]) == "campfire" or sort_point(type_id, origin).y <= foot_y:
+	if _outline.is_empty() or position.y <= foot_y or not _bounds.intersects(rect):
 		return false
-	var base := footprint_corners(type_id, origin, Vector2.ZERO, INSET)
-	var roof := block_faces(base, float(def["height"]))[2]
-	var outline := PackedVector2Array([roof[0], roof[1], base[1], base[2], base[3], roof[3]])
 	var area := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
-	return not Geometry2D.intersect_polygons(outline, area).is_empty()
+	return not Geometry2D.intersect_polygons(_outline, area).is_empty()
+
+
+## Umriss des Blocks in Weltkoordinaten: Dach oben, links und rechts, Wände unten.
+func _block_outline() -> PackedVector2Array:
+	var base := footprint_corners(_type, _origin, Vector2.ZERO, INSET)
+	var height := float(GameDefs.get_instance().buildings[_type]["height"])
+	var roof := block_faces(base, height)[2]
+	return PackedVector2Array([roof[0], roof[1], base[1], base[2], base[3], roof[3]])
 
 
 func _draw() -> void:

@@ -1,5 +1,5 @@
 extends TestCase
-## Verdeckung von Figuren durch Gebäudeblöcke (BuildingView.covers()). Bergfried (4×4) bei
+## Verdeckung von Figuren durch Gebäudeblöcke (BuildingView.covers_figure()). Bergfried (4×4) bei
 ## (10, 10); die Figur hat die Klickfläche von FigureView um ihren Fußpunkt.
 
 const KEEP_ORIGIN := Vector2i(10, 10)
@@ -8,7 +8,11 @@ const KEEP_ORIGIN := Vector2i(10, 10)
 func _covers(type_id: String, tile: Vector2i) -> bool:
 	var foot := Iso.tile_to_world(tile)
 	var rect := Rect2(foot + FigureView.HIT_RECT.position, FigureView.HIT_RECT.size)
-	return BuildingView.covers(type_id, KEEP_ORIGIN, rect, foot.y)
+	var view := BuildingView.new()
+	view.setup(Building.create(1, type_id, KEEP_ORIGIN))
+	var covered := view.covers_figure(rect, foot.y)
+	view.free()
+	return covered
 
 
 func test_figure_behind_keep_is_covered() -> void:

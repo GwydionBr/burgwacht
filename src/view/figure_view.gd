@@ -4,7 +4,7 @@ extends Node2D
 ## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
 ## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten. Ausgewählte stehen in einem
 ## Ring; Kämpfer zeigen einen Lebensbalken, wenn sie verletzt oder ausgewählt sind.
-## Verdeckt sie ein Gebäude (BuildingView.covers()), zeigt sie über allen Objekten zusätzlich
+## Verdeckt sie ein Gebäude (BuildingView.covers_figure()), zeigt sie über allen Objekten zusätzlich
 ## ihre Silhouette samt Ring und Lebensbalken.
 ## Unterklassen bestimmen Farbe und Beiwerk (Ware, Waffe).
 
