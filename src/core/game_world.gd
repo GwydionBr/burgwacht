@@ -237,6 +237,8 @@ func execute(command: Command) -> String:
 		return _set_ration(command.ration)
 	if command.kind == Command.Kind.SET_TAX_RATE:
 		return _set_tax_rate(command.tax_rate)
+	if command.kind == Command.Kind.TRADE:
+		return _trade(command.good, command.buying)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -271,12 +273,10 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 		return rules
 	var cost := goods_cost_of(type_id)
 	for good: String in cost:
-		if get_stock(good) < cost[good]:
-			return "Zu wenig %s (%d nötig)" % [_good_name(good), cost[good]]
-	var gold := gold_cost_of(type_id)
-	if _treasury < gold:
-		return "Nicht genug Gold (%d nötig)" % gold
-	return ""
+		var stock := _stock_error(good, cost[good])
+		if stock != "":
+			return stock
+	return _gold_error(gold_cost_of(type_id))
 
 
 ## Darf der Befehl „Gebäude abreißen“ das Gebäude mit dieser ID jetzt abreißen? Leer oder
@@ -292,6 +292,50 @@ func demolish_error(id: int) -> String:
 		return str(building.def()["demolish_forbidden"])
 	if building.is_storage() and building.stored() > 0:
 		return "%s ist nicht leer" % _building_name(building.type)
+	return ""
+
+
+## Darf der Befehl „Handel“ jetzt die Menge je Handel dieser Ware kaufen (buying) bzw.
+## verkaufen? Leer oder der Grund. Prüfreihenfolge: Markt vorhanden → Ware handelbar → beim
+## Kauf Lager der Lagerart vorhanden, genug Gold, Platz für alles → beim Verkauf genug Bestand.
+func trade_error(good: String, buying: bool) -> String:
+	var market := market_error()
+	if market != "":
+		return market
+	if not GameDefs.get_instance().goods.has(good):
+		return "Diese Ware gibt es nicht"
+	if not Market.is_tradable(good):
+		return "%s ist nicht handelbar" % _good_name(good)
+	var amount := Market.trade_amount()
+	var storage_type := _storage_type_of(good)
+	if not buying:
+		return _stock_error(good, amount)
+	if _storages(storage_type).is_empty():
+		return Building.storage_missing_text(storage_type)
+	var gold := _gold_error(amount * Market.buy_price(good))
+	if gold != "":
+		return gold
+	if get_storage_capacity(storage_type) - get_storage_used(storage_type) < amount:
+		return "Kein Platz im Lager"
+	return ""
+
+
+## Kann überhaupt gehandelt werden (steht ein Markt)? Leer oder der Grund.
+func market_error() -> String:
+	return "" if has_market() else "Kein Markt gebaut"
+
+
+## Grund, wenn weniger als amount der Ware auf Lager ist (Bauen und Verkauf), sonst leer.
+func _stock_error(good: String, amount: int) -> String:
+	if get_stock(good) < amount:
+		return "Zu wenig %s (%d nötig)" % [_good_name(good), amount]
+	return ""
+
+
+## Grund, wenn weniger als amount Gold im Schatz ist (Bauen und Kauf), sonst leer.
+func _gold_error(amount: int) -> String:
+	if _treasury < amount:
+		return "Nicht genug Gold (%d nötig)" % amount
 	return ""
 
 
@@ -1328,6 +1372,23 @@ func _demolish(id: int) -> String:
 	_emit_stock_changed(changed)
 	@warning_ignore("integer_division")
 	_change_treasury(gold_cost_of(building.type) / 2)
+	return ""
+
+
+func _trade(good: String, buying: bool) -> String:
+	var reason := trade_error(good, buying)
+	if reason != "":
+		return reason
+	var amount := Market.trade_amount()
+	var changed: Dictionary[int, bool] = {}
+	if buying:
+		_store_goods(good, amount, changed)
+		_emit_stock_changed(changed)
+		_change_treasury(-amount * Market.buy_price(good))
+	else:
+		_take_goods(good, amount, changed)
+		_emit_stock_changed(changed)
+		_change_treasury(amount * Market.sell_price(good))
 	return ""
 
 
