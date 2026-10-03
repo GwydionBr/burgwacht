@@ -1675,25 +1675,32 @@ func _demolish(id: int) -> String:
 
 ## Nach einem Abriss: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, weicht aus
 ## (_wall_walk_refuge()) und bleibt dort stehen – das ist sein neuer Posten. Lag nur der Posten
-## eines Soldaten dort, weicht der Posten ebenso aus und der Soldat geht dorthin.
+## eines Soldaten dort, weicht der Posten ebenso aus und der Soldat geht dorthin. Die Posten
+## anderer Soldaten sind tabu, auch die gerade vergebenen (nach ID aufsteigend).
 func _leave_lost_wall_walk() -> void:
+	var taken := _posts_except({})
 	for resident: Resident in _residents.values():
 		if resident.level == Resident.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
-			var refuge := _wall_walk_refuge(resident.position())
+			taken.erase(resident.post)
+			var refuge := _wall_walk_refuge(resident.position(), taken)
 			resident.place_at(refuge)
 			resident.post = refuge
 			resident.timer = 0
+			taken[refuge] = true
 			resident_changed.emit(resident.id)
 		elif resident.is_soldier() and not _is_walkable_position(resident.post):
-			resident.post = _wall_walk_refuge(resident.post)
+			taken.erase(resident.post)
+			resident.post = _wall_walk_refuge(resident.post, taken)
+			taken[resident.post] = true
 			_report_change(resident, _send_to_post.bind(resident))
 
 
 ## Wohin man von einer Position auf dem Wehrgang ausweicht, die es nicht mehr gibt: auf die
-## nächste Wehrgang-Kachel daneben (erst gerade, dann schräg), sonst auf den Boden derselben Kachel.
-func _wall_walk_refuge(position: Vector3i) -> Vector3i:
+## nächste Wehrgang-Kachel daneben (erst gerade, dann schräg), die nicht in taken ist, sonst auf
+## den Boden derselben Kachel.
+func _wall_walk_refuge(position: Vector3i, taken: Dictionary[Vector3i, bool]) -> Vector3i:
 	for step: Vector3i in Pathfinder.STRAIGHT_STEPS + Pathfinder.DIAGONAL_STEPS:
-		if _is_walkable_position(position + step):
+		if _is_walkable_position(position + step) and not taken.has(position + step):
 			return position + step
 	return Resident.ground(Vector2i(position.x, position.y))
 

@@ -169,6 +169,40 @@ func test_soldier_on_a_demolished_wall_moves_to_the_next_wall_walk_else_down() -
 	assert_true(not soldier.is_moving(), "Steht")
 
 
+func test_soldier_on_a_demolished_wall_skips_the_posts_of_others() -> void:
+	var world := _soldiers(2)
+	_wall_with_stairs(world)
+	var middle := WALL_BOTTOM + Vector2i(0, -1)
+	world.execute(Command.move([1, 2] as Array[int], _on_wall(middle)))
+	_until_settled(world)
+	var above := _on_wall(middle + Vector2i(0, -1))
+	assert_eq(world.get_resident(2).post, above, "Soldat 2 steht darüber:")
+	world.execute(Command.demolish(world.get_building_at(middle).id))
+	# Oben ist der Posten von Soldat 2, also unten (6, 14).
+	var soldier := world.get_resident(1)
+	assert_eq(soldier.position(), _on_wall(WALL_BOTTOM), "Ausgewichen:")
+	assert_eq(soldier.post, _on_wall(WALL_BOTTOM), "Eigener Posten:")
+	assert_eq(world.get_resident(2).post, above, "Soldat 2 behält seinen Posten:")
+
+
+func test_soldiers_on_a_demolished_wall_get_their_own_refuge() -> void:
+	var world := _soldiers(2)
+	_wall_with_stairs(world)
+	var middle := _on_wall(WALL_BOTTOM + Vector2i(0, -1))
+	world.execute(Command.move([1] as Array[int], middle))
+	_until_settled(world)
+	# Soldat 2 geht über die Kachel von Soldat 1 nach unten.
+	world.execute(Command.move([2] as Array[int], _on_wall(WALL_BOTTOM)))
+	var other := world.get_resident(2)
+	while other.position() != middle:
+		world.step()
+	world.execute(Command.demolish(world.get_building_at(WALL_BOTTOM + Vector2i(0, -1)).id))
+	# Soldat 1 (kleinere ID) zuerst: nach oben; für Soldat 2 bleibt unten.
+	assert_eq(world.get_resident(1).position(), middle + Vector3i(0, -1, 0), "Soldat 1:")
+	assert_eq(other.position(), _on_wall(WALL_BOTTOM), "Soldat 2:")
+	assert_eq(other.post, _on_wall(WALL_BOTTOM), "Posten von Soldat 2:")
+
+
 func test_soldier_on_the_way_up_replans_when_the_stairs_are_demolished() -> void:
 	var world := _soldiers(1)
 	_until_settled(world)
