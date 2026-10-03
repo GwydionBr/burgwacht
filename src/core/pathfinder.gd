@@ -5,7 +5,7 @@ extends RefCounted
 ## Acht Richtungen: gerade kostet 1, schräg √2. Am Boden schräg nur, wenn beide Kacheln daneben
 ## (mit gemeinsamer Kante) begehbar sind – niemand schneidet Ecken von Hindernissen, eine
 ## diagonale Mauer ist dicht. Oben auf dem Wehrgang gilt diese Eckregel nicht, damit man auf
-## diagonalen Mauern entlanggehen kann.
+## diagonalen Mauern entlanggehen kann. Einzelne Schritte kann der Aufrufer verbieten (steppable).
 ## Deterministisch (ADR 0001): Nachbarn in fester Reihenfolge, bei gleicher Schätzung
 ## gewinnt die Kachel näher am Ziel, dann die früher gefundene.
 
@@ -21,8 +21,11 @@ const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), 
 ## ist. walkable(Vector3i) -> bool sagt, ob man auf einer Position stehen kann; der Start
 ## selbst muss es nicht sein (wer dort festsitzt, kommt trotzdem weg). ascents(Vector3i) ->
 ## Array[Vector3i] nennt die Positionen auf einer anderen Ebene, die man von einer Position aus
-## mit einem geraden Schritt erreicht (leer gelassen: keine).
-static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascents := Callable()) -> Array[Vector3i]:
+## mit einem geraden Schritt erreicht (leer gelassen: keine). steppable(Vector3i, Vector3i) -> bool
+## sagt, ob man von einer begehbaren Position auf eine benachbarte treten darf (leer gelassen:
+## immer), z. B. einen Eingang nur von vorn.
+static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascents := Callable(),
+		steppable := Callable()) -> Array[Vector3i]:
 	var path: Array[Vector3i] = []
 	if start == goal:
 		path.append(start)
@@ -41,7 +44,7 @@ static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascen
 		if closed.has(current):
 			continue
 		closed[current] = true
-		for next in neighbors(current, walkable, ascents):
+		for next in neighbors(current, walkable, ascents, steppable):
 			if closed.has(next):
 				continue
 			var cost := cost_so_far[current] + step_cost(current, next)
@@ -66,7 +69,7 @@ static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascen
 ## gleiche Schritte und Kosten wie find_path()); der Start selbst hat 0. Für die Suche nach
 ## dem nächsten Vorkommen oder Lager.
 static func distances(start: Vector3i, walkable: Callable, max_length := INF,
-		ascents := Callable()) -> Dictionary[Vector3i, float]:
+		ascents := Callable(), steppable := Callable()) -> Dictionary[Vector3i, float]:
 	var result: Dictionary[Vector3i, float] = {}
 	var cost_so_far: Dictionary[Vector3i, float] = {start: 0.0}
 	var open := _Heap.new()
@@ -76,7 +79,7 @@ static func distances(start: Vector3i, walkable: Callable, max_length := INF,
 		if result.has(current):
 			continue
 		result[current] = cost_so_far[current]
-		for next in neighbors(current, walkable, ascents):
+		for next in neighbors(current, walkable, ascents, steppable):
 			var cost := cost_so_far[current] + step_cost(current, next)
 			if result.has(next) or cost > max_length + LENGTH_EPSILON \
 					or (cost_so_far.has(next) and cost_so_far[next] <= cost):
@@ -92,21 +95,28 @@ static func same_length(a: float, b: float) -> bool:
 	return absf(a - b) < LENGTH_EPSILON
 
 
-## Die begehbaren Nachbarn einer Position in fester Reihenfolge (gerade vor schräg, dann die
-## Ebenenwechsel in ihrer Reihenfolge).
-static func neighbors(position: Vector3i, walkable: Callable, ascents := Callable()) -> Array[Vector3i]:
-	var result: Array[Vector3i] = []
+## Die begehbaren Nachbarn einer Position, die man von ihr aus betreten darf (steppable), in
+## fester Reihenfolge (gerade vor schräg, dann die Ebenenwechsel in ihrer Reihenfolge).
+static func neighbors(position: Vector3i, walkable: Callable, ascents := Callable(),
+		steppable := Callable()) -> Array[Vector3i]:
+	var candidates: Array[Vector3i] = []
 	for step in STRAIGHT_STEPS:
 		if walkable.call(position + step):
-			result.append(position + step)
+			candidates.append(position + step)
 	for step in DIAGONAL_STEPS:
 		if walkable.call(position + step) and (position.z != Resident.Level.GROUND
 				or walkable.call(position + Vector3i(step.x, 0, 0)) and walkable.call(position + Vector3i(0, step.y, 0))):
-			result.append(position + step)
+			candidates.append(position + step)
 	if ascents.is_valid():
 		for next: Vector3i in ascents.call(position):
 			if walkable.call(next):
-				result.append(next)
+				candidates.append(next)
+	if not steppable.is_valid():
+		return candidates
+	var result: Array[Vector3i] = []
+	for next in candidates:
+		if steppable.call(position, next):
+			result.append(next)
 	return result
 
 

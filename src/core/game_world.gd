@@ -1619,12 +1619,12 @@ func _can_stand(position: Vector3i, walker: Walker) -> bool:
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten und Feinde nehmen dabei Treppen und
 ## Soldaten Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
-	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker))
+	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable)
 
 
 ## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
-	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
+	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker), _is_steppable)
 
 
 ## Die Ebenenwechsel für walker: Bewohner wechseln die Ebene nie. Turmeingänge kann ein Feind
@@ -1653,6 +1653,26 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 	return result
 
 
+## Darf man von from auf die benachbarte Position to treten? Einen Eingang am Boden betritt und
+## verlässt man nur über die Kachel davor – oder über den Ebenenwechsel derselben Kachel am
+## Turmeingang. Sonst käme man an einem Eingang an der Ecke seitlich vorbei, etwa an einer
+## schrägen Mauer, die dort ansetzt.
+func _is_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _passes_entrance(from, to) and _passes_entrance(to, from)
+
+
+## Erlaubt der Eingang auf position (falls dort einer am Boden ist) den Schritt von bzw. nach other?
+func _passes_entrance(position: Vector3i, other: Vector3i) -> bool:
+	if position.z != Resident.Level.GROUND:
+		return true
+	var tile := Vector2i(position.x, position.y)
+	var building := get_building_at(tile)
+	if building == null or building.is_walkable() or not building.has_entrance() or building.entrance() != tile:
+		return true
+	var other_tile := Vector2i(other.x, other.y)
+	return other_tile == building.entrance_front() or other_tile == tile
+
+
 ## Steht auf der Kachel eine Treppe?
 func _is_stairs(tile: Vector2i) -> bool:
 	var building := get_building_at(tile)
@@ -1660,10 +1680,11 @@ func _is_stairs(tile: Vector2i) -> bool:
 
 
 ## Kann die Figur den nächsten Schritt ihres Weges (noch) gehen? Die Position muss für sie
-## begehbar sein, ein Wechsel der Ebene braucht eine Treppe bzw. einen Turmeingang.
+## begehbar sein, ein Wechsel der Ebene braucht eine Treppe bzw. einen Turmeingang, einen Eingang
+## betritt sie nur von vorn (_is_steppable()).
 func _can_step(figure: Figure) -> bool:
 	var next: Vector3i = figure.path[0]
-	if not _can_stand(next, _walker_of(figure)):
+	if not _can_stand(next, _walker_of(figure)) or not _is_steppable(figure.position(), next):
 		return false
 	return next.z == figure.level or _ascents(figure.position()).has(next)
 
