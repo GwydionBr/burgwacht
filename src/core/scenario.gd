@@ -29,8 +29,8 @@ var start_residents := 0
 var start_popularity := DEFAULT_POPULARITY
 ## Gold im Schatz zu Beginn.
 var start_gold := 0
-## Feinde bei der Gründung als Paare [Feindtyp, Kachel], in der Reihenfolge der Datei.
-var start_enemies: Array[Array] = []
+## Feinde bei der Gründung, in der Reihenfolge der Datei.
+var start_enemies: Array[StartEnemy] = []
 var error := ""
 
 
@@ -140,7 +140,7 @@ static func _read_enemies(scenario: Scenario, value: Variant, problems: PackedSt
 				or not Rect2i(Vector2i.ZERO, scenario.map_size).has_point(Vector2i(int(tile_array[0]), int(tile_array[1]))):
 			problems.append("„enemies“: „tile“ muss eine Kachel [x, y] auf der Karte sein")
 		else:
-			scenario.start_enemies.append([str(type_value), Vector2i(int(tile_array[0]), int(tile_array[1]))])
+			scenario.start_enemies.append(StartEnemy.create(str(type_value), Vector2i(int(tile_array[0]), int(tile_array[1]))))
 
 
 static func _failed(scenario_id: String, message: String) -> Scenario:

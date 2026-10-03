@@ -183,11 +183,12 @@ func test_enemies_are_read() -> void:
 	data["enemies"] = [{"type": "bandit", "tile": [3.0, 4.0]}, {"type": "bandit", "tile": [11, 9]}]
 	var scenario := Scenario.from_dict("test", data)
 	assert_eq(scenario.error, "", "Fehler:")
-	assert_eq(scenario.start_enemies, [["bandit", Vector2i(3, 4)], ["bandit", Vector2i(11, 9)]] as Array[Array], "Feinde:")
+	var read := scenario.start_enemies.map(func(entry: StartEnemy) -> Array: return [entry.type_id, entry.tile])
+	assert_eq(read, [["bandit", Vector2i(3, 4)], ["bandit", Vector2i(11, 9)]], "Feinde:")
 
 
 func test_missing_enemies_means_none() -> void:
-	assert_eq(Scenario.from_dict("test", _valid_data()).start_enemies, [] as Array[Array], "Feinde:")
+	assert_eq(Scenario.from_dict("test", _valid_data()).start_enemies.size(), 0, "Feinde:")
 
 
 func test_bad_enemies_are_invalid() -> void:

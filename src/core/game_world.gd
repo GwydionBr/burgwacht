@@ -106,8 +106,8 @@ var _entrance_fronts: Dictionary[Vector2i, int] = {}
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
-## Feinde bei der Gründung als Paare [Feindtyp, Kachel] (aus dem Szenario).
-var _start_enemies: Array[Array] = []
+## Feinde bei der Gründung (aus dem Szenario).
+var _start_enemies: Array[StartEnemy] = []
 ## Nach ID aufsteigend eingefügt; eigene IDs, getrennt von denen der Bewohner.
 var _enemies: Dictionary[int, Enemy] = {}
 var _next_enemy_id := 1
@@ -146,7 +146,7 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._seed = world_seed
 	world._start_goods = scenario.start_goods.duplicate()
 	world._start_residents = scenario.start_residents
-	world._start_enemies = scenario.start_enemies.duplicate(true)
+	world._start_enemies = scenario.start_enemies.duplicate()
 	world._popularity = scenario.start_popularity
 	world._ration = Population.default_ration()
 	world._tax_rate = Population.default_tax_rate()
@@ -174,9 +174,7 @@ func to_data() -> Dictionary:
 		"buildings": _buildings.values().map(func(building: Building) -> Dictionary: return building.to_data()),
 		"next_resident_id": _next_resident_id,
 		"residents": _residents.values().map(func(resident: Resident) -> Dictionary: return resident.to_data()),
-		"start_enemies": _start_enemies.map(func(entry: Array) -> Array:
-			var tile: Vector2i = entry[1]
-			return [entry[0], tile.x, tile.y]),
+		"start_enemies": _start_enemies.map(func(entry: StartEnemy) -> Dictionary: return entry.to_data()),
 		"next_enemy_id": _next_enemy_id,
 		"enemies": _enemies.values().map(func(enemy: Enemy) -> Dictionary: return enemy.to_data()),
 		"popularity": _popularity,
@@ -226,8 +224,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["residents"]:
 		var resident := Resident.from_data(entry)
 		world._residents[resident.id] = resident
-	for entry: Array in data["start_enemies"]:
-		world._start_enemies.append([str(entry[0]), Vector2i(int(entry[1]), int(entry[2]))])
+	for entry: Dictionary in data["start_enemies"]:
+		world._start_enemies.append(StartEnemy.from_data(entry))
 	world._next_enemy_id = int(data["next_enemy_id"])
 	for entry: Dictionary in data["enemies"]:
 		var enemy := Enemy.from_data(entry)
@@ -2295,13 +2293,12 @@ func _is_free_enemy_tile(tile: Vector2i) -> bool:
 ## Die Feinde des Szenarios bei der Gründung: auf ihrer Kachel oder, ist sie nicht frei, der
 ## nächsten freien (Reihenfolge wie bei den Startbewohnern); gibt es keine, entfällt er.
 func _add_start_enemies() -> void:
-	for entry in _start_enemies:
-		var tile: Vector2i = entry[1]
-		var found: Array[Vector2i] = [tile]
-		if not _is_free_enemy_tile(tile):
-			found = _search_outward(tile, _is_free_enemy_tile)
+	for entry: StartEnemy in _start_enemies:
+		var found: Array[Vector2i] = [entry.tile]
+		if not _is_free_enemy_tile(entry.tile):
+			found = _search_outward(entry.tile, _is_free_enemy_tile)
 		if not found.is_empty():
-			_add_enemy(str(entry[0]), found[0])
+			_add_enemy(entry.type_id, found[0])
 
 
 ## Ein neuer Feind mit vollen Lebenspunkten; er läuft gleich zum Bergfried.
