@@ -6,7 +6,8 @@ extends Node2D
 ## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
 ## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
 ## ein Steinkreis mit Flamme (Platzhalter). Gebäude mit "decor": "trees" (Apfelplantage)
-## tragen auf jeder Kachel ein kleines Obstbäumchen.
+## tragen auf jeder Kachel ein kleines Obstbäumchen, mit "decor": "wheat" (Weizenfarm)
+## einige Ähren.
 
 const INSET := 3.0
 const GATE_COLOR := Color("#2a1d12")
@@ -20,6 +21,8 @@ const FLAME_OUTER_COLOR := Color("#e0702a")
 const FLAME_INNER_COLOR := Color("#ffd166")
 const CROWN_COLOR := Color("#3f6b2a")
 const FRUIT_COLOR := Color("#c0392b")
+const STALK_COLOR := Color("#a8862c")
+const EAR_COLOR := Color("#ecd27a")
 
 var _type: String
 var _origin: Vector2i
@@ -51,8 +54,11 @@ func _draw() -> void:
 		var outline := face.duplicate()
 		outline.append(face[0])
 		draw_polyline(outline, OUTLINE_COLOR, 1.0, true)
-	if str(def.get("decor", "")) == "trees":
-		_draw_small_trees(float(def["height"]))
+	match str(def.get("decor", "")):
+		"trees":
+			_draw_small_trees(float(def["height"]))
+		"wheat":
+			_draw_wheat(float(def["height"]))
 	_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
 
 
@@ -104,10 +110,7 @@ func _draw_campfire() -> void:
 
 ## Ein kleines Obstbäumchen mitten auf jeder Kachel der Grundfläche, hinten zuerst.
 func _draw_small_trees(height: float) -> void:
-	var tiles := Building.footprint(_type, _origin)
-	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
-	for tile in tiles:
-		var foot := Iso.tile_to_world(tile) - position + Vector2(0, -height)
+	for foot in _decor_spots(height):
 		draw_set_transform(foot, 0.0, Vector2(1.0, 0.5))
 		draw_circle(Vector2(3, 0), 7.0, Color(0, 0, 0, 0.22))
 		draw_set_transform(Vector2.ZERO)
@@ -150,3 +153,25 @@ func _draw_label(text: String, center: Vector2) -> void:
 	var pos := center + Vector2(-width * 0.5, LABEL_SIZE * 0.35)
 	draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 3, Color(0, 0, 0, 0.6))
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, LABEL_COLOR)
+
+
+## Drei Ähren mitten auf jeder Kachel der Grundfläche, hinten zuerst.
+func _draw_wheat(height: float) -> void:
+	for foot in _decor_spots(height):
+		for x: float in [-6.0, 0.0, 6.0]:
+			var base := foot + Vector2(x, absf(x) * 0.3)
+			var tip := base + Vector2(x * 0.2, -10)
+			draw_line(base, tip, STALK_COLOR, 1.2)
+			draw_set_transform(tip + Vector2(0, -2), 0.0, Vector2(0.45, 1.0))
+			draw_circle(Vector2.ZERO, 3.2, EAR_COLOR)
+			draw_set_transform(Vector2.ZERO)
+
+
+## Die Mitte jeder Kachel der Grundfläche auf dem Dach (Höhe height), hinten zuerst.
+func _decor_spots(height: float) -> Array[Vector2]:
+	var tiles := Building.footprint(_type, _origin)
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
+	var spots: Array[Vector2] = []
+	for tile in tiles:
+		spots.append(Iso.tile_to_world(tile) - position + Vector2(0, -height))
+	return spots
