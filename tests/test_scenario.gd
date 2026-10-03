@@ -130,3 +130,26 @@ func test_bad_start_residents_is_invalid() -> void:
 		var data := _valid_data()
 		data["start_residents"] = amount
 		assert_true(_error_for(data).contains("start_residents"), "Startbewohner %s: %s" % [str(amount), _error_for(data)])
+
+
+func test_start_popularity_is_read() -> void:
+	var data := _valid_data()
+	data["start_popularity"] = 70.0
+	var scenario := Scenario.from_dict("test", data)
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.start_popularity, 70, "Startbeliebtheit:")
+
+
+func test_missing_start_popularity_means_fifty() -> void:
+	assert_eq(Scenario.from_dict("test", _valid_data()).start_popularity, 50, "Startbeliebtheit:")
+
+
+func test_free_play_starts_with_popularity_fifty() -> void:
+	assert_eq(Scenario.load_named(Scenario.DEFAULT).start_popularity, 50, "Startbeliebtheit:")
+
+
+func test_bad_start_popularity_is_invalid() -> void:
+	for value: Variant in [-1, 101, 50.5, "50", null, true]:
+		var data := _valid_data()
+		data["start_popularity"] = value
+		assert_true(_error_for(data).contains("start_popularity"), "Startbeliebtheit %s: %s" % [str(value), _error_for(data)])

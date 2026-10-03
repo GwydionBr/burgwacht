@@ -3,5 +3,6 @@
   "map": { "width": 80, "height": 80 },
   "seed": "random",
   "start_goods": { "wood": 100, "stone": 50, "apples": 40 },
-  "start_residents": 8
+  "start_residents": 8,
+  "start_popularity": 50
 }

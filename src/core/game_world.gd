@@ -15,6 +15,9 @@ extends RefCounted
 ## bauen Vorkommen ab, verarbeiten die Ware in der Arbeitsstätte und tragen sie ins Lager.
 ## Ändert sich die Burg unter ihnen (Bau, Abriss, neue oder verschwundene Vorkommen),
 ## weichen sie aus bzw. planen neu.
+##
+## Zu Beginn jedes Tags essen die Bewohner gemäß der Ration aus den Kornspeichern, und die
+## Beliebtheit ändert sich um die Summe der Faktoren (Ration, Vielfalt).
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -30,11 +33,19 @@ signal resident_added(id: int)
 ## Abbau, Verarbeitung, abgeliefert, wieder untätig …).
 signal resident_changed(id: int)
 signal founded()
+## Die Beliebtheit hat sich geändert.
+signal popularity_changed()
+## Die Faktoren haben sich geändert (zu Tagesbeginn).
+signal factors_changed()
+## Eine Einstellung des Spielers (Ration) hat sich geändert.
+signal settings_changed()
+## Eine Meldung für den Spieler, z. B. bei Nahrungsmangel.
+signal notice(text: String)
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 ## Gebäudetyp, mit dem die Burg gegründet wird.
 const FOUNDING_TYPE := "keep"
 ## Steht für „keine passende Stelle“ (find_founding_site()).
@@ -63,6 +74,23 @@ var _entrance_fronts: Dictionary[Vector2i, int] = {}
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
+## Wie gern die Bewohner in der Burg leben, 0–100.
+var _popularity := Scenario.DEFAULT_POPULARITY
+## Die eingestellte Ration (population.json).
+var _ration := ""
+## Die am letzten Tag tatsächlich gegessene Ration; leer vor dem ersten Tag.
+var _eaten_ration := ""
+## War sie am letzten Tag wegen Mangels kleiner als die damals eingestellte?
+var _short_of_food := false
+## Die Faktoren des letzten Tags; leer vor dem ersten Tag.
+var _factors: Array[Factor] = []
+
+
+## Was zu Tagesbeginn gegessen wird: die tatsächliche Ration und je Nahrungsware die Menge.
+class Meal:
+	var ration: String
+	## Ware → Menge, nur verzehrte Sorten, in der Reihenfolge der Waren.
+	var amounts: Dictionary[String, int] = {}
 
 
 ## Neue Partie aus einem gültigen Szenario. Der Seed kommt vom Aufrufer
@@ -74,6 +102,8 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._seed = world_seed
 	world._start_goods = scenario.start_goods.duplicate()
 	world._start_residents = scenario.start_residents
+	world._popularity = scenario.start_popularity
+	world._ration = Population.default_ration()
 	world._set_map(MapGenerator.generate(world_seed, scenario.map_size.x, scenario.map_size.y))
 	# Eigener Zufall, getrennt von dem der Kartenerzeugung.
 	world._rng.seed = hash([world_seed, "world"])
@@ -97,6 +127,11 @@ func to_data() -> Dictionary:
 		"buildings": _buildings.values().map(func(building: Building) -> Dictionary: return building.to_data()),
 		"next_resident_id": _next_resident_id,
 		"residents": _residents.values().map(func(resident: Resident) -> Dictionary: return resident.to_data()),
+		"popularity": _popularity,
+		"ration": _ration,
+		"eaten_ration": _eaten_ration,
+		"short_of_food": _short_of_food,
+		"factors": _factors.map(func(factor: Factor) -> Dictionary: return factor.to_data()),
 	}
 
 
@@ -136,6 +171,12 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["residents"]:
 		var resident := Resident.from_data(entry)
 		world._residents[resident.id] = resident
+	world._popularity = int(data["popularity"])
+	world._ration = str(data["ration"])
+	world._eaten_ration = str(data["eaten_ration"])
+	world._short_of_food = bool(data["short_of_food"])
+	for entry: Dictionary in data["factors"]:
+		world._factors.append(Factor.from_data(entry))
 	world._rebuild_index()
 	return world
 
@@ -149,6 +190,7 @@ func step() -> void:
 	_assign_workers()
 	_update_residents()
 	if _tick % TICKS_PER_DAY == 0:
+		_start_day()
 		day_started.emit(get_day())
 
 
@@ -161,6 +203,8 @@ func execute(command: Command) -> String:
 		return _build(command.building_type, command.origin)
 	if command.kind == Command.Kind.DEMOLISH:
 		return _demolish(command.building_id)
+	if command.kind == Command.Kind.SET_RATION:
+		return _set_ration(command.ration)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -422,6 +466,44 @@ func get_storage_capacity(storage_type: String) -> int:
 	return total
 
 
+## Beliebtheit, 0–100.
+func get_popularity() -> int:
+	return _popularity
+
+
+## Die eingestellte Ration.
+func get_ration() -> String:
+	return _ration
+
+
+## Die tatsächlich gegessene Ration des letzten Tags – bei Mangel kleiner als die
+## eingestellte; vor dem ersten Tag die Vorschau aus Einstellung und Vorrat.
+func get_eaten_ration() -> String:
+	return _eaten_ration if _eaten_ration != "" else _plan_meal().ration
+
+
+## Wurde am letzten Tag wegen Mangels weniger gegessen als eingestellt? Vor dem ersten Tag
+## die Vorschau: Reicht der Vorrat nicht für die eingestellte Ration?
+func is_short_of_food() -> bool:
+	if _eaten_ration != "":
+		return _short_of_food
+	return _is_lower_ration(_plan_meal().ration, _ration)
+
+
+## Die Faktoren der Beliebtheit (Ration, Vielfalt) des letzten Tags; vor dem ersten Tag eine
+## Vorschau aus Einstellung und Vorrat.
+func get_factors() -> Array[Factor]:
+	return _factors.duplicate() if not _factors.is_empty() else _factors_of(_plan_meal())
+
+
+## Summe der Faktoren: um so viel ändert sich die Beliebtheit pro Tag (Tendenz).
+func get_factor_sum() -> int:
+	var total := 0
+	for factor in get_factors():
+		total += factor.value
+	return total
+
+
 func get_scenario_id() -> String:
 	return _scenario_id
 
@@ -438,6 +520,89 @@ func get_tick() -> int:
 @warning_ignore("integer_division")
 func get_day() -> int:
 	return _tick / TICKS_PER_DAY + 1
+
+
+func _set_ration(ration_id: String) -> String:
+	if not Population.has_ration(ration_id):
+		return "Unbekannte Ration „%s“" % ration_id
+	_ration = ration_id
+	settings_changed.emit()
+	return ""
+
+
+## Tagesbeginn: Die Bewohner essen (_plan_meal()) aus den Kornspeichern in ID-Reihenfolge,
+## bei Mangel mit Meldung; danach ändert sich die Beliebtheit um die Summe der Faktoren,
+## begrenzt auf 0–100.
+func _start_day() -> void:
+	var meal := _plan_meal()
+	var changed: Dictionary[int, bool] = {}
+	for good: String in meal.amounts:
+		_take_goods(good, meal.amounts[good], changed)
+	_emit_stock_changed(changed)
+	_eaten_ration = meal.ration
+	_short_of_food = _is_lower_ration(meal.ration, _ration)
+	if _short_of_food:
+		notice.emit("Nicht genug Nahrung – Ration: %s" % Population.ration_name(meal.ration))
+	_factors = _factors_of(meal)
+	factors_changed.emit()
+	var popularity := clampi(_popularity + get_factor_sum(), 0, 100)
+	if popularity != _popularity:
+		_popularity = popularity
+		popularity_changed.emit()
+
+
+## Was die Bewohner jetzt essen würden, ohne etwas zu ändern. Bedarf = aufgerundet Bewohner ×
+## Verbrauch; reicht der Vorrat an Nahrung nicht, gilt die höchste Stufe unter der
+## eingestellten, deren Bedarf gedeckt ist. Verteilt wird reihum über die vorhandenen Sorten in
+## der Reihenfolge der Waren, eine Einheit nach der anderen.
+func _plan_meal() -> Meal:
+	var foods := _food_goods()
+	var available: Dictionary[String, int] = {}
+	var total := 0
+	for good in foods:
+		available[good] = get_stock(good)
+		total += available[good]
+	var rations := Population.ration_ids()
+	var meal := Meal.new()
+	meal.ration = rations[0]
+	var need := 0
+	for i in range(rations.find(_ration), -1, -1):
+		var ration_need := ceili(_residents.size() * Population.consumption(rations[i]))
+		if ration_need <= total:
+			meal.ration = rations[i]
+			need = ration_need
+			break
+	while need > 0:
+		for good in foods:
+			if need > 0 and available[good] > 0:
+				available[good] -= 1
+				meal.amounts[good] = meal.amounts.get(good, 0) + 1
+				need -= 1
+	return meal
+
+
+static func _is_lower_ration(ration_id: String, than: String) -> bool:
+	var rations := Population.ration_ids()
+	return rations.find(ration_id) < rations.find(than)
+
+
+## Die Faktoren, die aus einer Mahlzeit folgen: Ration (tatsächliche) und Vielfalt (Zahl der
+## verzehrten Sorten).
+func _factors_of(meal: Meal) -> Array[Factor]:
+	return [
+		Factor.create(Factor.RATION, Population.ration_factor(meal.ration)),
+		Factor.create(Factor.VARIETY, Population.variety_factor(meal.amounts.size())),
+	]
+
+
+## Die Waren mit "food" in den Daten, in deren Reihenfolge.
+func _food_goods() -> Array[String]:
+	var result: Array[String] = []
+	var goods := GameDefs.get_instance().goods
+	for good: String in goods:
+		if bool(goods[good].get("food", false)):
+			result.append(good)
+	return result
 
 
 func _found(origin: Vector2i) -> String:

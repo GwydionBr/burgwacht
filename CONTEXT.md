@@ -185,6 +185,14 @@ _Avoid_: Zufriedenheit, Stimmung, Ansehen
 Ein Beitrag zur täglichen Änderung der Beliebtheit, z. B. Ration, Vielfalt der Nahrung, Steuersatz.
 _Avoid_: Modifikator, Einfluss
 
+**Vielfalt**:
+Ein Faktor: wie viele Nahrungssorten die Bewohner an einem Tag gegessen haben; jede Sorte über die erste hinaus hebt die Beliebtheit.
+_Avoid_: Abwechslung
+
+**Verwaltung**:
+Die Ansicht, in der der Spieler Ration (später Steuersatz) einstellt und die Faktoren der Beliebtheit aufgeschlüsselt sieht.
+_Avoid_: Menü, Burgverwaltung
+
 **Hof**:
 Eine Arbeitsstätte, deren Arbeiter darin arbeitet und die Ware selbst erzeugt, ohne Vorkommen (Verhalten `farm`), z. B. die Apfelplantage.
 _Avoid_: Farm, Bauernhof

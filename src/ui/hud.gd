@@ -3,11 +3,14 @@ extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Bestand und Bewohnern, Meldungen oben
 ## rechts darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
+## Die Verwaltung (Taste V) zeigt die Ration zum Umstellen und die Faktoren der Beliebtheit.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
 ## Der Abriss-Knopf wurde gedrückt.
 signal demolish_selected()
+## In der Verwaltung soll die Ration um so viele Stufen steigen (+1) bzw. sinken (−1).
+signal ration_step(delta: int)
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -17,6 +20,8 @@ const BLOCKED_COLOR := Color("#ff8a70")
 const MESSAGE_SECONDS := 3.0
 ## Abstand des Bauhinweises und der Meldungen vom oberen Rand, unterhalb der Titelleiste.
 const BUILD_HINT_TOP := 64
+## Steigende Beliebtheit (fallende in BLOCKED_COLOR).
+const UP_COLOR := Color("#9fd88a")
 
 var _info_label: Label
 var _seed_label: Label
@@ -28,6 +33,12 @@ var _message_timer: Timer
 var _info_panel: PanelContainer
 var _stock_label: Label
 var _residents_label: Label
+var _popularity_label: Label
+var _admin_panel: PanelContainer
+var _ration_label: Label
+var _eaten_label: Label
+var _factors_label: Label
+var _factor_sum_label: Label
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -53,6 +64,8 @@ func _ready() -> void:
 	row.add_child(_stock_label)
 	_residents_label = _make_label("", TEXT_COLOR, 16)
 	row.add_child(_residents_label)
+	_popularity_label = _make_label("", TEXT_COLOR, 16)
+	row.add_child(_popularity_label)
 	add_child(bar)
 
 	# Meldungen eigen statt in der Titelleiste, damit sie bei langem Bestand nicht abgeschnitten werden.
@@ -74,7 +87,7 @@ func _ready() -> void:
 		"Linksklick: gründen/bauen/abreißen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
 		+ "WASD/Pfeile, zwei Finger: bewegen  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
-		+ "F5/F9: speichern/laden  ·  F: Vollbild",
+		+ "V: Verwaltung  ·  F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))
 	add_child(help_panel)
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
@@ -113,6 +126,13 @@ func _ready() -> void:
 	_build_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
+	_admin_panel = _make_admin_panel()
+	add_child(_admin_panel)
+	_admin_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_admin_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_admin_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_admin_panel.visible = false
+
 
 func set_seed(map_seed: int) -> void:
 	_seed_label.text = "Karte #%d" % map_seed
@@ -148,6 +168,40 @@ func show_stock(text: String) -> void:
 ## Bewohnerzahl und Wohnraum in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“.
 func show_residents(total: int, housing: int, idle: int) -> void:
 	_residents_label.text = "Bewohner %d/%d (Untätig %d)" % [total, housing, idle]
+
+
+## Beliebtheit und ihre Tendenz pro Tag in der Titelleiste, z. B. „Beliebtheit 54 ▲3“.
+func show_popularity(popularity: int, trend: int) -> void:
+	_popularity_label.text = "Beliebtheit %d %s" % [popularity, _trend_text(trend)]
+	_popularity_label.add_theme_color_override("font_color",
+			UP_COLOR if trend > 0 else (BLOCKED_COLOR if trend < 0 else TEXT_COLOR))
+
+
+## Verwaltung öffnen bzw. schließen (Taste V).
+func toggle_administration() -> void:
+	_admin_panel.visible = not _admin_panel.visible
+
+
+func close_administration() -> void:
+	_admin_panel.visible = false
+
+
+func is_administration_open() -> bool:
+	return _admin_panel.visible
+
+
+## Inhalt der Verwaltung: eingestellte Ration, die tatsächlich gegessene (leer = dieselbe)
+## und die Faktoren samt Summe.
+func show_administration(ration: String, eaten_ration: String, factors: Array[Factor], total: int) -> void:
+	_ration_label.text = ration
+	_eaten_label.text = "Zu wenig Nahrung – gegessen wird: %s" % eaten_ration
+	_eaten_label.visible = eaten_ration != ""
+	var lines: PackedStringArray = []
+	for factor in factors:
+		lines.append("%s\t%s" % [factor.name(), _signed(factor.value)])
+	_factors_label.text = "\n".join(lines)
+	_factor_sum_label.text = "→ %s pro Tag" % _signed(total)
+	_admin_panel.reset_size()
 
 
 ## Hinweis oben in der Mitte (leer = ausblenden); rot, wenn hier nicht gebaut werden darf.
@@ -197,6 +251,62 @@ func _make_tool_button(text: String) -> Button:
 	button.add_theme_font_size_override("font_size", 14)
 	button.custom_minimum_size = Vector2(120, 0)
 	return button
+
+
+## Die Verwaltung: Ration mit ◀ ▶ (Tasten −/+), darunter die Faktoren und ihre Summe.
+func _make_admin_panel() -> PanelContainer:
+	var panel := _make_panel()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	column.add_child(_make_label("Verwaltung", TEXT_COLOR, 20))
+	var ration_row := HBoxContainer.new()
+	ration_row.add_theme_constant_override("separation", 8)
+	ration_row.add_child(_make_label("Ration", TEXT_COLOR, 16))
+	ration_row.add_child(_make_step_button("◀", -1))
+	_ration_label = _make_label("", TEXT_COLOR, 16)
+	_ration_label.custom_minimum_size = Vector2(80, 0)
+	_ration_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ration_row.add_child(_ration_label)
+	ration_row.add_child(_make_step_button("▶", 1))
+	ration_row.add_child(_make_label("(−/+)", HINT_COLOR, 13))
+	column.add_child(ration_row)
+	_eaten_label = _make_label("", BLOCKED_COLOR, 15)
+	column.add_child(_eaten_label)
+	column.add_child(_make_label("Beliebtheit pro Tag", HINT_COLOR, 15))
+	_factors_label = _make_label("", TEXT_COLOR, 16)
+	_factors_label.tab_stops = PackedFloat32Array([140])
+	column.add_child(_factors_label)
+	_factor_sum_label = _make_label("", TEXT_COLOR, 16)
+	column.add_child(_factor_sum_label)
+	column.add_child(_make_label("V/Esc: schließen", HINT_COLOR, 13))
+	return panel
+
+
+func _make_step_button(text: String, delta: int) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.pressed.connect(func() -> void: ration_step.emit(delta))
+	return button
+
+
+## Tendenz als Pfeil, z. B. „▲3“, „▼2“ oder „±0“.
+static func _trend_text(trend: int) -> String:
+	if trend > 0:
+		return "▲%d" % trend
+	if trend < 0:
+		return "▼%d" % -trend
+	return "±0"
+
+
+## Zahl mit Vorzeichen, z. B. „+4“, „−8“, „0“.
+static func _signed(value: int) -> String:
+	if value > 0:
+		return "+%d" % value
+	if value < 0:
+		return "−%d" % -value
+	return "0"
 
 
 func _make_panel() -> PanelContainer:

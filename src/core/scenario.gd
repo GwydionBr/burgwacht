@@ -3,12 +3,15 @@ extends RefCounted
 ## Ein Szenario: die Datenbeschreibung, aus der eine Partie startet (res://data/scenarios/<id>.json).
 ## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
 ## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
-## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer).
+## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
+## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
 const DEFAULT := "free_play"
 const RANDOM_SEED := "random"
+## Beliebtheit zu Beginn, wenn das Szenario keine nennt.
+const DEFAULT_POPULARITY := 50
 
 ## Dateiname ohne Endung, z. B. "free_play".
 var id: String
@@ -21,6 +24,7 @@ var fixed_seed: int
 var start_goods: Dictionary[String, int] = {}
 ## Bewohner, die bei der Gründung als Untätige am Lagerfeuer entstehen.
 var start_residents := 0
+var start_popularity := DEFAULT_POPULARITY
 var error := ""
 
 
@@ -72,6 +76,12 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		scenario.start_residents = int(residents_value)
 	else:
 		problems.append("„start_residents“ muss eine ganze Zahl ab 0 sein")
+
+	var popularity_value: Variant = data.get("start_popularity", DEFAULT_POPULARITY)
+	if _is_whole_number(popularity_value) and int(popularity_value) >= 0 and int(popularity_value) <= 100:
+		scenario.start_popularity = int(popularity_value)
+	else:
+		problems.append("„start_popularity“ muss eine ganze Zahl von 0 bis 100 sein")
 
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]
