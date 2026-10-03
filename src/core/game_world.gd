@@ -389,7 +389,8 @@ func trade_error(good: String, buying: bool) -> String:
 
 
 ## Darf der Befehl „Bewegen“ diese Soldaten zum Ziel schicken? Leer oder der Grund.
-## Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → am Ziel kann jemand stehen.
+## Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → am Ziel kann jemand stehen →
+## mindestens einer der Soldaten kommt zum Ziel.
 func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
 	if soldier_ids.is_empty():
 		return "Keine Soldaten ausgewählt"
@@ -399,7 +400,10 @@ func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
 			return "Kein Soldat"
 	if not _is_walkable_position(target):
 		return "Dort kann kein Soldat stehen"
-	return ""
+	for id in soldier_ids:
+		if not _find_path(get_resident(id).position(), target, Walker.SOLDIER).is_empty():
+			return ""
+	return "Kein Weg dorthin"
 
 
 ## Darf der Befehl „Anwerben“ jetzt an der Kaserne mit dieser ID einen Soldaten dieses Typs

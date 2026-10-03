@@ -108,10 +108,17 @@ func test_diagonal_wall_is_closed_on_the_ground() -> void:
 	_until_settled(world)
 	# Schneidet die Ecke unten links ab; dahinter liegt (0, 15).
 	_wall(world, Vector2i(0, 12), Vector2i(3, 15))
-	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(Vector2i(0, 15)))), "", "Bewegen:")
-	var soldier := world.get_resident(1)
-	assert_true(soldier.is_blocked(), "Kein Weg durch die schräge Mauer")
-	assert_eq(world.activity_of(soldier), "Schwertkämpfer – wartet: Weg versperrt", "Tätigkeit:")
+	assert_eq(world.execute(Command.move([1] as Array[int], Resident.ground(Vector2i(0, 15)))), "Kein Weg dorthin",
+			"Kein Weg durch die schräge Mauer:")
+
+
+func test_wall_walk_without_stairs_is_out_of_reach() -> void:
+	var world := _soldiers(1)
+	_until_settled(world)
+	_wall(world, WALL_TOP, WALL_BOTTOM)
+	var before := world.to_data()
+	assert_eq(world.execute(Command.move([1] as Array[int], _on_wall(WALL_BOTTOM))), "Kein Weg dorthin", "Ohne Treppe:")
+	assert_eq(world.to_data(), before, "Unverändert:")
 
 
 func test_workers_never_use_the_wall_walk() -> void:
