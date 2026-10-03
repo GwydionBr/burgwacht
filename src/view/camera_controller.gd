@@ -2,6 +2,7 @@ class_name CameraController
 extends Camera2D
 ## Kamerasteuerung: Tastatur, Trackpad (zwei Finger scrollen, Pinch zum Zoomen),
 ## Mausrad, Ziehen mit rechter/mittlerer Maustaste und Bildschirmrand (nur im Vollbild).
+## Gezogen wird erst ab CLICK_DISTANCE Pixeln – darunter ist es ein Klick (Rechtsklick bewegt Soldaten).
 
 const PAN_SPEED := 900.0
 const PAN_GESTURE_SPEED := 14.0
@@ -9,10 +10,17 @@ const EDGE_MARGIN := 8.0
 const ZOOM_MIN := 0.35
 const ZOOM_MAX := 2.5
 const ZOOM_STEP := 1.12
+## Bis zu so vielen Bildschirmpixeln zwischen Drücken und Loslassen gilt eine Maustaste als
+## geklickt, nicht gezogen.
+const CLICK_DISTANCE := 6.0
 
 var bounds := Rect2()
 
+## Rechte bzw. mittlere Taste gedrückt.
 var _dragging := false
+## Schon weiter als CLICK_DISTANCE gezogen: Die Kamera folgt der Maus.
+var _panning := false
+var _drag_start := Vector2.ZERO
 
 
 func _process(delta: float) -> void:
@@ -41,8 +49,14 @@ func _unhandled_input(event: InputEvent) -> void:
 					_zoom_at(event.position, 1.0 / ZOOM_STEP)
 			MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE:
 				_dragging = event.pressed
+				_panning = false
+				_drag_start = event.position
 	elif event is InputEventMouseMotion and _dragging:
-		_move_by(-event.relative / zoom.x)
+		if _panning:
+			_move_by(-event.relative / zoom.x)
+		elif event.position.distance_to(_drag_start) > CLICK_DISTANCE:
+			_panning = true
+			_move_by(-(event.position - _drag_start) / zoom.x)
 	elif event is InputEventPanGesture:
 		_move_by(event.delta * PAN_GESTURE_SPEED / zoom.x)
 	elif event is InputEventMagnifyGesture:

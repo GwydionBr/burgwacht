@@ -4,7 +4,8 @@ extends Node2D
 ## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
 ## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten. Getragene Ware als
 ## Bündel auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
-## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen).
+## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen);
+## ausgewählte stehen in einem Ring.
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.25)
 const OUTLINE_COLOR := Color(0, 0, 0, 0.45)
@@ -17,6 +18,16 @@ const BOB_RATE := 2.0
 const BLADE_COLOR := Color("#d8dee6")
 ## Bogen und Schwertgriff.
 const WOOD_COLOR := Color("#6b4423")
+## Ring um ausgewählte Soldaten.
+const RING_COLOR := Color(1, 0.95, 0.7, 0.95)
+## Fläche der Figur um den Fußpunkt, in der ein Klick sie trifft.
+const HIT_RECT := Rect2(-8, -27, 16, 30)
+
+## Ist er ausgewählt? Dann steht er in einem Ring.
+var selected := false:
+	set(value):
+		selected = value
+		queue_redraw()
 
 var _resident: Resident
 var _clock: GameClock
@@ -31,6 +42,11 @@ func setup(resident: Resident, clock: GameClock) -> void:
 
 func _process(_delta: float) -> void:
 	_update_position()
+
+
+## Die Fläche der Figur in Weltkoordinaten (für Klick und Rahmen).
+func hit_rect() -> Rect2:
+	return Rect2(position + HIT_RECT.position, HIT_RECT.size)
 
 
 func _update_position() -> void:
@@ -49,6 +65,8 @@ func _bob() -> float:
 func _draw() -> void:
 	draw_set_transform(Vector2(0, 1), 0.0, Vector2(1.0, 0.5))
 	draw_circle(Vector2.ZERO, 7.0, SHADOW_COLOR)
+	if selected:
+		draw_arc(Vector2.ZERO, 11.0, 0, TAU, 32, RING_COLOR, 2.0, true)
 	draw_set_transform(Vector2(0, -_bob()))
 	# Beine, Körper (Kittel), Kopf.
 	draw_rect(Rect2(-3.5, -7, 2.5, 7), LEG_COLOR)

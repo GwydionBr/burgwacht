@@ -246,6 +246,8 @@ func execute(command: Command) -> String:
 		return _trade(command.good, command.buying)
 	if command.kind == Command.Kind.RECRUIT:
 		return _recruit(command.building_id, command.soldier_type)
+	if command.kind == Command.Kind.MOVE:
+		return _move(command.resident_ids, command.target)
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -324,6 +326,20 @@ func trade_error(good: String, buying: bool) -> String:
 		return gold
 	if get_storage_capacity(storage_type) - get_storage_used(storage_type) < amount:
 		return "Kein Platz im Lager"
+	return ""
+
+
+## Darf der Befehl „Bewegen“ diese Soldaten zum Ziel schicken? Leer oder der Grund.
+## Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → am Ziel kann jemand stehen.
+func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
+	if soldier_ids.is_empty():
+		return "Keine Soldaten ausgewählt"
+	for id in soldier_ids:
+		var resident := get_resident(id)
+		if resident == null or not resident.is_soldier():
+			return "Kein Soldat"
+	if not _is_walkable_position(target):
+		return "Dort kann kein Soldat stehen"
 	return ""
 
 
@@ -1563,23 +1579,65 @@ func _tiles_around_barracks(barracks: Building) -> Array[Vector2i]:
 	return result
 
 
+## Bewegen: Die Soldaten bekommen nach ID aufsteigend je eine eigene Kachel als Posten – das
+## Ziel, dann die nächsten (_search_outward()) freien Kacheln, die vom Ziel aus auf seiner Ebene
+## erreichbar sind; frei heißt ohne Gebäude und nicht Posten eines anderen Soldaten (Posten der
+## Bewegten zählen nicht). Wer keine mehr bekommt, behält seinen Posten. Alle gehen los.
+func _move(soldier_ids: Array[int], target: Vector3i) -> String:
+	var reason := move_error(soldier_ids, target)
+	if reason != "":
+		return reason
+	var moving: Dictionary[int, bool] = {}
+	for id in soldier_ids:
+		moving[id] = true
+	var ids: Array[int] = moving.keys()
+	ids.sort()
+	var taken := _posts_except(moving)
+	var accept := _free_post_filter(target, taken)
+	var center := Vector2i(target.x, target.y)
+	for id: int in ids:
+		var soldier := get_resident(id)
+		var found: Array[Vector2i] = [center]
+		if not accept.call(center):
+			found = _search_outward(center, accept)
+		if not found.is_empty():
+			soldier.post = Vector3i(found[0].x, found[0].y, target.z)
+		taken[soldier.post] = true
+		soldier.task = Resident.Task.ON_DUTY
+		_send_to_post(soldier)
+		resident_changed.emit(soldier.id)
+	return ""
+
+
 ## Ein freier Posten für einen Soldaten: die erste Kachel aus preferred, sonst die nächste um
 ## center (_search_outward()), die vom Lagerfeuer aus erreichbar ist, auf der kein Gebäude
 ## steht und die nicht Posten eines anderen Soldaten ist. Gibt es keine, bleibt er, wo er ist.
 func _free_post(soldier: Resident, center: Vector2i, preferred: Array[Vector2i]) -> Vector3i:
-	var taken: Dictionary[Vector3i, bool] = {}
-	for other: Resident in _residents.values():
-		if other != soldier and other.is_soldier():
-			taken[other.post] = true
-	var reachable := Pathfinder.distances(Resident.ground(_campfire().origin), _is_walkable_position)
-	var accept := func(tile: Vector2i) -> bool:
-		var position := Resident.ground(tile)
-		return reachable.has(position) and not taken.has(position) and get_building_at(tile) == null
+	var accept := _free_post_filter(Resident.ground(_campfire().origin), _posts_except({soldier.id: true}))
 	for tile in preferred:
 		if accept.call(tile):
 			return Resident.ground(tile)
 	var found := _search_outward(center, accept)
 	return Resident.ground(found[0]) if not found.is_empty() else soldier.position()
+
+
+## Die Posten aller Soldaten außer denen mit diesen IDs.
+func _posts_except(excluded: Dictionary[int, bool]) -> Dictionary[Vector3i, bool]:
+	var taken: Dictionary[Vector3i, bool] = {}
+	for other: Resident in _residents.values():
+		if other.is_soldier() and not excluded.has(other.id):
+			taken[other.post] = true
+	return taken
+
+
+## Prüfung (Kachel → bool), ob eine Kachel ein freier Posten ist: auf der Ebene von origin von
+## dort aus erreichbar, ohne Gebäude und nicht in taken (wird beim Aufruf gelesen, darf also
+## noch wachsen).
+func _free_post_filter(origin: Vector3i, taken: Dictionary[Vector3i, bool]) -> Callable:
+	var reachable := Pathfinder.distances(origin, _is_walkable_position)
+	return func(tile: Vector2i) -> bool:
+		var position := Vector3i(tile.x, tile.y, origin.z)
+		return reachable.has(position) and not taken.has(position) and get_building_at(tile) == null
 
 
 ## Schickt einen Soldaten zu seinem Posten; steht er schon dort, bleibt er. Gibt es keinen Weg,

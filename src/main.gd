@@ -15,6 +15,9 @@ extends Node2D
 ##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
+##   --load=pfad.sav       Spielstand laden statt neuer Partie (für Screenshots)
+##   --select              alle Soldaten ausgewählt (für Screenshots)
+##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -29,6 +32,9 @@ extends Node2D
 ## M öffnet und schließt die Marktansicht mit dem Bestand aller Waren (Esc schließt sie auch).
 ## Ein Linksklick auf eine Kaserne (ohne Werkzeug) öffnet die Kasernenansicht (Esc schließt sie);
 ## ihre Knöpfe schicken den Befehl Anwerben.
+## Ohne Werkzeug wählt ein Linksklick einen Soldaten (Ring), Linksziehen alle im Rahmen; ein
+## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Bewegen dorthin, Rechtsziehen
+## verschiebt die Kamera. Esc hebt zuerst die Auswahl auf.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -46,6 +52,16 @@ var _build_type := ""
 var _demolishing := false
 ## ID der Kaserne, deren Ansicht offen ist (0 = keine).
 var _barracks_id := 0
+## IDs der ausgewählten Soldaten.
+var _selected: Array[int] = []
+## Linke Taste ohne Werkzeug gedrückt: Klick oder Rahmen wählen Soldaten aus.
+var _selecting := false
+## Wo die linke bzw. rechte Taste gedrückt wurde (Bildschirm); links auch in der Welt.
+var _left_press := Vector2.ZERO
+var _left_press_world := Vector2.ZERO
+var _right_press := Vector2.ZERO
+## Die rechte Taste wurde über der Karte gedrückt (nicht über dem HUD).
+var _right_pressed_on_map := false
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
@@ -53,6 +69,7 @@ var _barracks_id := 0
 @onready var _highlight: TileHighlight = $Highlight
 @onready var _preview: PlacementPreview = $Preview
 @onready var _camera: CameraController = $Camera
+@onready var _selection_box: SelectionBox = $SelectionBox
 @onready var _hud: Hud = $HUD
 
 
@@ -74,6 +91,8 @@ func _ready() -> void:
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
+	if args.has("load"):
+		_load_from(str(args["load"]))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
@@ -102,6 +121,8 @@ func _ready() -> void:
 			if building.is_barracks():
 				_open_barracks(building.id)
 				break
+	if args.has("select"):
+		_set_selection(_soldier_views())
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -109,6 +130,9 @@ func _ready() -> void:
 		var hover := str(args.get("hover", "")).split(",")
 		if hover.size() == 2:
 			_hovered = Vector2i(int(hover[0]), int(hover[1]))
+		var box := str(args.get("box", "")).split(",")
+		if box.size() == 2:
+			_selection_box.show_box(Iso.tile_to_world(Vector2i(int(box[0]), int(box[1]))), Iso.tile_to_world(_hovered))
 		_update_hover()
 		_update_preview()
 		_save_screenshot_and_quit(args["screenshot"])
@@ -122,16 +146,53 @@ func _process(_delta: float) -> void:
 		_update_preview()
 
 
+## Eine begonnene Auswahl folgt der Maus und endet beim Loslassen – auch über dem HUD, das
+## diese Ereignisse sonst abfängt.
+func _input(event: InputEvent) -> void:
+	if not _selecting:
+		return
+	var motion := event as InputEventMouseMotion
+	if motion != null and _is_drag(_left_press, motion.position):
+		_selection_box.show_box(_left_press_world, get_global_mouse_position())
+	var button := event as InputEventMouseButton
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
+		_finish_selection(button.position)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	var button := event as InputEventMouseButton
-	if button == null or not button.pressed:
+	if button == null:
 		return
+	# Nicht als behandelt markieren: Die Kamera zieht weiterhin mit der rechten Taste.
 	if button.button_index == MOUSE_BUTTON_RIGHT:
-		# Nicht als behandelt markieren: Die Kamera zieht weiterhin mit der rechten Taste.
+		if button.pressed:
+			_right_press = button.position
+			_right_pressed_on_map = true
+		elif _right_pressed_on_map:
+			_right_pressed_on_map = false
+			if not _is_drag(_right_press, button.position):
+				_right_click()
+	elif button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		_left_click()
+
+
+## Ist die Maus zwischen Drücken und Loslassen so weit gewandert, dass es ein Ziehen ist?
+static func _is_drag(from: Vector2, to: Vector2) -> bool:
+	return from.distance_to(to) > CameraController.CLICK_DISTANCE
+
+
+## Rechtsklick ohne Ziehen: beendet den Bau- bzw. Abrissmodus, sonst schickt er die Auswahl
+## an die Kachel unter der Maus.
+func _right_click() -> void:
+	if _build_type != "" or _demolishing:
 		_select_build("")
-		return
-	if button.button_index != MOUSE_BUTTON_LEFT:
-		return
+	elif not _selected.is_empty():
+		_execute_or_show(Command.move(_selected, Resident.ground(_hovered)))
+
+
+## Linke Taste gedrückt: gründet, baut oder reißt ab; ohne Werkzeug beginnt die Auswahl
+## (entschieden wird beim Loslassen).
+func _left_click() -> void:
 	var reason := ""
 	if world.is_founding():
 		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
@@ -142,11 +203,69 @@ func _unhandled_input(event: InputEvent) -> void:
 		if building != null:
 			reason = world.execute(Command.demolish(building.id))
 	else:
-		var building := world.get_building_at(_hovered)
-		if building != null and building.is_barracks():
-			_open_barracks(building.id)
+		_selecting = true
+		_left_press = get_viewport().get_mouse_position()
+		_left_press_world = get_global_mouse_position()
 	if reason != "":
 		_hud.show_message(reason)
+
+
+## Linke Taste losgelassen: Gezogen wählt alle Soldaten im Rahmen. Ein Klick wählt den
+## Soldaten unter der Maus (_soldier_at()); steht dort keiner, hebt er die Auswahl auf und
+## öffnet auf einer Kaserne deren Ansicht.
+func _finish_selection(release: Vector2) -> void:
+	_selecting = false
+	_selection_box.visible = false
+	var picked: Array[int] = []
+	if _is_drag(_left_press, release):
+		var box := Rect2(_left_press_world, get_global_mouse_position() - _left_press_world).abs()
+		for id: int in _soldier_views():
+			if _resident_views[id].hit_rect().intersects(box, true):
+				picked.append(id)
+	else:
+		var building := world.get_building_at(_hovered)
+		var front := _soldier_at(get_global_mouse_position(), building != null)
+		if front != 0:
+			picked.append(front)
+		elif building != null and building.is_barracks():
+			_open_barracks(building.id)
+	_set_selection(picked)
+
+
+## Die IDs aller Soldaten mit Figur, nach ID aufsteigend.
+func _soldier_views() -> Array[int]:
+	var result: Array[int] = []
+	for resident in world.get_residents():
+		if resident.is_soldier() and _resident_views.has(resident.id):
+			result.append(resident.id)
+	return result
+
+
+## Der Soldat, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
+## Über einem Gebäude zählt nur, wer auf der Kachel unter der Maus steht: Figuren davor ragen
+## sonst in die Kaserne hinein.
+func _soldier_at(point: Vector2, on_tile_only: bool) -> int:
+	var front := 0
+	for id in _soldier_views():
+		var view := _resident_views[id]
+		if on_tile_only and world.get_resident(id).tile != _hovered:
+			continue
+		if view.hit_rect().has_point(point) and (front == 0 or view.position.y > _resident_views[front].position.y):
+			front = id
+	return front
+
+
+## Wählt genau diese Soldaten aus (Ring) und zeigt den Hinweis dazu.
+func _set_selection(ids: Array[int]) -> void:
+	for id in _selected:
+		if _resident_views.has(id):
+			_resident_views[id].selected = false
+	_selected.clear()
+	for id in ids:
+		if _resident_views.has(id):
+			_selected.append(id)
+			_resident_views[id].selected = true
+	_update_preview()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -166,8 +285,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F9:
 			_quick_load()
 		KEY_ESCAPE:
-			# Ist die Verwaltung, die Marktansicht oder die Kasernenansicht offen, schließt Esc nur sie.
-			if _hud.is_administration_open():
+			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
+			# offen, schließt Esc nur sie.
+			if not _selected.is_empty():
+				_set_selection([])
+			elif _hud.is_administration_open():
 				_hud.close_administration()
 			elif _hud.is_market_open():
 				_hud.close_market()
@@ -231,6 +353,9 @@ func _show_world(new_world: GameWorld) -> void:
 	_hud.show_tool("", false)
 	_barracks_id = 0
 	_hud.close_barracks()
+	_selected.clear()
+	_selecting = false
+	_selection_box.visible = false
 	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
 	_terrain.show_map(map)
@@ -277,7 +402,12 @@ func _quick_load() -> void:
 	if not FileAccess.file_exists(QUICKSAVE_PATH):
 		_hud.show_message("Noch kein Spielstand – erst mit F5 speichern")
 		return
-	var file := FileAccess.open(QUICKSAVE_PATH, FileAccess.READ)
+	_load_from(QUICKSAVE_PATH)
+
+
+## Lädt den Spielstand aus dieser Datei; Fehler als Meldung.
+func _load_from(path: String) -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
 	var data: Variant = file.get_var() if file != null else null
 	if not data is Dictionary:
 		_hud.show_message("Spielstand ist beschädigt")
@@ -366,6 +496,9 @@ func _on_resident_removed(id: int) -> void:
 	if _resident_views.has(id):
 		_resident_views[id].queue_free()
 		_resident_views.erase(id)
+	if _selected.has(id):
+		_selected.erase(id)
+		_update_preview()
 	_update_residents()
 	_update_hover()
 
@@ -411,6 +544,9 @@ func _select_tool(build_type: String, demolishing: bool) -> void:
 		_hud.show_message(GameWorld.FOUNDING_FIRST)
 		build_type = ""
 		demolishing = false
+	# Mit einem Werkzeug ist keine Auswahl sichtbar; Esc soll dann gleich das Werkzeug beenden.
+	if build_type != "" or demolishing:
+		_set_selection([])
 	_build_type = build_type
 	_demolishing = demolishing
 	_hud.show_tool(build_type, demolishing)
@@ -436,7 +572,11 @@ func _update_build_preview() -> void:
 		return
 	if _build_type == "":
 		_preview.visible = false
-		_hud.show_build_hint("", true)
+		var hint := ""
+		if not _selected.is_empty():
+			hint = "%s ausgewählt  ·  Rechtsklick: dorthin bewegen  ·  Esc: Auswahl aufheben" \
+					% ("1 Soldat" if _selected.size() == 1 else "%d Soldaten" % _selected.size())
+		_hud.show_build_hint(hint, true)
 		return
 	var origin := _origin_under_mouse(_build_type)
 	var reason := world.build_error(_build_type, origin)
