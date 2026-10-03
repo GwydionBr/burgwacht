@@ -4,5 +4,29 @@
     "ticks_per_tile": 5,
     "retry_ticks": 50,
     "color": "#d8c49a"
+  },
+  "swordsman": {
+    "name": "Schwertkämpfer",
+    "kind": "soldier",
+    "hp": 100,
+    "damage": 20,
+    "attack_ticks": 10,
+    "melee": true,
+    "sight": 6,
+    "ticks_per_tile": 6,
+    "cost": { "sword": 1, "gold": 10 },
+    "color": "#b8323a"
+  },
+  "archer": {
+    "name": "Bogenschütze",
+    "kind": "soldier",
+    "hp": 50,
+    "damage": 10,
+    "attack_ticks": 15,
+    "range": 7,
+    "sight": 7,
+    "ticks_per_tile": 5,
+    "cost": { "bow": 1, "gold": 5 },
+    "color": "#3f7a3a"
   }
 }

@@ -39,6 +39,11 @@ func is_market() -> bool:
 	return def()["behavior"] == "market"
 
 
+## Kaserne (Verhalten „barracks“, ohne Arbeiter): Hier werden Soldaten angeworben.
+func is_barracks() -> bool:
+	return def()["behavior"] == "barracks"
+
+
 ## Beschäftigt das Gebäude Arbeiter ("workers" in den Daten)?
 func is_workplace() -> bool:
 	return worker_slots() > 0

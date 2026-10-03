@@ -14,6 +14,7 @@ extends Node2D
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
 ##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --market              Marktansicht geöffnet (für Screenshots)
+##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -26,6 +27,8 @@ extends Node2D
 ## V öffnet und schließt die Verwaltung (Esc schließt sie auch); darin stellen ◀ ▶ bzw. −/+
 ## die Ration und ◀ ▶ bzw. ,/. den Steuersatz per Befehl ein.
 ## M öffnet und schließt die Marktansicht mit dem Bestand aller Waren (Esc schließt sie auch).
+## Ein Linksklick auf eine Kaserne (ohne Werkzeug) öffnet die Kasernenansicht (Esc schließt sie);
+## ihre Knöpfe schicken den Befehl Anwerben.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -41,6 +44,8 @@ var _hovered := Vector2i(-1, -1)
 var _build_type := ""
 ## Abriss-Werkzeug gewählt (schließt den Baumodus aus).
 var _demolishing := false
+## ID der Kaserne, deren Ansicht offen ist (0 = keine).
+var _barracks_id := 0
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
@@ -67,6 +72,7 @@ func _ready() -> void:
 	_hud.ration_step.connect(_step_ration)
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
+	_hud.recruit_requested.connect(_recruit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
@@ -91,6 +97,11 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
+	if args.has("barracks"):
+		for building in world.get_buildings():
+			if building.is_barracks():
+				_open_barracks(building.id)
+				break
 	if args.has("screenshot"):
 		# Unabhängig vom echten Mauszeiger: Maus gilt als über der Kartenmitte oder --hover.
 		set_process(false)
@@ -130,6 +141,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var building := world.get_building_at(_hovered)
 		if building != null:
 			reason = world.execute(Command.demolish(building.id))
+	else:
+		var building := world.get_building_at(_hovered)
+		if building != null and building.is_barracks():
+			_open_barracks(building.id)
 	if reason != "":
 		_hud.show_message(reason)
 
@@ -151,11 +166,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F9:
 			_quick_load()
 		KEY_ESCAPE:
-			# Ist die Verwaltung oder die Marktansicht offen, schließt Esc nur sie.
+			# Ist die Verwaltung, die Marktansicht oder die Kasernenansicht offen, schließt Esc nur sie.
 			if _hud.is_administration_open():
 				_hud.close_administration()
 			elif _hud.is_market_open():
 				_hud.close_market()
+			elif _hud.is_barracks_open():
+				_hud.close_barracks()
 			else:
 				_select_build("")
 		KEY_V:
@@ -212,6 +229,8 @@ func _show_world(new_world: GameWorld) -> void:
 	_build_type = ""
 	_demolishing = false
 	_hud.show_tool("", false)
+	_barracks_id = 0
+	_hud.close_barracks()
 	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
 	_terrain.show_map(map)
@@ -321,6 +340,9 @@ func _on_building_removed(id: int) -> void:
 	if _building_views.has(id):
 		_building_views[id].queue_free()
 		_building_views.erase(id)
+	if id == _barracks_id:
+		_barracks_id = 0
+		_hud.close_barracks()
 	_update_residents()
 	_update_stock()
 	_update_hover()
@@ -454,6 +476,7 @@ func _update_stock() -> void:
 		stock[good] = world.get_stock(good)
 	_hud.show_market_stock(stock)
 	_update_market()
+	_update_barracks()
 
 
 ## Marktansicht: Handelsknöpfe je Ware mit dem Grund, warum Kauf bzw. Verkauf gerade nicht geht.
@@ -471,9 +494,37 @@ func _trade(good: String, buying: bool) -> void:
 	_execute_or_show(Command.trade(good, buying))
 
 
-## Titelleiste: Bewohner, Wohnraum und Untätige.
+## Titelleiste: Bewohner, Wohnraum, Untätige und Soldaten.
 func _update_residents() -> void:
-	_hud.show_residents(world.get_population(), world.get_housing(), world.get_idle_count())
+	_hud.show_residents(world.get_population(), world.get_housing(), world.get_idle_count(),
+			world.get_soldier_count())
+	_update_barracks()
+
+
+## Kasernenansicht für die Kaserne mit dieser ID öffnen.
+func _open_barracks(id: int) -> void:
+	_barracks_id = id
+	_hud.open_barracks()
+	_update_barracks()
+
+
+## Kasernenansicht: Untätige, Waffen (die Waren der Anwerbekosten) und je Soldatentyp der
+## Grund, warum Anwerben gerade nicht geht.
+func _update_barracks() -> void:
+	if _barracks_id == 0:
+		return
+	var weapons: Dictionary[String, int] = {}
+	var errors: Dictionary[String, String] = {}
+	for good in SoldierType.weapons():
+		weapons[good] = world.get_stock(good)
+	for type_id in SoldierType.ids():
+		errors[type_id] = world.recruit_error(_barracks_id, type_id)
+	_hud.show_barracks(world.get_idle_count(), weapons, errors)
+
+
+## Anwerben aus der Kasernenansicht als Befehl abschicken.
+func _recruit(type_id: String) -> void:
+	_execute_or_show(Command.recruit(_barracks_id, type_id))
 
 
 ## Ration um delta Stufen ändern (in den Grenzen der Stufen) und als Befehl abschicken.
@@ -510,6 +561,7 @@ func _update_popularity() -> void:
 func _update_treasury() -> void:
 	_hud.show_treasury(world.get_treasury())
 	_update_market()
+	_update_barracks()
 
 
 func _update_hover() -> void:

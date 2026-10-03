@@ -265,5 +265,15 @@
     "hotkey": "T",
     "color": "#b5523b",
     "height": 20
+  },
+  "barracks": {
+    "name": "Kaserne",
+    "behavior": "barracks",
+    "size": [3, 3],
+    "entrance": [1, 2],
+    "cost": { "wood": 20, "stone": 10 },
+    "hotkey": "C",
+    "color": "#7a3b34",
+    "height": 30
   }
 }
