@@ -103,6 +103,22 @@ _Avoid_: Essen, Proviant, Lebensmittel
 Das Lager für Nahrung.
 _Avoid_: Speisekammer, Vorratslager
 
+**Waffe**:
+Eine Ware, mit der ein Untätiger zum Soldaten angeworben wird (Schwert, Bogen); ihre Lagerart ist die Waffenkammer.
+_Avoid_: Ausrüstung, Bewaffnung
+
+**Waffenkammer**:
+Das Lager für Waffen.
+_Avoid_: Arsenal, Rüstkammer
+
+**Markt**:
+Ein Gebäude ohne Arbeiter; steht mindestens eins, kann der Spieler Waren gegen Gold aus dem Schatz kaufen und verkaufen.
+_Avoid_: Handelsposten, Händler
+
+**Handel**:
+Ein Kauf oder Verkauf einer festen Menge einer Ware am Markt zu den festen Preisen aus den Warendaten; er gelingt ganz oder gar nicht.
+_Avoid_: Tausch, Transaktion
+
 **Wild**:
 Ein Vorkommen aus Tieren, das Fleisch liefert und wie Bäume nachwächst; es bewegt sich nicht.
 _Avoid_: Tiere, Hirsche, Beute
@@ -204,6 +220,18 @@ _Avoid_: Menü, Burgverwaltung
 **Hof**:
 Eine Arbeitsstätte, deren Arbeiter darin arbeitet und die Ware selbst erzeugt, ohne Vorkommen (Verhalten `farm`), z. B. die Apfelplantage.
 _Avoid_: Farm, Bauernhof
+
+**Herstellungsbetrieb**:
+Eine Arbeitsstätte, deren Arbeiter eine Eingangsware aus einem Lager holt und daraus darin ein Erzeugnis herstellt (Verhalten `produce`), z. B. Mühle, Bäcker, Schmied.
+_Avoid_: Werkstatt, Fabrik, Verarbeiter
+
+**Eingangsware**:
+Die Ware, die ein Herstellungsbetrieb verbraucht, z. B. Weizen bei der Mühle.
+_Avoid_: Input, Rohware
+
+**Erzeugnis**:
+Die Ware, die eine Arbeitsstätte liefert; jeder Gebäudetyp hat genau eines.
+_Avoid_: Produkt, Output
 
 **Apfelplantage**:
 Ein Hof auf Wiese, dessen Arbeiter darin Äpfel anbaut und sie zum nächsten Kornspeicher trägt; braucht kein Vorkommen.
