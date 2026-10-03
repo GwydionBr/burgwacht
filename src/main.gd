@@ -19,7 +19,7 @@ extends Node2D
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
-##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8, für Screenshots)
+##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
@@ -110,7 +110,7 @@ func _ready() -> void:
 			reason = world.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
 		if reason != "":
 			printerr("--place: ", reason)
-	if args.has("spawn"):
+	if args.has("spawn") and OS.is_debug_build():
 		var spawn_reason := world.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
 		if spawn_reason != "":
 			printerr("--spawn: ", spawn_reason)
