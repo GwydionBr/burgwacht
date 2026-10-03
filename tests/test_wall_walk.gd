@@ -211,3 +211,22 @@ func test_post_on_a_demolished_wall_moves_to_the_next_wall_walk() -> void:
 	assert_eq(soldier.post, _on_wall(WALL_BOTTOM + Vector2i(0, -1)), "Posten weicht aus:")
 	_until_settled(world)
 	assert_eq(soldier.position(), soldier.post, "Am neuen Posten:")
+
+
+func test_soldier_walking_on_a_demolished_wall_stops_on_the_next_wall_walk() -> void:
+	var world := _soldiers(1)
+	_wall_with_stairs(world)
+	world.execute(Command.move([1] as Array[int], _on_wall(WALL_BOTTOM)))
+	var soldier := world.get_resident(1)
+	# Mitten im Schritt von (6, 13) nach (6, 14) oben.
+	var middle := _on_wall(WALL_BOTTOM + Vector2i(0, -1))
+	while soldier.position() != middle or soldier.step_progress == 0:
+		world.step()
+	world.execute(Command.demolish(world.get_building_at(Vector2i(middle.x, middle.y)).id))
+	# Gerade daneben zuerst: oben (6, 12).
+	assert_eq(soldier.position(), _on_wall(WALL_BOTTOM + Vector2i(0, -2)), "Ausgewichen:")
+	assert_eq(soldier.post, soldier.position(), "Posten ist die neue Position:")
+	assert_true(not soldier.is_moving(), "Steht")
+	for i in 50:
+		world.step()
+	assert_eq(soldier.position(), soldier.post, "Bleibt dort:")

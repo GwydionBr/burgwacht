@@ -22,8 +22,6 @@ const WOOD_COLOR := Color("#6b4423")
 const RING_COLOR := Color(1, 0.95, 0.7, 0.95)
 ## Fläche der Figur um den Fußpunkt, in der ein Klick sie trifft.
 const HIT_RECT := Rect2(-8, -27, 16, 30)
-## So hoch über dem Boden liegt der Wehrgang (= "height" der Mauer in buildings.json).
-const WALL_WALK_HEIGHT := 28.0
 ## Auf dem Wehrgang wird die Figur sortiert, als stünde sie knapp eine halbe Kachel weiter vorn:
 ## nach der Mauer, auf der sie steht, aber vor den Mauern und Figuren auf den Kacheln davor.
 const WALL_WALK_SORT := Iso.TILE_H * 0.5 - 1.0
@@ -56,11 +54,21 @@ func hit_rect() -> Rect2:
 	return Rect2(position + HIT_RECT.position + Vector2(0, -_lift), HIT_RECT.size)
 
 
+## So hoch über dem Boden liegt der Wehrgang: die Höhe ("height") des ersten Gebäudetyps mit
+## Wehrgang in buildings.json (der Mauer).
+static func wall_walk_height() -> float:
+	var buildings := GameDefs.get_instance().buildings
+	for type_id: String in buildings:
+		if bool(buildings[type_id].get("walkway", false)):
+			return float(buildings[type_id]["height"])
+	return 0.0
+
+
 func _update_position() -> void:
 	var fraction := _clock.tick_fraction()
 	var level := _resident.level_point(fraction)
 	position = Iso.point_to_world(_resident.tile_point(fraction)) + Vector2(0, WALL_WALK_SORT * level)
-	_lift = (WALL_WALK_SORT + WALL_WALK_HEIGHT) * level
+	_lift = (WALL_WALK_SORT + wall_walk_height()) * level
 	visible = not _resident.is_inside_building()
 	queue_redraw()
 

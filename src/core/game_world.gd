@@ -321,7 +321,7 @@ func line_plan(type_id: String, line_start: Vector2i, line_end: Vector2i) -> Dic
 		if plan[tile] == "":
 			for good: String in cost:
 				spent[good] = spent.get(good, 0) + cost[good]
-			spent_gold += gold_cost_of(type_id) if known else 0
+			spent_gold += gold_cost_of(type_id)
 	return plan
 
 
@@ -1499,7 +1499,7 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker))
 
 
-## Die Aufgänge für walker: nur Soldaten wechseln die Ebene.
+## Die Ebenenwechsel für walker: nur Soldaten wechseln die Ebene (über Treppen).
 func _ascents_for(walker: Walker) -> Callable:
 	return _ascents if walker == Walker.SOLDIER else Callable()
 
@@ -1519,13 +1519,14 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 	return result
 
 
+## Steht auf der Kachel eine Treppe?
 func _is_stairs(tile: Vector2i) -> bool:
 	var building := get_building_at(tile)
 	return building != null and building.is_stairs()
 
 
 ## Kann der Bewohner den nächsten Schritt seines Weges (noch) gehen? Die Position muss für ihn
-## begehbar sein, ein Wechsel der Ebene braucht einen Aufgang.
+## begehbar sein, ein Wechsel der Ebene braucht eine Treppe.
 func _can_step(resident: Resident) -> bool:
 	var next: Vector3i = resident.path[0]
 	if not _can_stand(next, _walker_of(resident)):
@@ -1679,10 +1680,7 @@ func _leave_lost_wall_walk() -> void:
 	for resident: Resident in _residents.values():
 		if resident.level == Resident.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
 			var refuge := _wall_walk_refuge(resident.position())
-			resident.tile = Vector2i(refuge.x, refuge.y)
-			resident.level = refuge.z as Resident.Level
-			resident.path.clear()
-			resident.step_progress = 0
+			resident.place_at(refuge)
 			resident.post = refuge
 			resident.timer = 0
 			resident_changed.emit(resident.id)

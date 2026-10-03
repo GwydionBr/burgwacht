@@ -246,6 +246,14 @@ func destination() -> Vector2i:
 	return Vector2i(last.x, last.y)
 
 
+## Steht sofort auf dieser Position (Kachel + Ebene), ohne Weg (z. B. beim Ausweichen).
+func place_at(target: Vector3i) -> void:
+	tile = Vector2i(target.x, target.y)
+	level = target.z as Level
+	path.clear()
+	step_progress = 0
+
+
 ## Bleibt stehen; mitten im Schritt geht er den noch zu Ende.
 func stop() -> void:
 	if step_progress > 0:

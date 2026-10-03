@@ -1,7 +1,7 @@
 class_name Pathfinder
 extends RefCounted
 ## Wegfindung auf dem Kachelraster (A*). Positionen sind Vector3i: Kachel (x, y) und
-## Ebene (z, ADR 0004). Die Ebene wechselt ein Weg nur über Aufgänge (ascents, z. B. Treppen).
+## Ebene (z, ADR 0004). Die Ebene wechselt ein Weg nur über Ebenenwechsel (ascents, z. B. Treppen).
 ## Acht Richtungen: gerade kostet 1, schräg √2. Am Boden schräg nur, wenn beide Kacheln daneben
 ## (mit gemeinsamer Kante) begehbar sind – niemand schneidet Ecken von Hindernissen, eine
 ## diagonale Mauer ist dicht. Oben auf dem Wehrgang gilt diese Eckregel nicht, damit man auf
@@ -12,8 +12,6 @@ extends RefCounted
 const DIAGONAL_COST := sqrt(2.0)
 ## Weglängen, die sich um weniger unterscheiden, gelten als gleich (same_length()).
 const LENGTH_EPSILON := 0.0001
-## Ebene des Bodens; nur hier gilt die Eckregel.
-const GROUND := 0
 ## Erst gerade (oben, rechts, unten, links), dann schräg im Uhrzeigersinn ab oben rechts.
 const STRAIGHT_STEPS: Array[Vector3i] = [Vector3i(0, -1, 0), Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(-1, 0, 0)]
 const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), Vector3i(-1, 1, 0), Vector3i(-1, -1, 0)]
@@ -95,14 +93,14 @@ static func same_length(a: float, b: float) -> bool:
 
 
 ## Die begehbaren Nachbarn einer Position in fester Reihenfolge (gerade vor schräg, dann die
-## Aufgänge in ihrer Reihenfolge).
+## Ebenenwechsel in ihrer Reihenfolge).
 static func neighbors(position: Vector3i, walkable: Callable, ascents := Callable()) -> Array[Vector3i]:
 	var result: Array[Vector3i] = []
 	for step in STRAIGHT_STEPS:
 		if walkable.call(position + step):
 			result.append(position + step)
 	for step in DIAGONAL_STEPS:
-		if walkable.call(position + step) and (position.z != GROUND
+		if walkable.call(position + step) and (position.z != Resident.Level.GROUND
 				or walkable.call(position + Vector3i(step.x, 0, 0)) and walkable.call(position + Vector3i(0, step.y, 0))):
 			result.append(position + step)
 	if ascents.is_valid():

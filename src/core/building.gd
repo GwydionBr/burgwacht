@@ -44,7 +44,7 @@ func is_barracks() -> bool:
 	return def()["behavior"] == "barracks"
 
 
-## Treppe (Verhalten „stairs“): Aufgang vom Boden auf den Wehrgang der Mauerkacheln daneben.
+## Treppe (Verhalten „stairs“): verbindet den Boden mit dem Wehrgang der Mauerkacheln daneben.
 func is_stairs() -> bool:
 	return def()["behavior"] == "stairs"
 

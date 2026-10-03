@@ -208,7 +208,7 @@ func _right_click() -> void:
 ## Das Ziel für Bewegen unter der Maus: eine Wehrgang-Kachel, wenn die Maus auf einer Mauer liegt
 ## (ihr Dach ist um die Mauerhöhe angehoben), sonst die Kachel am Boden.
 func _target_under_mouse() -> Vector3i:
-	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, ResidentView.WALL_WALK_HEIGHT))
+	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, ResidentView.wall_walk_height()))
 	for tile: Vector2i in [raised, _hovered]:
 		if world.is_walkable(tile, Resident.Level.WALL_WALK):
 			return Vector3i(tile.x, tile.y, Resident.Level.WALL_WALK)
