@@ -4,8 +4,8 @@ extends CanvasLayer
 ## rechts darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
-## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis; sie ist zugleich die
-## Bestandsübersicht. Verwaltung und Marktansicht schließen sich gegenseitig.
+## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln;
+## sie ist zugleich die Bestandsübersicht. Verwaltung und Marktansicht schließen sich gegenseitig.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
@@ -15,6 +15,8 @@ signal demolish_selected()
 signal ration_step(delta: int)
 ## In der Verwaltung soll der Steuersatz um so viele Stufen steigen (+1) bzw. sinken (−1).
 signal tax_rate_step(delta: int)
+## In der Marktansicht soll mit dieser Ware gehandelt werden: kaufen (true) oder verkaufen.
+signal trade_requested(good: String, buying: bool)
 
 const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
@@ -50,6 +52,11 @@ var _factor_sum_label: Label
 var _market_panel: PanelContainer
 ## Ware → Feld für ihren Bestand in der Marktansicht.
 var _market_stock_labels: Dictionary[String, Label] = {}
+## Grund oben in der Marktansicht, solange kein Markt steht.
+var _market_missing_label: Label
+## Ware → Knopf „Kaufen“ bzw. „Verkaufen“ in der Marktansicht (nur handelbare Waren).
+var _buy_buttons: Dictionary[String, Button] = {}
+var _sell_buttons: Dictionary[String, Button] = {}
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -243,6 +250,23 @@ func show_market_stock(stock: Dictionary[String, int]) -> void:
 		_market_stock_labels[good].text = str(stock[good])
 
 
+## Handelsknöpfe der Marktansicht: Grund je Ware für Kauf bzw. Verkauf (leer = möglich);
+## gesperrte Knöpfe zeigen ihn als Hinweis. Ohne Markt steht oben market_error.
+func show_trade_errors(market_error: String, buy_errors: Dictionary[String, String],
+		sell_errors: Dictionary[String, String]) -> void:
+	_market_missing_label.text = market_error
+	_market_missing_label.visible = market_error != ""
+	for good: String in _buy_buttons:
+		_set_trade_reason(_buy_buttons[good], buy_errors[good])
+		_set_trade_reason(_sell_buttons[good], sell_errors[good])
+	_market_panel.reset_size()
+
+
+func _set_trade_reason(button: Button, reason: String) -> void:
+	button.disabled = reason != ""
+	button.tooltip_text = reason
+
+
 ## Inhalt der Verwaltung: eingestellte Ration, die tatsächlich gegessene (leer = dieselbe),
 ## der Steuersatz und die Faktoren samt Summe.
 func show_administration(ration: String, eaten_ration: String, tax_rate: String, factors: Array[Factor],
@@ -335,7 +359,7 @@ func _make_admin_panel() -> PanelContainer:
 
 
 ## Die Marktansicht: je Ware eine Zeile mit Name, Bestand, Kauf- und Verkaufspreis und den
-## Handelsknöpfen. Gehandelt wird noch nicht: Die Knöpfe sind gesperrt, oben steht der Grund.
+## Handelsknöpfen, die den Befehl „Handel“ auslösen.
 func _make_market_panel() -> PanelContainer:
 	var defs := GameDefs.get_instance()
 	var panel := _make_panel()
@@ -343,7 +367,8 @@ func _make_market_panel() -> PanelContainer:
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
 	column.add_child(_make_label("Markt", TEXT_COLOR, 20))
-	column.add_child(_make_label("Kein Markt gebaut", BLOCKED_COLOR, 15))
+	_market_missing_label = _make_label("", BLOCKED_COLOR, 15)
+	column.add_child(_market_missing_label)
 	var grid := GridContainer.new()
 	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 16)
@@ -362,8 +387,13 @@ func _make_market_panel() -> PanelContainer:
 		var tradable := Market.is_tradable(good)
 		grid.add_child(_make_number_label(str(Market.buy_price(good)) if tradable else "–"))
 		grid.add_child(_make_number_label(str(Market.sell_price(good)) if tradable else "–"))
-		grid.add_child(_make_trade_button("Kaufen %d" % Market.trade_amount(), tradable))
-		grid.add_child(_make_trade_button("Verkaufen %d" % Market.trade_amount(), tradable))
+		var buy_button := _make_trade_button("Kaufen %d" % Market.trade_amount(), good, true, tradable)
+		var sell_button := _make_trade_button("Verkaufen %d" % Market.trade_amount(), good, false, tradable)
+		grid.add_child(buy_button)
+		grid.add_child(sell_button)
+		if tradable:
+			_buy_buttons[good] = buy_button
+			_sell_buttons[good] = sell_button
 	column.add_child(_make_label("Preise in Gold pro Einheit  ·  M/Esc: schließen", HINT_COLOR, 13))
 	return panel
 
@@ -375,12 +405,14 @@ func _make_number_label(text: String) -> Label:
 	return label
 
 
-## Handelsknopf, noch gesperrt; bei nicht handelbaren Waren unsichtbar (hält aber die Spalte).
-func _make_trade_button(text: String, tradable: bool) -> Button:
+## Handelsknopf, gesperrt bis show_trade_errors(); bei nicht handelbaren Waren unsichtbar (hält
+## aber die Spalte).
+func _make_trade_button(text: String, good: String, buying: bool, tradable: bool) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
 	button.disabled = true
+	button.pressed.connect(func() -> void: trade_requested.emit(good, buying))
 	button.add_theme_font_size_override("font_size", 14)
 	if not tradable:
 		button.modulate = Color.TRANSPARENT
