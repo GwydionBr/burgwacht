@@ -68,7 +68,7 @@ func test_soldiers_spread_to_the_nearest_free_tiles_in_id_order() -> void:
 	assert_eq(_posts(world, [1, 2, 3]), [TARGET, TARGET + Vector2i(0, -1), TARGET + Vector2i(1, 0)] as Array[Vector2i],
 			"Posten nach ID:")
 	_until_settled(world)
-	for id in [1, 2, 3]:
+	for id: int in [1, 2, 3]:
 		var soldier := world.get_resident(id)
 		assert_eq(soldier.position(), soldier.post, "Soldat %d am Posten:" % id)
 
