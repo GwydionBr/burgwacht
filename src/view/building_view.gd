@@ -33,9 +33,35 @@ func setup(building: Building) -> void:
 	_type = building.type
 	_origin = building.origin
 	_campfire = building.is_campfire()
-	var size := Building.size_of(_type)
-	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
+	position = sort_point(_type, _origin)
 	queue_redraw()
+
+
+## Verdeckt dieses Gebäude eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe
+## foot_y liegt? Siehe covers().
+func covers_figure(rect: Rect2, foot_y: float) -> bool:
+	return covers(_type, _origin, rect, foot_y)
+
+
+## Sortierpunkt eines Gebäudes im y-sortierten Container (Welt).
+static func sort_point(type_id: String, origin: Vector2i) -> Vector2:
+	var size := Building.size_of(type_id)
+	return Iso.tile_to_world(origin + Vector2i(mini(size.x, size.y) - 1, 0))
+
+
+## Verdeckt der Block eines Gebäudes vom Typ type_id bei origin eine Figur mit der Fläche
+## rect (Welt), deren Fußpunkt auf Höhe foot_y liegt? Nur, wenn das Gebäude nach ihr
+## gezeichnet wird (Sortierpunkt tiefer) und sein Umriss die Fläche schneidet. Das
+## Lagerfeuer verdeckt nichts.
+static func covers(type_id: String, origin: Vector2i, rect: Rect2, foot_y: float) -> bool:
+	var def: Dictionary = GameDefs.get_instance().buildings[type_id]
+	if str(def["behavior"]) == "campfire" or sort_point(type_id, origin).y <= foot_y:
+		return false
+	var base := footprint_corners(type_id, origin, Vector2.ZERO, INSET)
+	var roof := block_faces(base, float(def["height"]))[2]
+	var outline := PackedVector2Array([roof[0], roof[1], base[1], base[2], base[3], roof[3]])
+	var area := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
+	return not Geometry2D.intersect_polygons(outline, area).is_empty()
 
 
 func _draw() -> void:

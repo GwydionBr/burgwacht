@@ -281,13 +281,13 @@ func _soldier_views() -> Array[int]:
 
 
 ## Der Soldat, dessen Figur den Punkt (Welt) trifft – bei mehreren der vorderste; 0, wenn keiner.
-## Über einem Gebäude zählt nur, wer auf der Kachel unter der Maus steht: Figuren davor ragen
-## sonst in die Kaserne hinein.
+## Über einem Gebäude zählt nur, wer auf der Kachel unter der Maus steht oder verdeckt ist
+## (seine Silhouette liegt über dem Gebäude): Figuren davor ragen sonst in die Kaserne hinein.
 func _soldier_at(point: Vector2, on_tile_only: bool) -> int:
 	var front := 0
 	for id in _soldier_views():
 		var view := _resident_views[id]
-		if on_tile_only and world.get_resident(id).tile != _hovered:
+		if on_tile_only and world.get_resident(id).tile != _hovered and not view.covered:
 			continue
 		if view.hit_rect().has_point(point) and (front == 0 or view.position.y > _resident_views[front].position.y):
 			front = id
@@ -532,6 +532,7 @@ func _on_building_removed(id: int) -> void:
 
 func _add_resident_view(id: int) -> void:
 	var view := ResidentView.new()
+	view.occluders = _building_views
 	view.setup(world.get_resident(id), _clock)
 	_objects.add_child(view)
 	_resident_views[id] = view
@@ -561,6 +562,7 @@ func _on_resident_changed(_id: int) -> void:
 
 func _add_enemy_view(id: int) -> void:
 	var view := EnemyView.new()
+	view.occluders = _building_views
 	view.setup(world.get_enemy(id), _clock)
 	_objects.add_child(view)
 	_enemy_views[id] = view
