@@ -12,6 +12,13 @@ const GAME_PACK_AREA := 900
 const GAME_PACK_SIZE := Vector2i(3, 6)
 ## So oft wird nach einem Platz am Waldrand gesucht, bevor jede freie Wiese genügt.
 const GAME_SITE_TRIES := 40
+## Nachbarn mit gemeinsamer Kante.
+const EDGE_NEIGHBOURS: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+## Alle acht Nachbarn, auch schräg.
+const ALL_NEIGHBOURS: Array[Vector2i] = [
+	Vector2i(-1, -1), Vector2i.UP, Vector2i(1, -1), Vector2i.LEFT,
+	Vector2i.RIGHT, Vector2i(-1, 1), Vector2i.DOWN, Vector2i(1, 1),
+]
 
 
 static func generate(map_seed: int, width: int, height: int) -> MapData:
@@ -137,13 +144,13 @@ static func _deposit_type_at(map: MapData, tile: Vector2i) -> String:
 
 
 ## Frei für Wild: Gelände, auf dem es sich auch vermehrt ("spread" → "terrain"), ohne Vorkommen,
-## außerhalb des Startgebiets und ohne fremdes Wild daneben, damit Rudel getrennt bleiben.
+## außerhalb des Startgebiets und ohne fremdes Wild daneben (auch nicht schräg), damit Rudel getrennt bleiben.
 static func _is_free_meadow(map: MapData, tile: Vector2i, pack: Array[Vector2i] = []) -> bool:
-	var terrains: Array = GameDefs.get_instance().deposits["game"]["spread"]["terrain"]
-	if not map.in_bounds(tile) or not terrains.has(map.get_terrain(tile)) or map.get_deposit(tile) != null \
-			or Vector2(tile - map.center()).length() <= START_CLEAR_RADIUS:
+	var terrains := Deposit.spread_terrains_of("game")
+	if not map.in_bounds(tile) or not (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \
+			or map.get_deposit(tile) != null or Vector2(tile - map.center()).length() <= START_CLEAR_RADIUS:
 		return false
-	for offset: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+	for offset in ALL_NEIGHBOURS:
 		if _deposit_type_at(map, tile + offset) == "game" and not pack.has(tile + offset):
 			return false
 	return true
@@ -155,7 +162,7 @@ static func _grow_pack(map: MapData, site: Vector2i, size: int, rng: RandomNumbe
 	while pack.size() < size:
 		var candidates: Array[Vector2i] = []
 		for tile in pack:
-			for offset: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+			for offset in EDGE_NEIGHBOURS:
 				var next := tile + offset
 				if _is_free_meadow(map, next, pack) and not pack.has(next) and not candidates.has(next):
 					candidates.append(next)

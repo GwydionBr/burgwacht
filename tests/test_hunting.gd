@@ -9,6 +9,8 @@ const GRANARY := 4
 ## Jäger (2×2) mit Eingang bei (12, 3), daneben Wild.
 const HUNTER_SITE := Vector2i(12, 2)
 const GAME := Vector2i(14, 6)
+## Jäger weiter weg, damit der Weg dorthin über Wild führen kann.
+const SITE_FAR := Vector2i(15, 10)
 const MAX_TICKS := 1000
 
 
@@ -87,6 +89,28 @@ func test_residents_walk_over_game() -> void:
 	assert_true(world.is_walkable(GAME, Resident.Level.GROUND), "Wild versperrt keinen Weg")
 
 
+func test_worker_walks_through_game() -> void:
+	var world := _founded()
+	var id := build(world, "hunter", SITE_FAR)
+	var worker := world.get_resident(1)
+	# Felsen rund um den Jäger; nur vor dem Eingang steht Wild statt eines Felsens.
+	var front := Building.front_of_entrance("hunter", SITE_FAR)
+	for y in range(SITE_FAR.y - 1, SITE_FAR.y + 3):
+		for x in range(SITE_FAR.x - 1, SITE_FAR.x + 3):
+			var tile := Vector2i(x, y)
+			if world.get_building_at(tile) == null:
+				add_deposit(world, tile, "game" if tile == front else "stone")
+	var entrance := world.get_building(id).entrance()
+	var crossed := false
+	for i in MAX_TICKS:
+		if worker.tile == entrance:
+			break
+		world.step()
+		crossed = crossed or worker.tile == front
+	assert_eq(worker.tile, entrance, "Angekommen:")
+	assert_true(crossed, "Über das Wild vor dem Eingang gelaufen")
+
+
 func test_hunter_delivers_meat_to_granary() -> void:
 	var world := _founded()
 	add_deposit(world, GAME, "game")
@@ -163,11 +187,10 @@ func test_game_spreads_only_onto_grass() -> void:
 
 func test_game_does_not_spread_under_residents() -> void:
 	var world := _founded()
-	# Neben die Startbewohner am Lagerfeuer (3, 8).
 	var resident := world.get_resident(1)
-	add_deposit(world, resident.tile + Vector2i(0, 1), "game")
+	# Wild schräg neben dem Bewohner; bei sicherer Vermehrung bleibt nur seine Kachel frei.
+	for offset: Vector2i in [Vector2i(-1, -1), Vector2i(1, -1)]:
+		add_deposit(world, resident.tile + offset, "game")
 	_run_with_chance(world, int(_spread_def("game")["interval_ticks"]), 1.0)
-	for other in world.get_residents():
-		var deposit := world.map.get_deposit(other.tile)
-		assert_true(deposit == null or other.tile == resident.tile + Vector2i(0, 1),
-				"Wild unter Bewohner %d bei %s" % [other.id, str(other.tile)])
+	assert_eq(world.map.get_deposit(resident.tile), null, "Kein Wild unter dem Bewohner")
+	assert_true(world.map.get_deposit(resident.tile + Vector2i(-1, 0)) != null, "Daneben vermehrt es sich")

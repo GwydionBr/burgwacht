@@ -1016,8 +1016,10 @@ func _placement_error(type_id: String, origin: Vector2i, extra_blocked: Dictiona
 			return extra_blocked[tile]
 	if not Building.has_entrance_type(type_id):
 		return ""
+	# Begehbare Vorkommen (z. B. Wild) versperren den Eingang nicht.
 	var front := Building.front_of_entrance(type_id, origin)
-	if not map.is_walkable(front) or map.get_deposit(front) != null \
+	var front_deposit := map.get_deposit(front)
+	if not map.is_walkable(front) or (front_deposit != null and not front_deposit.is_walkable()) \
 			or _occupied.has(front) or extra_blocked.has(front):
 		return "Eingang ist versperrt"
 	return ""
@@ -1108,9 +1110,7 @@ func _spread_deposits() -> void:
 			continue
 		var spread: Dictionary = deposit_def["spread"]
 		if _tick % int(spread["interval_ticks"]) == 0:
-			var terrains: Array[String] = []
-			terrains.assign(spread.get("terrain", []))
-			_spread_type(type, float(spread["chance"]), terrains)
+			_spread_type(type, float(spread["chance"]), Deposit.spread_terrains_of(type))
 
 
 ## terrains leer: auf jedem bebaubaren Gelände.

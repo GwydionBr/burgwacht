@@ -77,13 +77,12 @@ func test_game_comes_in_packs_of_three_to_six() -> void:
 		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
 		var unvisited := _game_tiles(map)
 		while not unvisited.is_empty():
-			# Ein Rudel: alle über gemeinsame Kanten verbundenen Wild-Kacheln.
+			# Ein Rudel: alle verbundenen Wild-Kacheln, auch schräg – Rudel dürfen sich nicht einmal an Ecken berühren.
 			var pack: Array[Vector2i] = [unvisited.pop_front()]
 			var i := 0
 			while i < pack.size():
-				var neighbours: Array[Vector2i] = [pack[i] + Vector2i.LEFT, pack[i] + Vector2i.RIGHT,
-						pack[i] + Vector2i.UP, pack[i] + Vector2i.DOWN]
-				for next in neighbours:
+				for offset in MapGenerator.ALL_NEIGHBOURS:
+					var next := pack[i] + offset
 					if unvisited.has(next):
 						unvisited.erase(next)
 						pack.append(next)

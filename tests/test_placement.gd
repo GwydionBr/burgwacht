@@ -49,6 +49,12 @@ func test_entrance_front_must_be_free() -> void:
 	assert_eq(world.founding_error(ORIGIN), "Eingang ist versperrt", "Baum vor dem Eingang:")
 
 
+func test_walkable_deposit_does_not_block_entrance() -> void:
+	var world := empty_world()
+	world.map.add_deposit(_keep_front(), Deposit.create("game", RandomNumberGenerator.new()))
+	assert_eq(world.founding_error(ORIGIN), "", "Wild vor dem Eingang:")
+
+
 func test_entrance_front_must_be_walkable() -> void:
 	var world := empty_world()
 	world.map.set_terrain(_keep_front(), "water")

@@ -42,6 +42,15 @@ static func mining_text_of(type_id: String) -> String:
 	return str(deposit_def.get("mining_text", "baut %s ab" % deposit_def["name"]))
 
 
+## Die Gelände, auf denen sich ein Vorkommenstyp vermehrt ("spread" → "terrain");
+## leer: auf jedem bebaubaren Gelände.
+static func spread_terrains_of(type_id: String) -> Array[String]:
+	var spread: Dictionary = GameDefs.get_instance().deposits[type_id].get("spread", {})
+	var terrains: Array[String] = []
+	terrains.assign(spread.get("terrain", []))
+	return terrains
+
+
 ## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
 func to_data() -> Dictionary:
 	return {"type": type, "amount": amount, "variant": variant}
