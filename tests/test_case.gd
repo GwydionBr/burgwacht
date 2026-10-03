@@ -103,6 +103,12 @@ func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
 	world.map.add_deposit(tile, Deposit.create(type_id, RandomNumberGenerator.new()))
 
 
+## Testvorbereitung: Ein Feind dieses Typs erscheint auf der Kachel (wie einer aus dem Szenario)
+## und läuft gleich zum Bergfried.
+func add_enemy(world: GameWorld, type_id: String, tile: Vector2i) -> Enemy:
+	return world._add_enemy(type_id, tile)
+
+
 ## Testvorbereitung: Felsen rechts neben einem Steinbruch (3×3) mit diesem Ursprung,
 ## damit seine Bauregel gilt.
 func add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:

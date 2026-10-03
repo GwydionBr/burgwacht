@@ -13,6 +13,7 @@
     "attack_ticks": 10,
     "melee": true,
     "sight": 6,
+    "leash": 8,
     "ticks_per_tile": 6,
     "cost": { "sword": 1, "gold": 10 },
     "color": "#b8323a"
@@ -24,6 +25,7 @@
     "damage": 10,
     "attack_ticks": 15,
     "range": 7,
+    "wall_walk_range_bonus": 2,
     "sight": 7,
     "ticks_per_tile": 5,
     "cost": { "bow": 1, "gold": 5 },

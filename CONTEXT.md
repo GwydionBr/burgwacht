@@ -291,6 +291,14 @@ _Avoid_: Aufgang, Leiter
 Die Position, zu der ein Soldat zuletzt befohlen wurde (anfangs die Kaserne); dorthin kehrt er nach selbstständigem Kämpfen zurück. Nahkämpfer verfolgen Feinde nur bis zu einer festen Entfernung vom Posten.
 _Avoid_: Stellung, Wachposten
 
+**Leine**:
+Wie weit ein Nahkämpfer einen Feind beim selbstständigen Verteidigen höchstens verfolgt, gemessen vom Posten; ein ausdrücklicher Angriff hat keine Leine.
+_Avoid_: Verfolgungsradius, Reichweite
+
+**Selbstständiges Verteidigen**:
+Was ein Soldat ohne Befehl tut: Bogenschützen schießen vom Platz aus auf den nächsten Feind in Reichweite, Schwertkämpfer greifen den nächsten erreichbaren Feind in Sichtweite an (an der Leine) und kehren danach zum Posten zurück.
+_Avoid_: Automatik, KI, Wachmodus
+
 **Auswahl**:
 Die Soldaten, die der Spieler gerade per Klick oder Rahmen gewählt hat und denen er Bewegen und Angreifen befiehlt.
 _Avoid_: Selektion, Gruppe

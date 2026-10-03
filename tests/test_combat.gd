@@ -220,7 +220,8 @@ func test_swordsman_hunts_down_the_bandit_every_attack_duration() -> void:
 
 
 func test_bandit_kills_a_soldier_in_sight() -> void:
-	var world := _with_soldiers(["swordsman"] as Array[String])
+	# Ein Bogenschütze wehrt sich zwar (selbstständiges Verteidigen), unterliegt aber.
+	var world := _with_soldiers(["archer"] as Array[String])
 	var soldier := world.get_resident(1)
 	world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(7, 0))))
 	_until_still(world, soldier)
@@ -228,18 +229,18 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 	world.resident_removed.connect(func(id: int) -> void: removed.append(id))
 	world.execute(Command.spawn_enemy("bandit"))
 	var bandit := world.get_enemy(1)
-	_until(world, func() -> bool: return soldier.hp < 100, "Erster Treffer")
+	_until(world, func() -> bool: return soldier.hp < 50, "Erster Treffer")
 	assert_eq(bandit.target_id, 1, "Ziel des Räubers:")
-	assert_eq(soldier.hp, 88, "Schaden:")
-	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Schwertkämpfer an", "Tätigkeit:")
+	assert_eq(soldier.hp, 38, "Schaden:")
+	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Bogenschütze an", "Tätigkeit:")
 	var population := world.get_population()
-	var swords := world.get_stock("sword")
+	var bows := world.get_stock("bow")
 	while world.get_resident(1) != null and world.get_tick() < MAX_TICKS:
 		population = world.get_population()
 		world.step()
 	assert_true(removed.has(1), "Tod gemeldet")
 	assert_eq([world.get_population(), world.get_soldier_count()], [population - 1, 0], "Bewohner und Soldaten:")
-	assert_eq(world.get_stock("sword"), swords, "Schwert verloren, nicht zurück in der Waffenkammer:")
+	assert_eq(world.get_stock("bow"), bows, "Bogen verloren, nicht zurück in der Waffenkammer:")
 	assert_eq(bandit.target_id, 0, "Räuber ohne Ziel:")
 	_until_still(world, bandit)
 	assert_eq(_keep_distance(bandit.tile), 1.0, "Weiter zum Bergfried:")
