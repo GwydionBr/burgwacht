@@ -233,11 +233,13 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 	assert_eq(soldier.hp, 88, "Schaden:")
 	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Schwertkämpfer an", "Tätigkeit:")
 	var population := world.get_population()
+	var swords := world.get_stock("sword")
 	while world.get_resident(1) != null and world.get_tick() < MAX_TICKS:
 		population = world.get_population()
 		world.step()
 	assert_true(removed.has(1), "Tod gemeldet")
 	assert_eq([world.get_population(), world.get_soldier_count()], [population - 1, 0], "Bewohner und Soldaten:")
+	assert_eq(world.get_stock("sword"), swords, "Schwert verloren, nicht zurück in der Waffenkammer:")
 	assert_eq(bandit.target_id, 0, "Räuber ohne Ziel:")
 	_until_still(world, bandit)
 	assert_eq(_keep_distance(bandit.tile), 1.0, "Weiter zum Bergfried:")
