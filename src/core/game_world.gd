@@ -12,7 +12,9 @@ extends RefCounted
 ##
 ## In jedem Takt bekommen Arbeitsstätten mit freien Stellen Untätige zugeteilt, dann laufen
 ## und arbeiten die Bewohner in ID-Reihenfolge einen Takt weiter: Arbeiter eines Sammlers
-## bauen Vorkommen ab, verarbeiten die Ware in der Arbeitsstätte und tragen sie ins Lager.
+## bauen Vorkommen ab, verarbeiten die Ware in der Arbeitsstätte und tragen sie ins Lager;
+## Arbeiter eines Herstellungsbetriebs holen die Eingangsware aus den Lagern, stellen daraus
+## das Erzeugnis her und tragen es ins Lager.
 ## Ändert sich die Burg unter ihnen (Bau, Abriss, neue oder verschwundene Vorkommen),
 ## weichen sie aus bzw. planen neu.
 ##
@@ -55,7 +57,7 @@ signal notice(text: String)
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 8
+const SAVE_VERSION := 9
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -442,8 +444,17 @@ func _task_text(resident: Resident, workplace: Building) -> String:
 			return "trägt %s" % carried
 		Resident.Task.PROCESSING:
 			return "verarbeitet %s" % carried
-		Resident.Task.FARMING:
+		Resident.Task.FARMING, Resident.Task.PRODUCING:
 			return workplace.work_text()
+		Resident.Task.FETCHING:
+			return "holt %s" % _good_name(workplace.input_good())
+		Resident.Task.WAITING_FOR_INPUT:
+			if resident.is_moving():
+				return "trägt %s" % carried if carried != "" else "geht zur Arbeitsstätte"
+			# Reicht der Bestand, liegt er nur in Lagern, die er nicht erreicht.
+			var input := workplace.input_good()
+			var reachable := "" if get_stock(input) < _missing_input(resident, workplace) else " erreichbar"
+			return "wartet: kein %s%s" % [_good_name(input), reachable]
 		Resident.Task.WAITING_FOR_DEPOSIT:
 			return "geht zur Arbeitsstätte" if resident.is_moving() else "wartet: Kein %s erreichbar" % deposit_name
 		Resident.Task.WAITING_FOR_STORAGE:
@@ -949,7 +960,8 @@ func _visible_state(resident: Resident) -> Array:
 
 ## Ein Bewohner ist am Ende seines Weges angekommen: Ein Ankommender wird am Lagerfeuer
 ## Untätiger, ein Gehender verschwindet am Rand. Für einen Arbeiter der nächste Schritt im
-## Arbeitsablauf: Am Hof arbeitet er in der Arbeitsstätte, beim Sammler sucht er ein Vorkommen.
+## Arbeitsablauf: Am Hof arbeitet er in der Arbeitsstätte, im Herstellungsbetrieb holt er
+## Eingangsware bzw. stellt her, beim Sammler sucht er ein Vorkommen.
 func _arrive(resident: Resident) -> void:
 	if resident.is_arriving():
 		resident.task = Resident.Task.NONE
@@ -965,6 +977,8 @@ func _arrive(resident: Resident) -> void:
 			if workplace.is_farm():
 				resident.task = Resident.Task.FARMING
 				resident.timer = workplace.work_ticks()
+			elif workplace.is_producer():
+				_arrive_at_producer(resident, workplace)
 			else:
 				_seek_deposit(resident, workplace)
 		Resident.Task.TO_DEPOSIT:
@@ -974,8 +988,13 @@ func _arrive(resident: Resident) -> void:
 				resident.task = Resident.Task.MINING
 				resident.timer = workplace.mine_ticks()
 		Resident.Task.RETURNING:
-			resident.task = Resident.Task.PROCESSING
-			resident.timer = workplace.process_ticks()
+			if workplace.is_producer():
+				_arrive_at_producer(resident, workplace)
+			else:
+				resident.task = Resident.Task.PROCESSING
+				resident.timer = workplace.process_ticks()
+		Resident.Task.FETCHING:
+			_fetch(resident, workplace)
 		Resident.Task.TO_STORAGE:
 			_deliver(resident, workplace)
 
@@ -996,8 +1015,9 @@ func _work(resident: Resident) -> void:
 			_go(resident, workplace.entrance(), Resident.Task.RETURNING)
 		Resident.Task.PROCESSING:
 			_seek_storage(resident, workplace)
-		Resident.Task.FARMING:
-			# Ein Vorkommen braucht der Hof nicht: Die Ware entsteht bei der Arbeit.
+		Resident.Task.FARMING, Resident.Task.PRODUCING:
+			# Ein Vorkommen braucht der Hof nicht: Die Ware entsteht bei der Arbeit. Im
+			# Herstellungsbetrieb ersetzt das Erzeugnis die verbrauchte Eingangsware.
 			resident.carried_good = workplace.product()
 			resident.carried_amount = workplace.carry_load()
 			_seek_storage(resident, workplace)
@@ -1008,7 +1028,9 @@ func _work(resident: Resident) -> void:
 ## Nimmt den Arbeitsschritt wieder auf – nach der Wartezeit oder wenn der Weg versperrt und
 ## das Ziel nicht mehr erreichbar ist: Untätige und Ankommende gehen zum Lagerfeuer, Gehende
 ## zum nächsten Rand, Arbeiter suchen ihr Vorkommen bzw. Lager neu oder gehen (wieder) zur
-## Arbeitsstätte. Ist auch das nicht erreichbar, greift die jeweilige Warteregel.
+## Arbeitsstätte; im Herstellungsbetrieb holt er weiter Eingangsware (nach dem Warten in der
+## Arbeitsstätte nur, wenn der Bestand für den Rest reicht). Ist auch das nicht erreichbar,
+## greift die jeweilige Warteregel.
 func _resume(resident: Resident) -> void:
 	if resident.goal() == Resident.Goal.CAMPFIRE:
 		_send_newcomer(resident)
@@ -1025,6 +1047,8 @@ func _resume(resident: Resident) -> void:
 			_seek_deposit(resident, workplace)
 		Resident.Goal.STORAGE:
 			_seek_storage(resident, workplace)
+		Resident.Goal.INPUT:
+			_seek_input(resident, workplace, resident.task == Resident.Task.WAITING_FOR_INPUT)
 		Resident.Goal.WORKPLACE:
 			_go(resident, workplace.entrance(), resident.task)
 
@@ -1123,17 +1147,8 @@ func _is_reserved(tile: Vector2i, resident: Resident) -> bool:
 ## der Arbeitsstätte und versucht es nach der Wartezeit erneut. Erreicht er sie nicht, wartet
 ## er mit der Ware, wo er ist, und sucht danach erneut ein Lager.
 func _seek_storage(resident: Resident, workplace: Building) -> void:
-	var distances := Pathfinder.distances(resident.plan_start(), _is_walkable_position)
-	var best: Building = null
-	var best_length := INF
-	for storage in _storages(_storage_type_of(resident.carried_good)):
-		var entrance := Resident.ground(storage.entrance())
-		if storage.stored() >= storage.capacity() or not distances.has(entrance):
-			continue
-		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
-		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
-			best = storage
-			best_length = distances[entrance]
+	var best := _nearest_storage(resident, resident.carried_good, func(storage: Building) -> bool:
+		return storage.stored() < storage.capacity())
 	if best == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_STORAGE)
 		if resident.timer > 0:
@@ -1145,6 +1160,83 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 		return
 	resident.storage_id = best.id
 	_go(resident, best.entrance(), Resident.Task.TO_STORAGE)
+
+
+## Das nach Weglänge vom Bewohner aus nächste erreichbare Lager der Lagerart von good, für
+## das accept (Lager → bool) gilt; bei gleicher Länge das mit der kleineren ID. null, wenn
+## es keins gibt.
+func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Building:
+	var distances := Pathfinder.distances(resident.plan_start(), _is_walkable_position)
+	var best: Building = null
+	var best_length := INF
+	for storage in _storages(_storage_type_of(good)):
+		var entrance := Resident.ground(storage.entrance())
+		if not distances.has(entrance) or not accept.call(storage):
+			continue
+		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
+		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
+			best = storage
+			best_length = distances[entrance]
+	return best
+
+
+## Herstellungsbetrieb, am Eingang angekommen: Mit der vollen Eingangsmenge stellt er her,
+## sonst holt er (weiter) Eingangsware.
+func _arrive_at_producer(resident: Resident, workplace: Building) -> void:
+	if resident.carried_amount >= workplace.input_amount():
+		resident.task = Resident.Task.PRODUCING
+		resident.timer = workplace.work_ticks()
+	else:
+		_seek_input(resident, workplace, true)
+
+
+## Schickt einen Arbeiter eines Herstellungsbetriebs zum nach Weglänge nächsten Lager, das die
+## noch fehlende Eingangsware vorrätig hat (Bestände werden nicht reserviert). Von der
+## Arbeitsstätte aus bricht er nur auf, wenn der Bestand über alle Lager für den Rest reicht;
+## unterwegs nimmt er jedes Lager mit Vorrat. Sonst geht er mit dem, was er trägt, zur
+## Arbeitsstätte und wartet dort; nach der Wartezeit prüft er erneut. Erreicht er sie nicht,
+## wartet er, wo er ist, und geht danach erneut zur Arbeitsstätte. Hat er schon alles, bringt
+## er es zur Arbeitsstätte.
+func _seek_input(resident: Resident, workplace: Building, at_workplace: bool) -> void:
+	var good := workplace.input_good()
+	var missing := _missing_input(resident, workplace)
+	if missing <= 0:
+		_go(resident, workplace.entrance(), Resident.Task.RETURNING)
+		return
+	var found: Building = null
+	if not at_workplace or get_stock(good) >= missing:
+		found = _nearest_storage(resident, good, func(storage: Building) -> bool:
+			return storage.contents.get(good, 0) > 0)
+	if found == null:
+		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_INPUT)
+		if resident.timer > 0:
+			# Kein Weg (_go() hat die Wartezeit gesetzt): Er wartet sichtbar draußen und will
+			# danach wieder zur Arbeitsstätte.
+			resident.task = Resident.Task.TO_WORKPLACE
+		resident.timer = Resident.retry_ticks()
+		return
+	resident.storage_id = found.id
+	_go(resident, found.entrance(), Resident.Task.FETCHING)
+
+
+## Wie viel Eingangsware dem Arbeiter eines Herstellungsbetriebs noch für einen Arbeitsgang fehlt.
+func _missing_input(resident: Resident, workplace: Building) -> int:
+	return workplace.input_amount() - resident.carried_amount
+
+
+## Am Lager: so viel Eingangsware nehmen, wie noch fehlt, höchstens den Vorrat; dann weiter
+## holen bzw. zurück zur Arbeitsstätte (_seek_input()).
+func _fetch(resident: Resident, workplace: Building) -> void:
+	var storage := get_building(resident.storage_id)
+	resident.storage_id = 0
+	if storage != null and storage.is_storage():
+		var good := workplace.input_good()
+		var taken := storage.take(good, _missing_input(resident, workplace))
+		if taken > 0:
+			resident.carried_good = good
+			resident.carried_amount += taken
+			stock_changed.emit(storage.id)
+	_seek_input(resident, workplace, false)
 
 
 ## Am Lager: so viel einlagern, wie passt; den Rest zum nächsten Lager mit Platz, danach
@@ -1307,10 +1399,10 @@ func _demolish(id: int) -> String:
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
-	# Wer Ware zu diesem Lager trägt, sucht gleich ein anderes.
+	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
 	for resident: Resident in _residents.values():
-		if resident.task == Resident.Task.TO_STORAGE and resident.storage_id == id:
-			_report_change(resident, _seek_storage.bind(resident, get_building(resident.workplace_id)))
+		if resident.task in [Resident.Task.TO_STORAGE, Resident.Task.FETCHING] and resident.storage_id == id:
+			_report_change(resident, _resume.bind(resident))
 	# Die Arbeiter werden wieder Untätige und gehen zum Lagerfeuer.
 	for worker in get_workers(id):
 		worker.workplace_id = 0
@@ -1359,14 +1451,10 @@ func _take_goods(good: String, amount: int, changed: Dictionary[int, bool]) -> v
 	for storage in _storages(_storage_type_of(good)):
 		if remaining == 0:
 			break
-		var taken := mini(remaining, storage.contents.get(good, 0))
-		if taken == 0:
-			continue
-		remaining -= taken
-		storage.contents[good] -= taken
-		if storage.contents[good] == 0:
-			storage.contents.erase(good)
-		changed[storage.id] = true
+		var taken := storage.take(good, remaining)
+		if taken > 0:
+			remaining -= taken
+			changed[storage.id] = true
 	assert(remaining == 0, "Zu wenig %s im Lager" % good)
 
 
