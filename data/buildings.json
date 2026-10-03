@@ -293,9 +293,32 @@
     "size": [1, 1],
     "cost": { "stone": 1 },
     "walkable": true,
-    "rules": [{ "kind": "next_to_behavior", "behavior": ["wall"], "reason": "Muss an eine Mauer grenzen" }],
+    "rules": [{ "kind": "next_to_behavior", "behavior": ["wall", "gate", "defense"], "reason": "Muss an Mauer, Tor oder Turm grenzen" }],
     "hotkey": "I",
     "color": "#a39d90",
     "height": 12
+  },
+  "tower": {
+    "name": "Turm",
+    "behavior": "defense",
+    "size": [2, 2],
+    "entrance": [0, 1],
+    "cost": { "stone": 20 },
+    "walkway": true,
+    "range_bonus": 3,
+    "hotkey": "Z",
+    "color": "#7d776c",
+    "height": 46
+  },
+  "gate": {
+    "name": "Tor",
+    "behavior": "gate",
+    "size": [1, 1],
+    "cost": { "stone": 10 },
+    "walkable": true,
+    "walkway": true,
+    "hotkey": "Y",
+    "color": "#857a68",
+    "height": 28
   }
 }

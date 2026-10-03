@@ -40,7 +40,7 @@ extends Node2D
 ## ihre Knöpfe schicken den Befehl Anwerben.
 ## Ohne Werkzeug wählt ein Linksklick einen Soldaten (Ring), Linksziehen alle im Rahmen; ein
 ## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
-## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus eine Mauer liegt –;
+## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus Mauer, Tor oder Turm liegt –;
 ## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
 ## einen Räuber am Rand nächst dem Bergfried erscheinen.
 
@@ -253,8 +253,8 @@ func _enemy_at(point: Vector2) -> int:
 	return front
 
 
-## Das Ziel für Bewegen unter der Maus: eine Wehrgang-Kachel, wenn die Maus auf einer Mauer liegt
-## (ihr Dach ist um die Mauerhöhe angehoben), sonst die Kachel am Boden.
+## Das Ziel für Bewegen unter der Maus: eine Wehrgang-Kachel, wenn die Maus auf Mauer, Tor oder
+## Turm liegt (ihr Dach ist um die Mauerhöhe angehoben), sonst die Kachel am Boden.
 func _target_under_mouse() -> Vector3i:
 	var raised := Iso.world_to_tile(get_global_mouse_position() + Vector2(0, FigureView.wall_walk_height()))
 	for tile: Vector2i in [raised, _hovered]:
