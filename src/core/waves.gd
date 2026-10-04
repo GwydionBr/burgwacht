@@ -7,8 +7,8 @@ extends RefCounted
 ##
 ## Eine Vorwarnzeit (WavePlan.warning_days) vor ihrem Erscheinen wird die nächste Welle angekündigt;
 ## dabei wird ihre Seite festgelegt (ist keine geplant, aus dem Zufall der Spielwelt). Angekündigt
-## wird immer nur die nächste; mit dem Erscheinen endet die Ankündigung. Erscheinen mehrere Wellen
-## zugleich, wird nur die erste angekündigt.
+## wird immer nur die nächste; mit dem Erscheinen endet die Ankündigung. Höchstens eine Welle je
+## Tag (WavePlan), so wird jede angekündigt.
 ##
 ## Hält keinen eigenen Zustand: Plan, Nummer der nächsten Welle, Seite der laufenden Ankündigung
 ## und abgewehrte Wellen hält die Spielwelt, die Welle eines Feinds der Feind selbst; die Spielwelt bleibt die einzige Wurzel des

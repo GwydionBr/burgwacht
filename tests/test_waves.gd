@@ -1,9 +1,9 @@
 extends TestCase
-## Simulationstests: Angriffswellen nach dem Wellenplan. Leere Karte (nur Wiese) 20×16, meist
+## Simulationstests: Wellen nach dem Wellenplan. Leere Karte (nur Wiese) 20×16, meist
 ## tiny_waves (Welle 1 an Tag 2 mit 1 Räuber aus Osten, Welle 2 an Tag 3 mit 1 Räuber von
-## zufälliger Seite, Welle 3 an Tag 3 mit 2 Räubern aus Süden); Bergfried bei (2, 2) mit der
+## zufälliger Seite, Welle 3 an Tag 4 mit 2 Räubern aus Süden); Bergfried bei (2, 2) mit der
 ## Grundfläche (2..5, 2..5). Räuber greifen den Bergfried an: Mehr als ein Räuber ab Tag 2 brächte
-## ihn vor Tag 3 zu Fall.
+## ihn vor Tag 3 zu Fall, der Räuber von Tag 2 allein vor Tag 4.
 
 const KEEP_ORIGIN := Vector2i(2, 2)
 ## Randkachel im Osten nächst dem Bergfried: Abstand 14, zeilenweise die erste solche.
@@ -54,8 +54,8 @@ func test_waves_come_on_schedule_even_while_older_ones_live() -> void:
 	var world := _founded()
 	_run_world(world, 2 * GameWorld.TICKS_PER_DAY)
 	assert_eq(world.get_day(), 3, "Tag:")
-	assert_eq(_enemy_waves(world), [1, 2, 3, 3] as Array[int], "Wellen:")
-	assert_eq(world.get_next_wave(), 4, "Nächste Welle:")
+	assert_eq(_enemy_waves(world), [1, 2] as Array[int], "Wellen:")
+	assert_eq(world.get_next_wave(), 3, "Nächste Welle:")
 
 
 ## Spielwelt 20×16 (nur Wiese) mit diesem Wellenplan und Seed, noch in Gründung.
@@ -111,6 +111,9 @@ func _kill_wave(world: GameWorld, wave: int) -> void:
 func test_overlapping_waves_are_repelled_each_when_all_their_enemies_are_dead() -> void:
 	var world := _founded()
 	_run_world(world, 2 * GameWorld.TICKS_PER_DAY)
+	# Welle 3 schon an Tag 3 (Debug-Befehl), damit der Bergfried noch steht.
+	assert_eq(world.execute(Command.spawn_wave()), "", "Welle 3:")
+	assert_eq(_enemy_waves(world), [1, 2, 3, 3] as Array[int], "Wellen:")
 	var notices := _notices(world)
 	kill_enemy(world, world.get_enemies()[2])
 	assert_eq(world.get_repelled_waves(), 0, "Welle 3 lebt noch zum Teil:")
@@ -157,7 +160,7 @@ func test_debug_command_brings_the_next_wave_now_and_the_plan_goes_on() -> void:
 	_run_world(world, GameWorld.TICKS_PER_DAY)
 	assert_eq(_enemy_waves(world), [] as Array[int], "An Tag 2 keine weitere:")
 	_run_world(world, GameWorld.TICKS_PER_DAY)
-	assert_eq(_enemy_waves(world), [2, 3, 3] as Array[int], "An Tag 3 wie geplant:")
+	assert_eq(_enemy_waves(world), [2] as Array[int], "An Tag 3 wie geplant:")
 
 
 func test_debug_wave_is_refused_without_a_next_wave_or_while_founding() -> void:

@@ -2,7 +2,8 @@ class_name WavePlan
 extends RefCounted
 ## Der Wellenplan eines Szenarios (Feld "waves"): wann welche Wellen mit welchen Feinden von wo
 ## kommen. Zuerst die feste Liste ("list"): Einträge {"day": Tag ab 1, "enemies": {Feindtyp:
-## Anzahl}, "side": optional "north"/"east"/"south"/"west"}, Tage aufsteigend (gleiche erlaubt).
+## Anzahl}, "side": optional "north"/"east"/"south"/"west"}, Tage streng aufsteigend (höchstens eine Welle
+## je Tag).
 ## Danach endlos die Steigerungsformel ("formula", siehe WaveFormula), falls angegeben. Ist die
 ## Liste leer, kommt die erste Formelwelle nach der Schonfrist ("grace_days", Standard 0) an Tag
 ## grace_days + 1. Dazu die Vorwarnzeit ("warning_days", ganze Tage ab 0, Standard 1): So lange
@@ -49,13 +50,15 @@ static func parse(value: Variant, problems: PackedStringArray) -> WavePlan:
 		problems.append("„waves“: „list“ muss eine Liste sein")
 		return plan
 	var entries: Array = list_value
-	var last_day := 1
+	var last_day := 0
 	for entry: Variant in entries:
 		var listed := _parse_wave(entry, problems)
 		if listed == null:
 			continue
-		if listed.day < last_day:
-			problems.append("„waves“: Die Tage der Liste müssen aufsteigend sein (Tag %d nach Tag %d)" % [listed.day, last_day])
+		# Streng aufsteigend: Angekündigt wird nur die nächste Welle, zwei am selben Tag ließen
+		# eine unangekündigt.
+		if listed.day <= last_day:
+			problems.append("„waves“: Die Tage der Liste müssen streng aufsteigend sein (Tag %d nach Tag %d)" % [listed.day, last_day])
 		last_day = maxi(last_day, listed.day)
 		plan.list.append(listed)
 	var grace_value: Variant = fields.get("grace_days", 0)
