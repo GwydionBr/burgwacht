@@ -320,6 +320,14 @@ _Avoid_: HP, Gesundheit, Trefferpunkte
 Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
 _Avoid_: Gegner, Angreifer, Mob
 
+**Hindernis**:
+Das erste Gebäude auf dem geplanten Weg eines Feinds, auf dem er nicht stehen darf (Mauer, Tor, Turm und alle übrigen Gebäude außer Treppe, Lagerfeuer und Bergfried). Der Feind läuft heran und greift es an, wenn das schneller ist als ein offener Umweg (ADR 0005).
+_Avoid_: Blockade, Barriere
+
+**Zerstörung**:
+Das Verschwinden eines Gebäudes, dessen Lebenspunkte auf 0 fallen: wie beim Abriss, aber ohne Erstattung, und sein Lagerinhalt ist verloren. Beim Bergfried ist es die Niederlage.
+_Avoid_: Einsturz, Vernichtung, Abriss (das tut der Spieler)
+
 **Welle**:
 Eine Gruppe von Feinden, die gemeinsam zu einem bestimmten Zeitpunkt am Kartenrand erscheint.
 _Avoid_: Angriff, Invasion

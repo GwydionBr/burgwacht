@@ -1,0 +1,11 @@
+# Feindwege mit Zerstörungskosten
+
+Feinde sollen Mauern durchbrechen, wenn das schneller ist als ein offener Umweg, Lücken aber nutzen, wenn sie nah genug sind, und Schwachstellen wie ein angeschlagenes Tor bevorzugen. Deshalb planen sie ihren Weg zum Bergfried mit der gewöhnlichen Wegfindung, in der Gebäude, auf denen sie nicht stehen dürfen, begehbar sind, aber beim Betreten zusätzlich kosten, was ihre Zerstörung dauert, umgerechnet in Kacheln Weg: `(aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel` dieses Feindtyps. Das erste solche Gebäude auf dem Weg ist das **Hindernis**; der Feind greift es an und plant nach der Zerstörung (und nach jedem Bau oder Abriss) neu. So entsteht das Verhalten aus einer einzigen Wegsuche, ohne eigene Regeln für Lücken, Tore oder Mauern. Verworfene Alternativen: zuerst einen freien Weg suchen und nur ohne ihn die nächste Mauer angreifen (Feinde liefen um die halbe Karte, statt eine Mauer zu durchbrechen, und ein angeschlagenes Tor spielte keine Rolle); feste Kosten je Gebäudetyp (Schaden am Gebäude würde nichts ändern).
+
+## Consequences
+
+- Die Wegfindung nimmt optional Zusatzkosten beim Betreten einer Position (`extra_cost`); alle anderen Aufrufer bleiben unverändert. Eine Kachel mit Zusatzkosten zählt für die Eckregel als Hindernis, sonst schlüpfte ein Feind kostenlos schräg zwischen zwei diagonal stoßenden Mauerkacheln hindurch.
+- Die Kosten gelten je Kachel: Ein breites Gebäude zu durchqueren kostet mehrfach, obwohl eine Zerstörung genügt. Das ist gewollt einfach und macht dicke Gebäude zu besseren Hindernissen.
+- Die Kosten hängen an den aktuellen Lebenspunkten, aber der Weg wird nur bei Zerstörung, Bau und Abriss neu geplant, nicht bei jedem Treffer.
+- Der Weg führt zur billigsten Position, von der aus der Feind den Bergfried in Reichweite hat (A* mit mehreren Zielen); der Bergfried selbst ist Ziel, nie Hindernis.
+- Der geplante Weg samt Hindernis ergibt sich aus Weg und Angriffsziel des Feinds, die schon im Spielstand stehen (ADR 0002); gleiche Kosten löst die feste Reihenfolge der Wegsuche auf (ADR 0001).

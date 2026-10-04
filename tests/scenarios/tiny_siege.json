@@ -1,0 +1,8 @@
+{
+  "name": "Schmale, hohe Testkarte für Umwege um Mauern",
+  "map": { "width": 20, "height": 34 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50 },
+  "start_residents": 4,
+  "start_gold": 100
+}
