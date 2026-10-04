@@ -344,7 +344,7 @@ Der Teil des Wellenplans, nach dem auf die feste Liste endlos weitere Wellen fol
 _Avoid_: Wachstumsformel, Endloswellen
 
 **Schonfrist**:
-Die Tage zu Beginn einer Partie ohne Welle, wenn die feste Liste leer ist (`grace_days`): Die erste Formelwelle kommt an Tag Schonfrist + 1. Im freien Spiel 5 Tage.
+Die Tage zu Beginn einer Partie ohne Welle, wenn die feste Liste leer ist (`grace_days`): Die erste Formelwelle kommt an Tag Schonfrist + 1. Im freien Spiel 10 Tage.
 _Avoid_: Friedenszeit, Aufbauphase
 
 **Seite**:
