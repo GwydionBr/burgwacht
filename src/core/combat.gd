@@ -7,7 +7,7 @@ extends RefCounted
 ##
 ## Feinde planen ihren Weg mit Zerstörungskosten (ADR 0005): Gebäude, auf denen sie nicht stehen
 ## dürfen, gelten als begehbar, kosten aber so viel, wie es dauert, sie zu zerstören
-## (_breaking_cost()). Das erste Gebäude auf dem Weg ist das Hindernis; der Feind läuft heran und
+## (_EnemyMap). Das erste Gebäude auf dem Weg ist das Hindernis; der Feind läuft heran und
 ## greift es an. Ein zerstörtes Gebäude verschwindet (GameWorld._destroy()), dann planen alle neu.
 ##
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
@@ -294,37 +294,22 @@ func _send_enemy_to_keep(enemy: Enemy) -> void:
 
 
 ## Der schnellste Weg des Feinds ab plan_start() zu einer Position, von der aus er den Bergfried in
-## Reichweite hat (_in_reach_at()), mit Zerstörungskosten für Hindernisse (_breaking_cost()); bei
-## gleichen Kosten zur kleineren Position (zeilenweise, dann Boden vor Wehrgang). Samt Start wie
-## Pathfinder.find_path(); leer, wenn das Gelände keinen zulässt.
+## Reichweite hat (_in_reach_at()), mit Zerstörungskosten für Hindernisse (_EnemyMap). Samt Start
+## wie Pathfinder.find_path(); leer, wenn das Gelände keinen zulässt.
 func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var keep := _world._keep()
-	var start := enemy.plan_start()
-	var extra_cost := _breaking_cost.bind(enemy.type)
-	var costs := Pathfinder.distances(start, _is_enemy_passable, INF, _enemy_ascents, _enemy_steppable, extra_cost)
-	var goal := start
-	var best := INF
-	for position: Vector3i in costs:
-		if not _in_reach_at(enemy.type, position, keep):
-			continue
-		var cost := costs[position]
-		var better := cost < best and not Pathfinder.same_length(cost, best)
-		if not better and Pathfinder.same_length(cost, best):
-			better = _position_order(position, goal)
-		if better:
-			goal = position
-			best = cost
-	if best == INF:
-		var none: Array[Vector3i] = []
-		return none
-	return Pathfinder.find_path(start, goal, _is_enemy_passable, _enemy_ascents, _enemy_steppable, extra_cost)
-
-
-## Feste Reihenfolge von Positionen: zeilenweise, auf derselben Kachel Boden vor Wehrgang.
-static func _position_order(a: Vector3i, b: Vector3i) -> bool:
-	if a.x == b.x and a.y == b.y:
-		return a.z < b.z
-	return GameWorld._row_order(Vector2i(a.x, a.y), Vector2i(b.x, b.y))
+	var type := enemy.type
+	var is_goal := func(position: Vector3i) -> bool: return _in_reach_at(type, position, keep)
+	# Nahkämpfer: Eine Kachel in Reichweite liegt höchstens √2 < 1,5 von der Grundfläche entfernt,
+	# also fehlen von position aus mindestens so viele Kacheln weniger 1,5. Fernkämpfer suchen
+	# ohne Schätzung (ihre Reichweite hängt am Wehrgang darunter).
+	var estimate := Callable()
+	if FighterType.is_melee(type):
+		estimate = func(position: Vector3i) -> float:
+			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - 1.5, 0.0)
+	var map := _EnemyMap.new(self, type)
+	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, map.is_passable, map.ascents,
+			map.is_steppable, map.extra_cost, estimate)
 
 
 ## Das Hindernis auf position: ein zerstörbares Gebäude außer dem Bergfried, das am Boden auf
@@ -340,35 +325,59 @@ func _obstacle_at(position: Vector3i) -> Building:
 	return building
 
 
-## Begehbar für die Wegplanung der Feinde: wo sie stehen dürfen oder ein Hindernis.
-func _is_enemy_passable(position: Vector3i) -> bool:
-	return _world._can_stand(position, GameWorld.Walker.ENEMY) or _obstacle_at(position) != null
+## Die Karte, wie ein Feind dieses Typs sie für seinen Weg sieht (ADR 0005): Wo er stehen darf,
+## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber so viele Kacheln
+## Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu zerstören:
+## (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Merkt sich das je
+## Position, denn die Wegfindung fragt dieselbe Position oft.
+class _EnemyMap:
+	## Kein Hindernis, aber auch nicht begehbar.
+	const BLOCKED := -1.0
 
+	var _combat: Combat
+	var _type: String
+	var _costs: Dictionary[Vector3i, float] = {}
 
-## Zerstörungskosten (ADR 0005): Ein Hindernis auf position kostet so viele Kacheln Weg, wie ein
-## Feind dieses Typs in der Zeit zurücklegt, die er braucht, um es zu zerstören:
-## (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Sonst 0.
-func _breaking_cost(position: Vector3i, type: String) -> float:
-	var obstacle := _obstacle_at(position)
-	if obstacle == null:
-		return 0.0
-	return float(obstacle.hp) / FighterType.damage_of(type) * FighterType.attack_ticks(type) \
-			/ FighterType.ticks_per_tile(type)
+	func _init(combat: Combat, type: String) -> void:
+		_combat = combat
+		_type = type
 
+	## Zusatzkosten auf position: 0, wo er stehen darf, Zerstörungskosten auf einem Hindernis,
+	## sonst BLOCKED.
+	func cost_at(position: Vector3i) -> float:
+		if _costs.has(position):
+			return _costs[position]
+		var cost := BLOCKED
+		if _combat._world._can_stand(position, GameWorld.Walker.ENEMY):
+			cost = 0.0
+		else:
+			var obstacle := _combat._obstacle_at(position)
+			if obstacle != null:
+				cost = float(obstacle.hp) / FighterType.damage_of(_type) * FighterType.attack_ticks(_type) \
+						/ FighterType.ticks_per_tile(_type)
+		_costs[position] = cost
+		return cost
 
-## Ebenenwechsel der Feinde wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch
-## einen Turm, den er erst zerstört, kommt er nicht auf dessen Wehrgang.
-func _enemy_ascents(position: Vector3i) -> Array[Vector3i]:
-	if _obstacle_at(position) != null:
-		var none: Array[Vector3i] = []
-		return none
-	return _world._ascents(position)
+	## Begehbar für die Wegplanung: wo er stehen darf oder ein Hindernis.
+	func is_passable(position: Vector3i) -> bool:
+		return cost_at(position) != BLOCKED
 
+	## Zerstörungskosten beim Betreten (Pathfinder, extra_cost).
+	func extra_cost(position: Vector3i) -> float:
+		return maxf(cost_at(position), 0.0)
 
-## Schritte der Feinde wie GameWorld._is_steppable(); auf ein Hindernis und von ihm herunter
-## immer (ein zerstörtes Gebäude hat keinen Eingang mehr).
-func _enemy_steppable(from: Vector3i, to: Vector3i) -> bool:
-	return _obstacle_at(from) != null or _obstacle_at(to) != null or _world._is_steppable(from, to)
+	## Ebenenwechsel wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch einen Turm,
+	## den er erst zerstört, kommt er nicht auf dessen Wehrgang.
+	func ascents(position: Vector3i) -> Array[Vector3i]:
+		if cost_at(position) > 0.0:
+			var none: Array[Vector3i] = []
+			return none
+		return _combat._world._ascents(position)
+
+	## Schritte wie GameWorld._is_steppable(); auf ein Hindernis und von ihm herunter immer (ein
+	## zerstörtes Gebäude hat keinen Eingang mehr).
+	func is_steppable(from: Vector3i, to: Vector3i) -> bool:
+		return cost_at(from) > 0.0 or cost_at(to) > 0.0 or _combat._world._is_steppable(from, to)
 
 
 ## Abstand einer Kachel zur nächsten Kachel der Grundfläche eines Gebäudes (0 auf ihr).

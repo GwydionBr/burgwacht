@@ -30,20 +30,41 @@ const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), 
 ## Zusatzkosten beim Betreten einer Position (leer gelassen: keine).
 static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascents := Callable(),
 		steppable := Callable(), extra_cost := Callable()) -> Array[Vector3i]:
+	if start != goal and not walkable.call(goal):
+		var none: Array[Vector3i] = []
+		return none
+	return _search(start, func(position: Vector3i) -> bool: return position == goal,
+			_estimate.bind(goal), walkable, ascents, steppable, extra_cost)
+
+
+## Wie find_path(), aber zur nächsten Position (nach Kosten), für die is_goal(Vector3i) -> bool
+## gilt. estimate(Vector3i) -> float ist eine untere Schranke der restlichen Kosten bis zu einem
+## Ziel (leer gelassen: 0, dann sucht er gleichmäßig nach allen Seiten); bei gleichen Kosten
+## entscheidet die feste Reihenfolge der Suche.
+static func find_path_to_any(start: Vector3i, is_goal: Callable, walkable: Callable, ascents := Callable(),
+		steppable := Callable(), extra_cost := Callable(), estimate := Callable()) -> Array[Vector3i]:
+	var no_estimate := func(_position: Vector3i) -> float: return 0.0
+	return _search(start, is_goal, estimate if estimate.is_valid() else no_estimate, walkable, ascents,
+			steppable, extra_cost)
+
+
+## A* von start bis zur ersten Position, für die is_goal gilt; Weg samt beiden Enden, leer, wenn
+## es keine erreichbare gibt.
+static func _search(start: Vector3i, is_goal: Callable, estimate: Callable, walkable: Callable,
+		ascents: Callable, steppable: Callable, extra_cost: Callable) -> Array[Vector3i]:
 	var path: Array[Vector3i] = []
-	if start == goal:
-		path.append(start)
-		return path
-	if not walkable.call(goal):
-		return path
 	var open := _Heap.new()
 	var cost_so_far: Dictionary[Vector3i, float] = {start: 0.0}
 	var came_from: Dictionary[Vector3i, Vector3i] = {}
 	var closed: Dictionary[Vector3i, bool] = {}
-	open.push(_estimate(start, goal), _estimate(start, goal), start)
+	var start_rest: float = estimate.call(start)
+	open.push(start_rest, start_rest, start)
+	var found := false
+	var current := start
 	while not open.is_empty():
-		var current := open.pop()
-		if current == goal:
+		current = open.pop()
+		if is_goal.call(current):
+			found = true
 			break
 		if closed.has(current):
 			continue
@@ -56,11 +77,11 @@ static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascen
 				continue
 			cost_so_far[next] = cost
 			came_from[next] = current
-			var rest := _estimate(next, goal)
+			var rest: float = estimate.call(next)
 			open.push(cost + rest, rest, next)
-	if not came_from.has(goal):
+	if not found:
 		return path
-	var position := goal
+	var position := current
 	while position != start:
 		path.append(position)
 		position = came_from[position]
