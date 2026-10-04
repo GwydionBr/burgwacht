@@ -11,7 +11,9 @@ extends Node2D
 ## Mauerlinie geschlossen wirkt; Gebäude mit einer Kachel (Mauer, Tor, Treppe) tragen keinen Namen.
 ## Ist ein Gebäude mit Wehrgang höher als der Wehrgang (Turm), endet der Block auf Höhe des
 ## Wehrgangs, und an den Ecken ragen Türmchen bis zur vollen Höhe auf. Ein begehbares Gebäude mit
-## Wehrgang (Tor) zeigt auf beiden sichtbaren Wänden einen dunklen Durchgang.
+## Wehrgang (Tor) zeigt auf beiden sichtbaren Wänden einen dunklen Durchgang. Ein beschädigtes
+## Gebäude trägt über dem Dach einen Lebensbalken wie die Kämpfer (FigureView); nach einem Treffer
+## ruft main update_health() auf.
 
 const INSET := 3.0
 const DOOR_COLOR := Color("#2a1d12")
@@ -29,7 +31,10 @@ const CROWN_COLOR := Color("#3f6b2a")
 const FRUIT_COLOR := Color("#c0392b")
 const STALK_COLOR := Color("#a8862c")
 const EAR_COLOR := Color("#ecd27a")
+## Lebensbalken über dem Dach, relativ zu dessen Mitte (über dem Namen).
+const HEALTH_RECT := Rect2(-20, -20, 40, 5)
 
+var _building: Building
 var _type: String
 var _origin: Vector2i
 var _campfire := false
@@ -42,6 +47,7 @@ var _bounds := Rect2()
 
 
 func setup(building: Building) -> void:
+	_building = building
 	_type = building.type
 	_origin = building.origin
 	_campfire = building.is_campfire()
@@ -53,6 +59,11 @@ func setup(building: Building) -> void:
 	_bounds = Rect2(position, Vector2.ZERO)
 	for corner in _outline:
 		_bounds = _bounds.expand(corner)
+	queue_redraw()
+
+
+## Die Lebenspunkte haben sich geändert: Balken neu zeichnen.
+func update_health() -> void:
 	queue_redraw()
 
 
@@ -97,6 +108,20 @@ func _draw() -> void:
 			_draw_wheat(float(def["height"]))
 	if Building.size_of(_type) != Vector2i.ONE:
 		_draw_label(str(def["name"]), (faces[2][0] + faces[2][2]) * 0.5)
+	var top := block_faces(base, height)[2]
+	_draw_health((top[0] + top[2]) * 0.5)
+
+
+## Lebensbalken über center (Mitte des Dachs), nur wenn das Gebäude beschädigt ist: grün bei
+## viel, rot bei wenig Rest, wie bei den Kämpfern.
+func _draw_health(center: Vector2) -> void:
+	if not _building.is_destructible() or not _building.is_damaged():
+		return
+	var share := clampf(float(_building.hp) / _building.max_hp(), 0.0, 1.0)
+	var rect := Rect2(center + HEALTH_RECT.position, HEALTH_RECT.size)
+	draw_rect(rect.grow(1.0), FigureView.HEALTH_BACK_COLOR)
+	var filled := Rect2(rect.position, Vector2(rect.size.x * share, rect.size.y))
+	draw_rect(filled, FigureView.HEALTH_LOW_COLOR.lerp(FigureView.HEALTH_HIGH_COLOR, share))
 
 
 ## Zeichnet einen Block über den Ecken base mit Wänden, Dach und Umriss; liefert seine Flächen.
