@@ -31,7 +31,7 @@ static func parse(value: Variant, problems: PackedStringArray) -> WaveFormula:
 	var formula := WaveFormula.new()
 	var valid := true
 	var every_value: Variant = fields.get("every_days")
-	if Scenario._is_whole_number(every_value) and int(every_value) >= 1:
+	if Scenario.is_whole_number_from(every_value, 1):
 		formula.every_days = int(every_value)
 	else:
 		problems.append("„waves“: „every_days“ muss eine ganze Zahl ab 1 sein")
@@ -50,17 +50,13 @@ static func parse(value: Variant, problems: PackedStringArray) -> WaveFormula:
 		var numbers: Dictionary = entry if entry is Dictionary else {}
 		var type_base: Variant = numbers.get("base")
 		var type_growth: Variant = numbers.get("growth", 0)
-		if not (_is_number(type_base) and float(type_base) >= 0.0 and _is_number(type_growth) and float(type_growth) >= 0.0):
+		if not (Scenario.is_number_from(type_base, 0.0) and Scenario.is_number_from(type_growth, 0.0)):
 			problems.append("„waves“: „base“ und „growth“ für „%s“ müssen Zahlen ab 0 sein" % str(type_id))
 			valid = false
 			continue
 		formula.base[str(type_id)] = float(type_base)
 		formula.growth[str(type_id)] = float(type_growth)
 	return formula if valid else null
-
-
-static func _is_number(value: Variant) -> bool:
-	return value is int or value is float
 
 
 ## Als reine Daten für den Spielstand.

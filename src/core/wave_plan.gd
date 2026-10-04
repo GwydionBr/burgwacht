@@ -62,12 +62,12 @@ static func parse(value: Variant, problems: PackedStringArray) -> WavePlan:
 		last_day = maxi(last_day, listed.day)
 		plan.list.append(listed)
 	var grace_value: Variant = fields.get("grace_days", 0)
-	if Scenario._is_whole_number(grace_value) and int(grace_value) >= 0:
+	if Scenario.is_whole_number_from(grace_value, 0):
 		plan.grace_days = int(grace_value)
 	else:
 		problems.append("„waves“: „grace_days“ muss eine ganze Zahl ab 0 sein")
 	var warning_value: Variant = fields.get("warning_days", DEFAULT_WARNING_DAYS)
-	if Scenario._is_whole_number(warning_value) and int(warning_value) >= 0:
+	if Scenario.is_whole_number_from(warning_value, 0):
 		plan.warning_days = int(warning_value)
 	else:
 		problems.append("„waves“: „warning_days“ muss eine ganze Zahl ab 0 sein")
@@ -84,7 +84,7 @@ static func _parse_wave(entry: Variant, problems: PackedStringArray) -> PlannedW
 	var fields: Dictionary = entry
 	var valid := true
 	var day_value: Variant = fields.get("day")
-	if not Scenario._is_whole_number(day_value) or int(day_value) < 1:
+	if not Scenario.is_whole_number_from(day_value, 1):
 		problems.append("„waves“: „day“ muss eine ganze Zahl ab 1 sein")
 		valid = false
 	var side_value: Variant = fields.get("side", "")
@@ -103,7 +103,7 @@ static func _parse_wave(entry: Variant, problems: PackedStringArray) -> PlannedW
 			if not (type_id is String and FighterType.is_enemy_type(type_id)):
 				problems.append("„waves“: unbekannter Feindtyp „%s“" % str(type_id))
 				valid = false
-			elif not Scenario._is_whole_number(count) or int(count) < 0:
+			elif not Scenario.is_whole_number_from(count, 0):
 				problems.append("„waves“: Anzahl für „%s“ muss eine ganze Zahl ab 0 sein" % str(type_id))
 				valid = false
 			else:
