@@ -96,6 +96,13 @@ func test_recruit_reasons_in_order() -> void:
 	assert_eq(poor.recruit_error(poor_barracks, "archer"), "Nicht genug Gold (5 nötig)", "Ohne Gold (Bogen):")
 
 
+func test_supply_hint_names_producers_with_input_and_the_market() -> void:
+	assert_eq(GameWorld.supply_hint("sword"), "Schmied (Eisen) oder Markt", "Schwert:")
+	assert_eq(GameWorld.supply_hint("bow"), "Bogner (Holz) oder Markt", "Bogen:")
+	assert_eq(GameWorld.supply_hint("apples"), "Apfelplantage oder Markt", "Ohne Eingangsware:")
+	assert_eq(GameWorld.supply_hint("wood"), "Holzfäller oder Markt", "Aus einem Vorkommen:")
+
+
 func test_no_idle_comes_before_missing_weapon_and_gold() -> void:
 	var world := _founded("tiny")
 	var barracks := _armed(world, 0, 0)
