@@ -107,10 +107,10 @@ func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
 	world.map.add_deposit(tile, Deposit.create(type_id, RandomNumberGenerator.new()))
 
 
-## Testvorbereitung: Ein Feind dieses Typs erscheint auf der Kachel (wie einer aus dem Szenario)
-## und läuft gleich zum Bergfried.
-func add_enemy(world: GameWorld, type_id: String, tile: Vector2i) -> Enemy:
-	return world._combat()._add_enemy(type_id, tile)
+## Testvorbereitung: Ein Feind dieses Typs (aus der Welle mit dieser Nummer, 0 = keiner) erscheint
+## auf der Kachel (wie einer aus dem Szenario) und läuft gleich zum Bergfried.
+func add_enemy(world: GameWorld, type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+	return world._combat()._add_enemy(type_id, tile, wave)
 
 
 ## Testvorbereitung: Ein tödlicher Treffer für den Feind, als hätte ihn ein Soldat getroffen.
@@ -158,6 +158,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
 		"founding": world.is_founding(), "defeated": world.is_defeated(), "buildings": buildings, "stock": stock, "residents": residents,
 		"enemies": enemies, "next_wave": world.get_next_wave(), "repelled_waves": world.get_repelled_waves(),
+		"announcement": [world.get_announced_side(), world.get_announced_tile(), world.get_announced_ticks()],
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
 		"short_of_food": world.is_short_of_food(), "treasury": world.get_treasury(), "tax_rate": world.get_tax_rate(),
 		"factors": factors, "population": world.get_population(), "migration_ticks": world.get_migration_ticks(),

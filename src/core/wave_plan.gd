@@ -5,8 +5,12 @@ extends RefCounted
 ## Anzahl}, "side": optional "north"/"east"/"south"/"west"}, Tage aufsteigend (gleiche erlaubt).
 ## Danach endlos die Steigerungsformel ("formula", siehe WaveFormula), falls angegeben. Ist die
 ## Liste leer, kommt die erste Formelwelle nach der Schonfrist ("grace_days", Standard 0) an Tag
-## grace_days + 1.
+## grace_days + 1. Dazu die Vorwarnzeit ("warning_days", ganze Tage ab 0, Standard 1): So lange
+## vor ihrem Erscheinen wird die nächste Welle angekündigt.
 ## Fehlt das Feld, kommen keine Wellen. Reine Daten; den Ablauf regelt Waves.
+
+## Vorwarnzeit, wenn das Szenario keine angibt.
+const DEFAULT_WARNING_DAYS := 1
 
 ## Die feste Liste: Welle Nummer n (ab 1) ist list[n - 1].
 var list: Array[PlannedWave] = []
@@ -14,6 +18,8 @@ var list: Array[PlannedWave] = []
 var formula: WaveFormula = null
 ## Die Schonfrist in Tagen; gilt nur, wenn die Liste leer ist.
 var grace_days := 0
+## So viele Tage vor ihrem Erscheinen beginnt die Ankündigung der nächsten Welle.
+var warning_days := DEFAULT_WARNING_DAYS
 
 
 ## Die Welle mit dieser Nummer (ab 1); null, wenn keine mehr kommt. Die erste Formelwelle kommt
@@ -57,6 +63,11 @@ static func parse(value: Variant, problems: PackedStringArray) -> WavePlan:
 		plan.grace_days = int(grace_value)
 	else:
 		problems.append("„waves“: „grace_days“ muss eine ganze Zahl ab 0 sein")
+	var warning_value: Variant = fields.get("warning_days", DEFAULT_WARNING_DAYS)
+	if Scenario._is_whole_number(warning_value) and int(warning_value) >= 0:
+		plan.warning_days = int(warning_value)
+	else:
+		problems.append("„waves“: „warning_days“ muss eine ganze Zahl ab 0 sein")
 	if fields.has("formula"):
 		plan.formula = WaveFormula.parse(fields["formula"], problems)
 	return plan
@@ -103,6 +114,7 @@ func to_data() -> Dictionary:
 		"list": list.map(func(listed: PlannedWave) -> Dictionary: return listed.to_data()),
 		"formula": formula.to_data() if formula != null else {},
 		"grace_days": grace_days,
+		"warning_days": warning_days,
 	}
 
 
@@ -112,6 +124,7 @@ static func from_data(data: Dictionary) -> WavePlan:
 	for entry: Dictionary in data["list"]:
 		plan.list.append(PlannedWave.from_data(entry))
 	plan.grace_days = int(data["grace_days"])
+	plan.warning_days = int(data["warning_days"])
 	var formula_data: Dictionary = data["formula"]
 	if not formula_data.is_empty():
 		plan.formula = WaveFormula.from_data(formula_data)

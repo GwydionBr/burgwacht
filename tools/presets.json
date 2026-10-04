@@ -42,5 +42,9 @@
 	"defeat": {
 		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",
 		"args": ["--setup=defeat", "--focus=4,4"]
+	},
+	"wave_announced": {
+		"name": "Angekündigte Welle: Countdown im HUD und Randmarkierung",
+		"args": ["--setup=wave_announced", "--focus=11,5"]
 	}
 }

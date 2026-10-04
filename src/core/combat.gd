@@ -139,16 +139,16 @@ func update_enemies() -> void:
 			return
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
-	if _world._keep_alarmed and not _is_keep_attacked():
-		# Der Angriff ist vorbei; der nächste wird wieder gemeldet.
-		_world._keep_alarmed = false
+	if _world._keep_alarmed_waves.has(0) and not _is_keep_attacked_without_wave():
+		# Der Angriff der Feinde ohne Welle ist vorbei; der nächste wird wieder gemeldet.
+		_world._keep_alarmed_waves.erase(0)
 
 
-## Greift gerade ein Feind den Bergfried an?
-func _is_keep_attacked() -> bool:
+## Greift gerade ein Feind ohne Welle (Startfeind, Debug-Feind) den Bergfried an?
+func _is_keep_attacked_without_wave() -> bool:
 	var keep := _world._keep()
 	for enemy in _world.get_enemies():
-		if enemy.target_building_id == keep.id:
+		if enemy.wave == 0 and enemy.target_building_id == keep.id:
 			return true
 	return false
 
@@ -209,8 +209,8 @@ func _in_reach_of_building(figure: Figure, building: Building) -> bool:
 
 
 ## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
-## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“); fällt er auf 0,
-## ist die Partie verloren.
+## der erste Treffer einer Welle diesen („Der Bergfried wird angegriffen!“; bei Feinden ohne
+## Welle der erste Treffer eines Angriffs); fällt er auf 0, ist die Partie verloren.
 func _hit_building(figure: Figure, building: Building) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
@@ -219,8 +219,9 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		var nearest := figure.tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
-	if building == _world._keep() and not _world._keep_alarmed:
-		_world._keep_alarmed = true
+	var wave := (figure as Enemy).wave if figure is Enemy else 0
+	if building == _world._keep() and not _world._keep_alarmed_waves.has(wave):
+		_world._keep_alarmed_waves.append(wave)
 		_world.notice.emit(KEEP_ATTACKED)
 	if building == _world._keep() and building.hp == 0:
 		_world._defeated = true

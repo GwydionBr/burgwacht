@@ -336,8 +336,16 @@ Die Tage zu Beginn einer Partie ohne Welle, wenn die feste Liste leer ist (`grac
 _Avoid_: Friedenszeit, Aufbauphase
 
 **Seite**:
-Der Kartenrand, von dem eine Welle kommt: Norden, Osten, Süden oder Westen. Steht sie nicht im Wellenplan, wählt der Zufall der Spielwelt eine, von der das Gelände den Bergfried erreicht.
+Der Kartenrand, von dem eine Welle kommt: Norden, Osten, Süden oder Westen. Steht sie nicht im Wellenplan, wählt der Zufall der Spielwelt bei der Ankündigung eine, von der das Gelände den Bergfried erreicht.
 _Avoid_: Richtung, Himmelsrichtung, Rand
+
+**Ankündigung**:
+Die Vorwarnung vor der nächsten Welle: Sie beginnt eine Vorwarnzeit vor deren Erscheinen, legt ihre Seite fest und zeigt Seite, Erscheinungskachel und Countdown. Angekündigt wird immer nur die nächste Welle; mit ihrem Erscheinen endet die Ankündigung.
+_Avoid_: Warnung, Vorschau
+
+**Vorwarnzeit**:
+Wie lange vor dem Erscheinen einer Welle ihre Ankündigung beginnt; steht im Wellenplan, Standard 1 Tag.
+_Avoid_: Warnzeit, Vorlauf
 
 **Abgewehrt**:
 Eine Welle ist abgewehrt, sobald keiner ihrer Feinde mehr lebt. Die Spielwelt zählt abgewehrte Wellen.
