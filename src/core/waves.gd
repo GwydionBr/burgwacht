@@ -16,6 +16,9 @@ extends RefCounted
 ## (_take_next_wave(), _start_announcement(), _end_announcement(), _repel_wave()). Wie Combat legt
 ## sie für jeden Aufruf ein Waves an (GameWorld._waves()).
 
+## Grund, wenn der Debug-Befehl keine nächste Welle erscheinen lassen kann.
+const NO_NEXT_WAVE := "Keine weitere Welle geplant"
+
 var _world: GameWorld
 
 
@@ -53,10 +56,19 @@ func _announce(wave: PlannedWave) -> void:
 	_world._start_announcement(side)
 
 
+## Darf der Debug-Befehl jetzt die nächste Welle erscheinen lassen? Leer oder der Grund.
+func spawn_next_error() -> String:
+	if _world.is_founding():
+		return GameWorld.FOUNDING_FIRST
+	if planned_wave(_world.get_next_wave()) == null:
+		return NO_NEXT_WAVE
+	return ""
+
+
 ## Debug-Befehl: Die nächste Welle erscheint sofort, die danach kommen wie geplant. Ist die
 ## übernächste schon in ihrer Vorwarnzeit, beginnt ihre Ankündigung gleich mit (update()).
 func spawn_next() -> String:
-	var reason := _world.spawn_wave_error()
+	var reason := spawn_next_error()
 	if reason != "":
 		return reason
 	_spawn(planned_wave(_world.get_next_wave()))

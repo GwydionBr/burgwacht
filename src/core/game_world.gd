@@ -529,15 +529,6 @@ func spawn_enemy_error(type_id: String) -> String:
 	return ""
 
 
-## Darf der Debug-Befehl jetzt die nächste Welle erscheinen lassen? Leer oder der Grund.
-func spawn_wave_error() -> String:
-	if _founding:
-		return FOUNDING_FIRST
-	if _waves().planned_wave(_next_wave) == null:
-		return "Keine weitere Welle geplant"
-	return ""
-
-
 ## Darf der Befehl „Anwerben“ jetzt an der Kaserne mit dieser ID einen Soldaten dieses Typs
 ## anwerben? Leer oder der Grund. Prüfreihenfolge: Kaserne vorhanden → Soldatentyp bekannt →
 ## Untätiger vorhanden → Waren der Anwerbekosten vorrätig → genug Gold.
