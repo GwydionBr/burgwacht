@@ -31,8 +31,9 @@ extends RefCounted
 ## bleiben Bewohner (Wohnraum, Essen, Steuern), arbeiten aber nicht und gehen nie fort.
 ##
 ## Feinde (z. B. Räuber) erscheinen aus dem Szenario bei der Gründung oder per Debug-Befehl am
-## Kartenrand und laufen zum Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen
-## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt. Die Regeln dafür stehen in
+## Kartenrand und laufen zum Bergfried, den sie angreifen; Soldaten in Sichtweite greifen sie an.
+## Soldaten greifen Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt; fällt der
+## Bergfried, ist die Partie verloren (Niederlage). Die Regeln dafür stehen in
 ## Combat; den Zustand hält weiter die Spielwelt.
 
 signal deposit_added(tile: Vector2i)

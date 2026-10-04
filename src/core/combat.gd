@@ -1,8 +1,9 @@
 class_name Combat
 extends RefCounted
-## Kampf und Feinde der Spielwelt: Feinde (z. B. Räuber) erscheinen am Kartenrand und laufen zum
-## Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen Feinde auf Befehl an. Ein
-## Angriff trifft sofort und ohne Zufall; wer keine Lebenspunkte mehr hat, stirbt.
+## Kampf und Feinde der Spielwelt: Feinde (z. B. Räuber) erscheinen am Kartenrand, laufen zum
+## Bergfried und greifen ihn an; Soldaten in Sichtweite greifen sie an. Soldaten greifen Feinde
+## auf Befehl an. Ein Angriff trifft sofort und ohne Zufall; wer keine Lebenspunkte mehr hat,
+## stirbt. Fällt der Bergfried, ist die Partie verloren.
 ##
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
 ## einzige Wurzel des Zustands (ADR 0002). Die Spielwelt legt für jeden Aufruf ein Combat an
