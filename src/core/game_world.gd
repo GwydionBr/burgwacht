@@ -1938,12 +1938,16 @@ func _land_from_lost_wall_walk() -> void:
 			_report_change(resident, _send_to_post.bind(resident))
 
 
-## Die nächste freie Bodenkachel um tile (_search_outward()): begehbar, ohne Gebäude und kein
-## Posten in taken; gibt es keine, der Boden von tile selbst.
+## Die nächste freie Bodenkachel: tile selbst (meist ist dort nach der Zerstörung Boden) oder die
+## nächste drumherum (_search_outward()); frei heißt begehbar, ohne Gebäude und kein Posten in
+## taken. Gibt es keine, der Boden von tile.
 func _landing(tile: Vector2i, taken: Dictionary[Vector3i, bool]) -> Vector3i:
-	var found := _search_outward(tile, func(candidate: Vector2i) -> bool:
+	var is_free := func(candidate: Vector2i) -> bool:
 		return is_walkable(candidate, Figure.Level.GROUND) and get_building_at(candidate) == null \
-				and not taken.has(Figure.ground(candidate)))
+				and not taken.has(Figure.ground(candidate))
+	if is_free.call(tile):
+		return Figure.ground(tile)
+	var found := _search_outward(tile, is_free)
 	return Figure.ground(tile if found.is_empty() else found[0])
 
 
