@@ -2,7 +2,8 @@ class_name Hud
 extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Belegung je Lagerart, Bewohnern und Gold, Meldungen oben
 ## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
-## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
+## und unten mittig die Bauleiste: Reiter je Kategorie, darunter je Gebäude der Kategorie eine Karte
+## mit Symbol, Name, Taste und Kosten (rot, wenn sie nicht reichen) und daneben das Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
 ## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln;
 ## sie ist zugleich die Bestandsübersicht. Die Kasernenansicht (Linksklick auf eine Kaserne) zeigt
@@ -28,10 +29,14 @@ signal new_game_requested()
 ## In der Niederlage-Ansicht wurde „Beenden“ gedrückt.
 signal quit_requested()
 
-const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
-const TEXT_COLOR := Color("#e8dcc0")
-const HINT_COLOR := Color("#a89c80")
-const BLOCKED_COLOR := Color("#ff8a70")
+const TEXT_COLOR := UiStyle.TEXT_COLOR
+const HINT_COLOR := UiStyle.HINT_COLOR
+const BLOCKED_COLOR := UiStyle.BLOCKED_COLOR
+## Größe einer Karte der Bauleiste.
+const CARD_SIZE := Vector2(152, 140)
+## Höhe des Gebäudesymbols auf einer Karte.
+const CARD_ICON_HEIGHT := 54
+const CARD_SEPARATION := 10
 ## Breite einer Spalte (Knopf, Grund, Hinweis) je Soldatentyp in der Kasernenansicht.
 const RECRUIT_COLUMN_WIDTH := 250
 ## So lange bleibt eine Meldung (z. B. „Gespeichert“) stehen, in Sekunden.
@@ -85,9 +90,13 @@ var _recruit_reason_labels: Dictionary[String, Label] = {}
 var _recruit_supply_labels: Dictionary[String, Label] = {}
 var _build_label: Label
 var _build_panel: PanelContainer
-var _build_bar: PanelContainer
-## Gebäudetyp → Knopf der Bauleiste.
+var _build_bar: VBoxContainer
+## Kategorie → Reiter der Bauleiste bzw. Zeile mit ihren Karten (nur die gewählte ist sichtbar).
+var _category_tabs: Dictionary[String, Button] = {}
+var _category_rows: Dictionary[String, HBoxContainer] = {}
+## Gebäudetyp → Karte der Bauleiste und das Feld mit ihren Kosten.
 var _build_buttons: Dictionary[String, Button] = {}
+var _cost_labels: Dictionary[String, Label] = {}
 var _demolish_button: Button
 var _defeat_panel: PanelContainer
 ## Dunkelt hinter der Niederlage-Ansicht das Spiel ab und fängt Klicks ab.
@@ -98,6 +107,11 @@ var _defeat_day_label: Label
 
 func _ready() -> void:
 	var bar := _make_panel()
+	# Über die ganze Breite: ohne Rundung, Rand nur unten.
+	var bar_style: StyleBoxFlat = bar.get_theme_stylebox("panel")
+	bar_style.set_corner_radius_all(0)
+	bar_style.set_border_width_all(0)
+	bar_style.border_width_bottom = 2
 	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
@@ -172,24 +186,12 @@ func _ready() -> void:
 	_build_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_panel.visible = false
 
-	_build_bar = _make_panel()
-	# Zwei Zeilen, damit auch viele Gebäude in die Fensterbreite passen (+ 1 für den Abriss).
-	var buttons := GridContainer.new()
-	buttons.columns = ceili((GameWorld.buildable_types().size() + 1) / 2.0)
-	buttons.add_theme_constant_override("h_separation", 8)
-	buttons.add_theme_constant_override("v_separation", 8)
-	_build_bar.add_child(buttons)
-	for type_id in GameWorld.buildable_types():
-		var button := _make_build_button(type_id)
-		buttons.add_child(button)
-		_build_buttons[type_id] = button
-	_demolish_button = _make_tool_button("Abriss [X]\nHälfte zurück")
-	_demolish_button.pressed.connect(demolish_selected.emit)
-	buttons.add_child(_demolish_button)
+	_build_bar = _make_build_bar()
 	add_child(_build_bar)
 	_build_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, MARGIN)
 	_build_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_select_category(GameWorld.build_categories()[0])
 	# Hinweise und Kachel-Info über der Bauleiste, die bei vielen Gebäuden fast die ganze Breite braucht.
 	var above_bar := -(MARGIN + _build_bar.get_combined_minimum_size().y + MARGIN)
 	help_panel.offset_bottom = above_bar
@@ -429,28 +431,154 @@ func show_build_hint(text: String, allowed: bool) -> void:
 	_build_panel.reset_size()
 
 
-## Bauleiste sperren (während der Gründung) oder freigeben.
+## Bauleiste sperren (während der Gründung) oder freigeben; die Reiter bleiben bedienbar.
 func set_build_bar_enabled(enabled: bool) -> void:
 	for button: Button in _build_buttons.values():
 		button.disabled = not enabled
+		button.modulate.a = 1.0 if enabled else 0.55
 	_demolish_button.disabled = not enabled
+	_demolish_button.modulate.a = 1.0 if enabled else 0.55
+
+
+## Je Gebäudetyp der Grund, warum seine Kosten gerade nicht reichen (leer = sie reichen); die
+## Kosten der Karte stehen dann rot da und der Grund als Hinweis. Die Karte bleibt wählbar.
+func show_build_costs(errors: Dictionary[String, String]) -> void:
+	for type_id: String in _cost_labels:
+		var reason: String = errors.get(type_id, "")
+		_cost_labels[type_id].add_theme_color_override("font_color", BLOCKED_COLOR if reason != "" else HINT_COLOR)
+		var def: Dictionary = GameDefs.get_instance().buildings[type_id]
+		_build_buttons[type_id].tooltip_text = "%s [%s]%s" % [def["name"], def["hotkey"],
+				"\n" + reason if reason != "" else ""]
 
 
 ## Hebt den Knopf des gewählten Werkzeugs hervor: Gebäudetyp im Baumodus (leer = keiner)
 ## oder das Abriss-Werkzeug.
+## Wird ein Gebäude per Taste gewählt, wechselt die Bauleiste zu seiner Kategorie.
 func show_tool(build_type: String, demolishing: bool) -> void:
+	if build_type != "":
+		_select_category(GameWorld.build_category_of(build_type))
 	for button_type: String in _build_buttons:
 		_build_buttons[button_type].set_pressed_no_signal(button_type == build_type)
 	_demolish_button.set_pressed_no_signal(demolishing)
 
 
-## Knopf mit Name, Taste und Kosten, z. B. „Holzfäller [H]“ über „3 Holz“; Gold aus dem
-## Schatz zuletzt („20 Holz, 30 Gold“).
+## Die Bauleiste: oben die Reiter der Kategorien, darunter im Feld die Karten der gewählten
+## Kategorie (alle Zeilen gleich breit, damit die Leiste beim Wechseln nicht springt) und rechts,
+## durch einen Strich getrennt, das Abriss-Werkzeug.
+func _make_build_bar() -> VBoxContainer:
+	var bar := VBoxContainer.new()
+	bar.add_theme_constant_override("separation", 0)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	# Reiter etwas eingerückt, damit sie auf dem Feld zu sitzen scheinen.
+	var tabs_margin := MarginContainer.new()
+	tabs_margin.add_theme_constant_override("margin_left", 14)
+	tabs_margin.add_child(tabs)
+	# Über dem Feld gezeichnet, damit der gewählte Reiter dessen oberen Rand überdeckt.
+	tabs_margin.z_index = 1
+	bar.add_child(tabs_margin)
+	var panel := PanelContainer.new()
+	var panel_style := UiStyle.bar_style()
+	panel_style.set_content_margin_all(12)
+	panel.add_theme_stylebox_override("panel", panel_style)
+	bar.add_child(panel)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 14)
+	panel.add_child(body)
+	# Alle Zeilen übereinander; sichtbar ist nur die der gewählten Kategorie.
+	var cards := MarginContainer.new()
+	body.add_child(cards)
+	var widest := 0
+	for category in GameWorld.build_categories():
+		var tab := Button.new()
+		tab.text = GameWorld.build_category_name(category)
+		tab.toggle_mode = true
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.add_theme_font_size_override("font_size", 18)
+		UiStyle.apply_tab_style(tab)
+		tab.tooltip_text = "Gebäude: %s" % tab.text
+		tab.pressed.connect(func() -> void: _select_category(category))
+		tabs.add_child(tab)
+		_category_tabs[category] = tab
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", CARD_SEPARATION)
+		for type_id in GameWorld.buildable_types_in(category):
+			var button := _make_build_button(type_id)
+			row.add_child(button)
+			_build_buttons[type_id] = button
+		cards.add_child(row)
+		_category_rows[category] = row
+		widest = maxi(widest, GameWorld.buildable_types_in(category).size())
+	cards.custom_minimum_size = Vector2(widest * CARD_SIZE.x + (widest - 1) * CARD_SEPARATION, CARD_SIZE.y)
+	body.add_child(VSeparator.new())
+	_demolish_button = _make_card("", "Abriss", "X", "Hälfte zurück")
+	_demolish_button.tooltip_text = "Abriss [X]\nGibt die Hälfte der Kosten zurück"
+	_demolish_button.pressed.connect(demolish_selected.emit)
+	body.add_child(_demolish_button)
+	return bar
+
+
+## Zeigt die Karten dieser Kategorie und hebt ihren Reiter hervor.
+func _select_category(category: String) -> void:
+	for other: String in _category_rows:
+		_category_rows[other].visible = other == category
+		_category_tabs[other].set_pressed_no_signal(other == category)
+
+
+## Karte eines Gebäudetyps; Gold aus dem Schatz steht in den Kosten zuletzt („20 Holz, 30 Gold“).
 func _make_build_button(type_id: String) -> Button:
 	var def: Dictionary = GameDefs.get_instance().buildings[type_id]
-	var button := _make_tool_button("%s [%s]\n%s" % [def["name"], def["hotkey"],
-			_cost_text(GameWorld.goods_cost_of(type_id), GameWorld.gold_cost_of(type_id))])
+	var button := _make_card(type_id, str(def["name"]), str(def["hotkey"]),
+			_cost_text(GameWorld.goods_cost_of(type_id), GameWorld.gold_cost_of(type_id)))
+	button.tooltip_text = "%s [%s]" % [def["name"], def["hotkey"]]
 	button.pressed.connect(func() -> void: build_selected.emit(type_id))
+	return button
+
+
+## Umschaltknopf als Karte: Symbol (type_id, leer = Abriss), Titel, unten die Kosten bzw. ein
+## Hinweis und oben links die Taste. Das Kostenfeld merkt sich _cost_labels.
+func _make_card(type_id: String, title: String, hotkey: String, cost: String) -> Button:
+	var button := Button.new()
+	button.toggle_mode = true
+	# Kein Tastaturfokus, sonst löst die Leertaste (Pause) den Knopf aus.
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = CARD_SIZE
+	UiStyle.apply_card_style(button)
+	var column := VBoxContainer.new()
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+	column.add_theme_constant_override("separation", 2)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(column)
+	var icon := BuildingIcon.new(type_id)
+	icon.custom_minimum_size = Vector2(0, CARD_ICON_HEIGHT)
+	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(icon)
+	var title_label := _make_label(title, TEXT_COLOR, 18)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title_label.clip_text = true
+	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(title_label)
+	var cost_label := _make_label(cost, HINT_COLOR, 15)
+	cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(cost_label)
+	if type_id != "":
+		_cost_labels[type_id] = cost_label
+	var badge := PanelContainer.new()
+	var badge_style := UiStyle.card_style(Color(0, 0, 0, 0.45), UiStyle.GOLD_COLOR.darkened(0.3))
+	badge_style.set_content_margin_all(0)
+	badge_style.content_margin_left = 5
+	badge_style.content_margin_right = 5
+	badge_style.set_corner_radius_all(4)
+	badge.add_theme_stylebox_override("panel", badge_style)
+	badge.position = Vector2(5, 5)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var key_label := _make_label(hotkey, UiStyle.GOLD_COLOR, 14)
+	key_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(key_label)
+	button.add_child(badge)
 	return button
 
 
@@ -462,18 +590,6 @@ static func _cost_text(goods_cost: Dictionary[String, int], gold: int) -> String
 	if gold > 0:
 		parts.append("%d Gold" % gold)
 	return ", ".join(parts) if not parts.is_empty() else "kostenlos"
-
-
-## Umschaltknopf der Bauleiste.
-func _make_tool_button(text: String) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.toggle_mode = true
-	# Kein Tastaturfokus, sonst löst die Leertaste (Pause) den Knopf aus.
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 14)
-	button.custom_minimum_size = Vector2(120, 0)
-	return button
 
 
 ## Die Verwaltung: Ration mit ◀ ▶ (Tasten −/+), Steuersatz mit ◀ ▶ (Tasten ,/.), darunter
@@ -670,12 +786,7 @@ static func _signed(value: int) -> String:
 
 func _make_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = PANEL_COLOR
-	style.set_content_margin_all(10)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiStyle.panel_style())
 	return panel
 
 

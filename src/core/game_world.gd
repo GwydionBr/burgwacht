@@ -379,6 +379,16 @@ func _build_error(type_id: String, origin: Vector2i, spent_goods: Dictionary[Str
 	var rules := _rules_error(type_id, origin)
 	if rules != "":
 		return rules
+	return _cost_error(type_id, spent_goods, spent_gold)
+
+
+## Reichen Waren und Gold für einen Gebäudetyp, egal wo? Leer oder der Grund wie bei
+## build_error() („Zu wenig Holz (20 nötig)“, „Nicht genug Gold (30 nötig)“); für die Bauleiste.
+func cost_error(type_id: String) -> String:
+	return _cost_error(type_id, {}, 0)
+
+
+func _cost_error(type_id: String, spent_goods: Dictionary[String, int], spent_gold: int) -> String:
 	var cost := goods_cost_of(type_id)
 	for good: String in cost:
 		var stock := _stock_error(good, cost[good], spent_goods.get(good, 0))
@@ -591,6 +601,32 @@ static func supply_hint(good: String) -> String:
 	if Market.is_tradable(good):
 		sources.append("Markt")
 	return " oder ".join(sources)
+
+
+## Kategorien der Bauleiste in Anzeigereihenfolge (aus build_categories.json).
+static func build_categories() -> Array[String]:
+	var result: Array[String] = []
+	result.assign(GameDefs.get_instance().build_categories.keys())
+	return result
+
+
+## Name einer Kategorie der Bauleiste, z. B. „Nahrung“.
+static func build_category_name(category: String) -> String:
+	return str(GameDefs.get_instance().build_categories[category]["name"])
+
+
+## Kategorie eines baubaren Gebäudetyps ("category" in buildings.json).
+static func build_category_of(type_id: String) -> String:
+	return str(GameDefs.get_instance().buildings[type_id]["category"])
+
+
+## Die baubaren Gebäudetypen einer Kategorie in Datenreihenfolge.
+static func buildable_types_in(category: String) -> Array[String]:
+	var result: Array[String] = []
+	for type_id in buildable_types():
+		if build_category_of(type_id) == category:
+			result.append(type_id)
+	return result
 
 
 ## Darf der Spieler diesen Gebäudetyp bauen? Baubar ist, was in den Daten eine Taste für

@@ -828,6 +828,7 @@ func _update_stock() -> void:
 	_hud.show_market_stock(stock)
 	_update_market()
 	_update_barracks()
+	_update_build_costs()
 
 
 ## Marktansicht: Handelsknöpfe je Ware mit dem Grund, warum Kauf bzw. Verkauf gerade nicht geht.
@@ -913,6 +914,15 @@ func _update_treasury() -> void:
 	_hud.show_treasury(world.get_treasury())
 	_update_market()
 	_update_barracks()
+	_update_build_costs()
+
+
+## Bauleiste: je Gebäudetyp, ob Waren und Gold reichen.
+func _update_build_costs() -> void:
+	var errors: Dictionary[String, String] = {}
+	for type_id in GameWorld.buildable_types():
+		errors[type_id] = world.cost_error(type_id)
+	_hud.show_build_costs(errors)
 
 
 func _update_hover() -> void:
