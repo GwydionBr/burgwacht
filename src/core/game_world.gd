@@ -78,7 +78,7 @@ signal defeated()
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 14
+const SAVE_VERSION := 15
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -129,9 +129,11 @@ var _wave_plan := WavePlan.new()
 var _next_wave := 1
 ## So viele Wellen sind abgewehrt (keiner ihrer Feinde lebt mehr).
 var _repelled_waves := 0
-## Wurde der laufende Angriff auf den Bergfried schon gemeldet? Zurückgesetzt, sobald kein Feind
-## ihn mehr angreift.
-var _keep_alarmed := false
+## Die Wellen, deren Angriff auf den Bergfried schon gemeldet ist („Der Bergfried wird
+## angegriffen!“ höchstens einmal je Welle); eine abgewehrte fällt heraus. 0 steht für Feinde ohne
+## Welle (Startfeinde, Debug-Feinde): Bei ihnen wird jeder Angriff gemeldet, 0 fällt also heraus,
+## sobald keiner von ihnen den Bergfried mehr angreift.
+var _keep_alarmed_waves: Array[int] = []
 ## Ist der Bergfried gefallen? Dann steht die Zeit, und Befehle werden abgelehnt.
 var _defeated := false
 ## Wie gern die Bewohner in der Burg leben, 0–100.
@@ -204,7 +206,7 @@ func to_data() -> Dictionary:
 		"wave_plan": _wave_plan.to_data(),
 		"next_wave": _next_wave,
 		"repelled_waves": _repelled_waves,
-		"keep_alarmed": _keep_alarmed,
+		"keep_alarmed_waves": _keep_alarmed_waves.duplicate(),
 		"defeated": _defeated,
 		"popularity": _popularity,
 		"ration": _ration,
@@ -262,7 +264,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 	world._wave_plan = WavePlan.from_data(data["wave_plan"])
 	world._next_wave = int(data["next_wave"])
 	world._repelled_waves = int(data["repelled_waves"])
-	world._keep_alarmed = bool(data["keep_alarmed"])
+	for wave: Variant in data["keep_alarmed_waves"]:
+		world._keep_alarmed_waves.append(int(wave))
 	world._defeated = bool(data["defeated"])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])

@@ -81,7 +81,7 @@ func _spawn(wave: PlannedWave) -> void:
 				spawned += 1
 	# Ohne einen einzigen Feind (Anzahl 0 oder kein Platz) ist sie sofort abgewehrt.
 	if spawned == 0:
-		_repel()
+		_repel(number)
 
 
 ## Eine Seite aus dem Zufall der Spielwelt (ADR 0001): nur unter denen, von denen aus das
@@ -112,9 +112,12 @@ func enemy_removed(enemy: Enemy) -> void:
 	for other in _world.get_enemies():
 		if other.wave == enemy.wave:
 			return
-	_repel()
+	_repel(enemy.wave)
 
 
-func _repel() -> void:
+## Die Welle mit dieser Nummer ist abgewehrt; ihr Merker „Bergfried angegriffen“ wird nicht mehr
+## gebraucht.
+func _repel(number: int) -> void:
 	_world._repelled_waves += 1
+	_world._keep_alarmed_waves.erase(number)
 	_world.notice.emit("Welle abgewehrt")
