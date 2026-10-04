@@ -16,8 +16,12 @@
 		"args": ["--seed=1", "--days=1", "--demolish"]
 	},
 	"barracks": {
-		"name": "Kaserne mit Soldaten",
+		"name": "Kaserne mit Soldaten, ohne Waffen: Anwerben gesperrt mit Grund und Hinweis",
 		"args": ["--setup=barracks", "--barracks", "--select"]
+	},
+	"barracks_ready": {
+		"name": "Kaserne mit einem Schwert: Schwertkämpfer anwerbbar, Bogenschütze gesperrt",
+		"args": ["--setup=barracks_ready", "--barracks"]
 	},
 	"wall": {
 		"name": "Mauerlinie mit Soldaten auf dem Wehrgang",
