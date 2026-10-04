@@ -84,3 +84,29 @@ func test_soldier_in_reach_takes_priority_over_the_keep() -> void:
 	var hp := keep.hp
 	_until(world, func() -> bool: return world.get_enemy(1) == null, "Räuber fällt")
 	assert_eq(keep.hp, hp, "Kein Treffer am Bergfried, solange er den Soldaten angreift:")
+
+
+func test_first_hit_on_the_keep_is_announced_once_per_attack() -> void:
+	var world := _founded()
+	put_goods(world, 2, "stone", 100)
+	var armory := build(world, "armory", Vector2i(10, 10))
+	put_goods(world, armory, "sword", 1)
+	var barracks := build(world, "barracks", Vector2i(14, 2))
+	assert_eq(world.execute(Command.recruit(barracks, "swordsman")), "", "Anwerben:")
+	var notices: Array[String] = []
+	world.notice.connect(func(text: String) -> void: notices.append(text))
+	world.execute(Command.spawn_enemy("bandit"))
+	_until_keep_hit(world)
+	for i in 50:
+		world.step()
+	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Einmal beim ersten Treffer:")
+	# Der Soldat erschlägt ihn; der nächste Angriff wird wieder gemeldet.
+	world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(6, 0))))
+	_until(world, func() -> bool: return world.get_enemy(1) == null, "Räuber fällt")
+	world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(17, 14))))
+	_until(world, func() -> bool: return world.get_resident(1).tile == Vector2i(17, 14), "Soldat fort")
+	notices.clear()
+	var hp := world.get_building(KEEP).hp
+	world.execute(Command.spawn_enemy("bandit"))
+	_until(world, func() -> bool: return world.get_building(KEEP).hp < hp, "Zweiter Angriff")
+	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Zweiter Angriff gemeldet:")

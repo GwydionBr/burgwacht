@@ -117,6 +117,9 @@ var _start_enemies: Array[StartEnemy] = []
 ## Nach ID aufsteigend eingefügt; eigene IDs, getrennt von denen der Bewohner.
 var _enemies: Dictionary[int, Enemy] = {}
 var _next_enemy_id := 1
+## Wurde der laufende Angriff auf den Bergfried schon gemeldet? Zurückgesetzt, sobald kein Feind
+## ihn mehr angreift.
+var _keep_alarmed := false
 ## Wie gern die Bewohner in der Burg leben, 0–100.
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
@@ -183,6 +186,7 @@ func to_data() -> Dictionary:
 		"start_enemies": _start_enemies.map(func(entry: StartEnemy) -> Dictionary: return entry.to_data()),
 		"next_enemy_id": _next_enemy_id,
 		"enemies": _enemies.values().map(func(enemy: Enemy) -> Dictionary: return enemy.to_data()),
+		"keep_alarmed": _keep_alarmed,
 		"popularity": _popularity,
 		"ration": _ration,
 		"tax_rate": _tax_rate,
@@ -236,6 +240,7 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["enemies"]:
 		var enemy := Enemy.from_data(entry)
 		world._enemies[enemy.id] = enemy
+	world._keep_alarmed = bool(data["keep_alarmed"])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._tax_rate = str(data["tax_rate"])

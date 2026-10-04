@@ -9,6 +9,9 @@ extends RefCounted
 ## (GameWorld._combat()); als ihr Teil benutzt Combat ihre internen Hilfen (Wegfindung, Feinde
 ## hinzufügen und entfernen).
 
+## Meldung beim ersten Treffer eines Angriffs auf den Bergfried.
+const KEEP_ATTACKED := "Der Bergfried wird angegriffen!"
+
 var _world: GameWorld
 
 
@@ -133,6 +136,18 @@ func update_enemies() -> void:
 	for enemy in _world.get_enemies():
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
+	if _world._keep_alarmed and not _is_keep_attacked():
+		# Der Angriff ist vorbei; der nächste wird wieder gemeldet.
+		_world._keep_alarmed = false
+
+
+## Greift gerade ein Feind den Bergfried an?
+func _is_keep_attacked() -> bool:
+	var keep := _world._keep()
+	for enemy in _world.get_enemies():
+		if enemy.target_building_id == keep.id:
+			return true
+	return false
 
 
 func _update_enemy(enemy: Enemy) -> void:
@@ -191,7 +206,7 @@ func _in_reach_of_building(figure: Figure, building: Building) -> bool:
 
 
 ## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
-## der erste Treffer den Angriff; fällt er auf 0, ist die Partie verloren.
+## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“).
 func _hit_building(figure: Figure, building: Building) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
@@ -200,6 +215,9 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		var nearest := figure.tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
+	if building == _world._keep() and not _world._keep_alarmed:
+		_world._keep_alarmed = true
+		_world.notice.emit(KEEP_ATTACKED)
 
 
 ## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei
