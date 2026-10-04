@@ -1313,7 +1313,7 @@ func _combat() -> Combat:
 	return Combat.new(self)
 
 
-## Angriffswellen (Waves); ohne eigenen Zustand, daher für jeden Aufruf neu.
+## Wellen (Waves); ohne eigenen Zustand, daher für jeden Aufruf neu.
 func _waves() -> Waves:
 	return Waves.new(self)
 

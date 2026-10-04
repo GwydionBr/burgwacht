@@ -1,6 +1,6 @@
 class_name Waves
 extends RefCounted
-## Angriffswellen der Spielwelt nach dem Wellenplan (WavePlan): Zu Beginn ihres Tages erscheint
+## Die Wellen der Spielwelt nach dem Wellenplan (WavePlan): Zu Beginn ihres Tages erscheint
 ## eine Welle gebündelt auf der Randkachel ihrer Seite, die dem Bergfried am nächsten liegt
 ## (Combat.spawn_tile()); ihre Feinde verteilen sich auf die freien Kacheln drumherum. Wellen
 ## kommen strikt nach Plan, auch wenn ältere noch leben.

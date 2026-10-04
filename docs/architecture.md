@@ -19,7 +19,7 @@ Godot 4.7, GDScript, isometrische 2D-Ansicht. Editor: `godot --path . -e`.
   - `fighter_type.gd` – Kampfwerte aus `units.json` für Soldatentypen und Feinde (`"kind": "enemy"`: Räuber im Nahkampf, Wilderer im Fernkampf): Name, Lebenspunkte `hp`, Schaden `damage`, Angriffsdauer `attack_ticks`, Nahkampf (`melee`) oder Reichweite (`range`), Sichtweite `sight`, Leine `leash`, Wehrgang-Reichweitenbonus `wall_walk_range_bonus`, `ticks_per_tile`, Farbe; `ids_of_kind()`/`is_kind()` als gemeinsame Prüfung nach `"kind"`
   - `figure.gd` – eine Figur auf der Karte (Basis von Bewohner und Feind): ID, Position = Kachel + Ebene (`Figure.Level`: Boden `GROUND` und Wehrgang `WALL_WALK`; `Figure.ground()`), Weg und Fortschritt im aktuellen Schritt, bei Kämpfern Lebenspunkte, Angriffsziel (ID) und Takte bis zum nächsten Angriff; `tile_point()` und `level_point()` liefern Position und Ebene zwischen zwei Takten für die Darstellung, `place_at()` versetzt sofort (Ausweichen), `in_reach()` (mit dem von `Combat` gelieferten Reichweitenbonus) und `distance_to()` für den Kampf
   - `enemy.gd` – ein Feind (Figure mit Feindtyp aus `units.json` und der Nummer seiner Welle, 0 = keine); kein Bewohner
-  - `waves.gd` – Angriffswellen als Teil der Spielwelt, ohne eigenen Zustand wie `combat.gd` (Plan, nächste Welle, Seite der laufenden Ankündigung und abgewehrte Wellen hält `GameWorld`, die es für jeden Aufruf neu anlegt): die nächste Welle ankündigen, fällige Wellen erscheinen lassen, zufällige Seite, Abwehr zählen, Debug-Befehl „nächste Welle sofort“; Seiten der Karte (`SIDES`, `side_tiles()`)
+  - `waves.gd` – Wellen als Teil der Spielwelt, ohne eigenen Zustand wie `combat.gd` (Plan, nächste Welle, Seite der laufenden Ankündigung und abgewehrte Wellen hält `GameWorld`, die es für jeden Aufruf neu anlegt): die nächste Welle ankündigen, fällige Wellen erscheinen lassen, zufällige Seite, Abwehr zählen, Debug-Befehl „nächste Welle sofort“; Seiten der Karte (`SIDES`, `side_tiles()`)
   - `wave_plan.gd`, `wave_formula.gd`, `planned_wave.gd` – der Wellenplan eines Szenarios (Feld `waves` mit Liste, Formel, Schonfrist und Vorwarnzeit, beim Einlesen geprüft; `wave(n)` liefert die n-te Welle aus Liste oder Formel), die Steigerungsformel und eine geplante Welle (Tag, Feindtyp → Anzahl, Seite oder leer), reine Daten
   - `factor.gd` – ein Faktor der Beliebtheit (ID und Wert, Name aus den Daten)
   - `building.gd` – ein Gebäude (ID, Typ, Ursprung, bei Lagern der Inhalt; `has_walkway()` für Gebäude mit Wehrgang, `is_stairs()`, `has_ascending_entrance()` für den Turmeingang, `range_bonus()`); Grundfläche, angrenzende Kacheln und Kachel vor dem Eingang aus `buildings.json` (Typen ohne `entrance` wie das Lagerfeuer haben keine)
@@ -93,7 +93,7 @@ Neues Zustandsstück:
 
 ## Spielmodus
 
-Freies Spiel (Szenario ohne Ziel) mit endlosen Angriffswellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Szenarien mit Zielen und Aufträgen sind später möglich.
+Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Szenarien mit Zielen und Aufträgen sind später möglich.
 
 ## Export (später)
 

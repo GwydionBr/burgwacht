@@ -1,6 +1,6 @@
 # Burgwacht
 
-Burgenbau-Strategiespiel: Der Spieler baut auf einer zufällig erzeugten Karte eine Burg mit Wirtschaft auf und verteidigt sie gegen immer stärkere Angriffswellen.
+Burgenbau-Strategiespiel: Der Spieler baut auf einer zufällig erzeugten Karte eine Burg mit Wirtschaft auf und verteidigt sie gegen immer stärkere Wellen von Feinden.
 
 ## Sprache
 
