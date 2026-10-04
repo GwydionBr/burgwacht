@@ -88,6 +88,16 @@ func test_wave_without_side_comes_only_from_sides_that_reach_the_keep() -> void:
 		assert_eq(world.get_enemies()[0].tile.y, world.map.height - 1, "Zeile der Randkachel (Seed %d):" % world_seed)
 
 
+func test_side_tiles_lie_on_their_edge_with_corners_on_both_sides() -> void:
+	var map := MapData.new(4, 3)
+	assert_eq(MapSide.all(), ["north", "east", "south", "west"] as Array[String], "Seiten:")
+	assert_eq(MapSide.tiles(map, "north"), [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)] as Array[Vector2i], "Norden:")
+	assert_eq(MapSide.tiles(map, "east"), [Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2)] as Array[Vector2i], "Osten:")
+	assert_eq(MapSide.tiles(map, "south"), [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2)] as Array[Vector2i], "Süden:")
+	assert_eq(MapSide.tiles(map, "west"), [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)] as Array[Vector2i], "Westen:")
+	assert_eq([MapSide.name_of("south"), MapSide.outward("south")], ["Süden", Vector2i(0, 1)], "Süden im Spieltext und nach außen:")
+
+
 func test_random_side_is_deterministic_for_the_same_seed() -> void:
 	var sides: Dictionary[String, bool] = {}
 	for world_seed in range(1, 11):

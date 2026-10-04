@@ -88,8 +88,8 @@ static func _parse_wave(entry: Variant, problems: PackedStringArray) -> PlannedW
 		problems.append("„waves“: „day“ muss eine ganze Zahl ab 1 sein")
 		valid = false
 	var side_value: Variant = fields.get("side", "")
-	if fields.has("side") and not (side_value is String and Waves.SIDES.has(side_value)):
-		problems.append("„waves“: „side“ muss eine von %s sein, nicht „%s“" % [", ".join(Waves.SIDES), str(side_value)])
+	if fields.has("side") and not (side_value is String and MapSide.is_side(side_value)):
+		problems.append("„waves“: „side“ muss eine von %s sein, nicht „%s“" % [", ".join(MapSide.all()), str(side_value)])
 		valid = false
 	var enemies: Dictionary[String, int] = {}
 	var enemies_value: Variant = fields.get("enemies")

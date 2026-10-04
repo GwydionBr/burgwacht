@@ -14,31 +14,11 @@ extends RefCounted
 ## und abgewehrte Wellen hält die Spielwelt, die Welle eines Feinds der Feind selbst; die Spielwelt bleibt die einzige Wurzel des
 ## Zustands (ADR 0002). Wie Combat legt sie für jeden Aufruf ein Waves an (GameWorld._waves()).
 
-## Die Seiten der Karte, in der Reihenfolge, in der der Zufall unter ihnen wählt.
-const SIDES: Array[String] = ["north", "east", "south", "west"]
-## Seite → Name im Spieltext („Welle aus Norden!“).
-const SIDE_NAMES: Dictionary[String, String] = {
-	"north": "Norden", "east": "Osten", "south": "Süden", "west": "Westen",
-}
-
 var _world: GameWorld
 
 
 func _init(world: GameWorld) -> void:
 	_world = world
-
-
-## Die Randkacheln einer Seite, zeilenweise: Norden y = 0, Osten x = Breite − 1, Süden
-## y = Höhe − 1, Westen x = 0. Eine Ecke gehört zu beiden Seiten.
-static func side_tiles(map: MapData, side: String) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	for y in map.height:
-		for x in map.width:
-			var on_side := (side == "north" and y == 0) or (side == "east" and x == map.width - 1) \
-					or (side == "south" and y == map.height - 1) or (side == "west" and x == 0)
-			if on_side:
-				result.append(Vector2i(x, y))
-	return result
 
 
 ## Die Welle mit dieser Nummer (ab 1) laut Plan; null, wenn keine mehr kommt.
@@ -67,7 +47,7 @@ func update() -> void:
 func _announce(wave: PlannedWave) -> void:
 	_world._announced_side = wave.side if wave.side != "" else _random_side()
 	var days := ceili(float(appearance_tick(wave) - _world.get_tick()) / GameWorld.TICKS_PER_DAY)
-	_world.notice.emit("Welle aus %s in %d %s" % [SIDE_NAMES[_world._announced_side], days, "Tag" if days == 1 else "Tagen"])
+	_world.notice.emit("Welle aus %s in %d %s" % [MapSide.name_of(_world._announced_side), days, "Tag" if days == 1 else "Tagen"])
 	_world.announcement_changed.emit()
 
 
@@ -98,7 +78,7 @@ func _spawn(wave: PlannedWave) -> void:
 		side = _random_side()
 	var combat := _world._combat()
 	var spawn := combat.spawn_tile(side)
-	_world.notice.emit("Welle aus %s!" % SIDE_NAMES[side])
+	_world.notice.emit("Welle aus %s!" % MapSide.name_of(side))
 	var spawned := 0
 	for type_id: String in wave.enemies:
 		for _i in wave.enemies[type_id]:
@@ -121,13 +101,13 @@ func _spawn(wave: PlannedWave) -> void:
 func _random_side() -> String:
 	var reaching := _world._combat()._reaches_keep()
 	var sides: Array[String] = []
-	for side in SIDES:
-		for tile in side_tiles(_world.map, side):
+	for side in MapSide.all():
+		for tile in MapSide.tiles(_world.map, side):
 			if reaching.has(Figure.ground(tile)):
 				sides.append(side)
 				break
 	if sides.is_empty():
-		sides = SIDES.duplicate()
+		sides = MapSide.all()
 	return sides[_world._rng.randi_range(0, sides.size() - 1)]
 
 

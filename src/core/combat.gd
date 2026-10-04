@@ -428,7 +428,7 @@ func spawn_enemy(type_id: String) -> String:
 ## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
 ## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
-## nächste freie. Mit side (Waves.SIDES) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
+## nächste freie. Mit side (MapSide) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
 ## keine freie gibt.
 func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
@@ -452,7 +452,7 @@ func spawn_tile(side := "") -> Array[Vector2i]:
 ## Die Randkacheln der Seite (leer: aller Seiten), zeilenweise.
 func _edge_tiles(side: String) -> Array[Vector2i]:
 	if side != "":
-		return Waves.side_tiles(_world.map, side)
+		return MapSide.tiles(_world.map, side)
 	var result: Array[Vector2i] = []
 	var map := _world.map
 	for y in map.height:

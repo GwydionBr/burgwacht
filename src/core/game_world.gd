@@ -709,7 +709,7 @@ func get_repelled_waves() -> int:
 	return _repelled_waves
 
 
-## Seite der laufenden Ankündigung der nächsten Welle (Waves.SIDES); leer, wenn keine läuft.
+## Seite der laufenden Ankündigung der nächsten Welle (MapSide); leer, wenn keine läuft.
 func get_announced_side() -> String:
 	return _announced_side
 

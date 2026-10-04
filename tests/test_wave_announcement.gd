@@ -101,11 +101,11 @@ func test_random_side_is_chosen_at_announcement_and_matches_the_appearance() -> 
 		_run_world(world, DAY)
 		var side := world.get_announced_side()
 		var tile := world.get_announced_tile()
-		assert_true(Waves.SIDES.has(side), "Seite gewählt (Seed %d): %s" % [world_seed, side])
+		assert_true(MapSide.is_side(side), "Seite gewählt (Seed %d): %s" % [world_seed, side])
 		var notices := _notices(world)
 		_run_world(world, DAY)
 		assert_eq([world.get_enemies()[0].tile] as Array[Vector2i], tile, "Kachel (Seed %d):" % world_seed)
-		assert_true(notices.has("Welle aus %s!" % Waves.SIDE_NAMES[side]), "Seite (Seed %d): %s" % [world_seed, notices])
+		assert_true(notices.has("Welle aus %s!" % MapSide.name_of(side)), "Seite (Seed %d): %s" % [world_seed, notices])
 		sides[side] = true
 	assert_true(sides.size() > 1, "Bei verschiedenen Seeds verschiedene Seiten: %s" % str(sides.keys()))
 
