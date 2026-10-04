@@ -197,3 +197,63 @@ func test_bad_enemies_are_invalid() -> void:
 		var data := _valid_data()
 		data["enemies"] = value
 		assert_true(_error_for(data).contains("enemies"), "Feinde %s: %s" % [str(value), _error_for(data)])
+
+
+func _waves_data(waves: Variant) -> Dictionary:
+	var data := _valid_data()
+	data["waves"] = waves
+	return data
+
+
+func test_wave_list_is_read() -> void:
+	var scenario := Scenario.from_dict("test", _waves_data({"list": [
+		{"day": 2.0, "enemies": {"bandit": 3.0}, "side": "north"},
+		{"day": 2, "enemies": {"bandit": 0}},
+		{"day": 5, "enemies": {"bandit": 1}, "side": "west"},
+	]}))
+	assert_eq(scenario.error, "", "Fehler:")
+	var read := scenario.wave_plan.list.map(func(wave: PlannedWave) -> Array: return [wave.day, wave.enemies, wave.side])
+	assert_eq(read, [[2, {"bandit": 3}, "north"], [2, {"bandit": 0}, ""], [5, {"bandit": 1}, "west"]], "Wellen:")
+
+
+func test_missing_wave_plan_means_no_waves() -> void:
+	var scenario := Scenario.from_dict("test", _valid_data())
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.wave_plan.list.size(), 0, "Wellen:")
+	assert_eq(Scenario.from_dict("test", _waves_data({})).wave_plan.list.size(), 0, "Wellen ohne Liste:")
+
+
+func test_wave_plan_must_be_an_object_with_a_list() -> void:
+	for value: Variant in [5, [], "list", {"list": 3}, {"list": [3]}]:
+		var error := _error_for(_waves_data(value))
+		assert_true(error.contains("waves"), "Wellenplan %s: %s" % [str(value), error])
+
+
+func test_wave_with_unknown_enemy_type_is_invalid() -> void:
+	for enemies: Variant in [{"swordsman": 1}, {"drache": 2}, 4, null]:
+		var error := _error_for(_waves_data({"list": [{"day": 1, "enemies": enemies}]}))
+		assert_true(error.contains("waves") and error.contains("Feind"), "Feinde %s: %s" % [str(enemies), error])
+
+
+func test_wave_with_invalid_side_is_invalid() -> void:
+	for side: Variant in ["nord", "North", "", 1]:
+		var error := _error_for(_waves_data({"list": [{"day": 1, "enemies": {"bandit": 1}, "side": side}]}))
+		assert_true(error.contains("waves") and error.contains("side"), "Seite %s: %s" % [str(side), error])
+
+
+func test_wave_before_day_one_is_invalid() -> void:
+	for day: Variant in [0, -3, 1.5, "1", null]:
+		var error := _error_for(_waves_data({"list": [{"day": day, "enemies": {"bandit": 1}}]}))
+		assert_true(error.contains("waves") and error.contains("day"), "Tag %s: %s" % [str(day), error])
+
+
+func test_waves_with_descending_days_are_invalid() -> void:
+	var error := _error_for(_waves_data({"list": [
+		{"day": 4, "enemies": {"bandit": 1}}, {"day": 3, "enemies": {"bandit": 1}}]}))
+	assert_true(error.contains("waves") and error.contains("aufsteigend"), "Absteigende Tage: " + error)
+
+
+func test_wave_with_negative_count_is_invalid() -> void:
+	for count: Variant in [-1, 1.5, "2"]:
+		var error := _error_for(_waves_data({"list": [{"day": 1, "enemies": {"bandit": count}}]}))
+		assert_true(error.contains("waves") and error.contains("Anzahl"), "Anzahl %s: %s" % [str(count), error])

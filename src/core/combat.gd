@@ -305,27 +305,38 @@ func spawn_enemy(type_id: String) -> String:
 ## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
 ## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
-## nächste freie. Als [Kachel], leer, wenn es keine freie gibt.
-func spawn_tile() -> Array[Vector2i]:
+## nächste freie. Mit side (Waves.SIDES) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
+## keine freie gibt.
+func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
 	var reaching := _reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
 	var best_reaches := false
+	for tile in _edge_tiles(side):
+		if not _is_free_enemy_tile(tile):
+			continue
+		var reaches := reaching.has(Figure.ground(tile))
+		var distance := _distance_to_building(tile, keep)
+		if (reaches and not best_reaches) \
+				or (reaches == best_reaches and distance < best_distance - Figure.DISTANCE_SLACK):
+			best = [tile]
+			best_distance = distance
+			best_reaches = reaches
+	return best
+
+
+## Die Randkacheln der Seite (leer: aller Seiten), zeilenweise.
+func _edge_tiles(side: String) -> Array[Vector2i]:
+	if side != "":
+		return Waves.side_tiles(_world.map, side)
+	var result: Array[Vector2i] = []
 	var map := _world.map
 	for y in map.height:
 		for x in map.width:
-			var tile := Vector2i(x, y)
-			if not map.is_edge(tile) or not _is_free_enemy_tile(tile):
-				continue
-			var reaches := reaching.has(Figure.ground(tile))
-			var distance := _distance_to_building(tile, keep)
-			if (reaches and not best_reaches) \
-					or (reaches == best_reaches and distance < best_distance - Figure.DISTANCE_SLACK):
-				best = [tile]
-				best_distance = distance
-				best_reaches = reaches
-	return best
+			if map.is_edge(Vector2i(x, y)):
+				result.append(Vector2i(x, y))
+	return result
 
 
 ## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
@@ -357,9 +368,10 @@ func add_start_enemies(start_enemies: Array[StartEnemy]) -> void:
 			_add_enemy(entry.type_id, found[0])
 
 
-## Ein neuer Feind mit vollen Lebenspunkten; er läuft gleich zum Bergfried.
-func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
-	var enemy := _world._add_enemy(type_id, tile)
+## Ein neuer Feind mit vollen Lebenspunkten (aus der Welle mit dieser Nummer, 0 = keiner); er
+## läuft gleich zum Bergfried.
+func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+	var enemy := _world._add_enemy(type_id, tile, wave)
 	_send_enemy_to_keep(enemy)
 	return enemy
 

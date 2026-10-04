@@ -326,3 +326,11 @@ _Avoid_: Angriff, Invasion
 
 **Wellenplan**:
 Die Festlegung im Szenario, wann welche Wellen mit welchen Feinden von wo kommen.
+
+**Seite**:
+Der Kartenrand, von dem eine Welle kommt: Norden, Osten, Süden oder Westen. Steht sie nicht im Wellenplan, wählt der Zufall der Spielwelt eine, von der das Gelände den Bergfried erreicht.
+_Avoid_: Richtung, Himmelsrichtung, Rand
+
+**Abgewehrt**:
+Eine Welle ist abgewehrt, sobald keiner ihrer Feinde mehr lebt. Die Spielwelt zählt abgewehrte Wellen.
+_Avoid_: besiegt, geschlagen

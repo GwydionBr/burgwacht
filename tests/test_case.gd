@@ -45,7 +45,11 @@ func new_world(scenario_id: String) -> GameWorld:
 ## Welt aus einem Test-Szenario (Standard: tiny) in Gründung, aber leergeräumt: nur Wiese,
 ## keine Vorkommen.
 func empty_world(scenario_id := "tiny") -> GameWorld:
-	var world := new_world(scenario_id)
+	return clear_map(new_world(scenario_id))
+
+
+## Räumt die Karte einer Welt in Gründung leer: nur Wiese, keine Vorkommen.
+func clear_map(world: GameWorld) -> GameWorld:
 	world.map.deposits.clear()
 	for y in world.map.height:
 		for x in world.map.width:
@@ -109,6 +113,12 @@ func add_enemy(world: GameWorld, type_id: String, tile: Vector2i) -> Enemy:
 	return world._combat()._add_enemy(type_id, tile)
 
 
+## Testvorbereitung: Ein tödlicher Treffer für den Feind, als hätte ihn ein Soldat getroffen.
+func kill_enemy(world: GameWorld, enemy: Enemy) -> void:
+	enemy.hp = 0
+	world._combat().enemy_hit(enemy)
+
+
 ## Testvorbereitung: Felsen rechts neben einem Steinbruch (3×3) mit diesem Ursprung,
 ## damit seine Bauregel gilt.
 func add_rock_for_quarry(world: GameWorld, origin: Vector2i) -> void:
@@ -147,7 +157,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	return {
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
 		"founding": world.is_founding(), "defeated": world.is_defeated(), "buildings": buildings, "stock": stock, "residents": residents,
-		"enemies": enemies,
+		"enemies": enemies, "next_wave": world.get_next_wave(), "repelled_waves": world.get_repelled_waves(),
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
 		"short_of_food": world.is_short_of_food(), "treasury": world.get_treasury(), "tax_rate": world.get_tax_rate(),
 		"factors": factors, "population": world.get_population(), "migration_ticks": world.get_migration_ticks(),
