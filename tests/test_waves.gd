@@ -159,6 +159,33 @@ func test_debug_wave_is_refused_without_a_next_wave_or_while_founding() -> void:
 	assert_eq(world.to_data(), before, "Unverändert:")
 
 
+func _reload(world: GameWorld) -> GameWorld:
+	return GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+
+
+func test_save_and_load_mid_wave_continues_the_same() -> void:
+	var world := _founded()
+	_run_world(world, GameWorld.TICKS_PER_DAY + 50)
+	kill_enemy(world, world.get_enemies()[0])
+	var loaded := _reload(world)
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Zustand nach dem Laden:")
+	# Weiter bis nach Tag 3: Welle 2 zieht ihre Seite aus dem Zufall der Spielwelt.
+	_run_world(world, GameWorld.TICKS_PER_DAY)
+	_run_world(loaded, GameWorld.TICKS_PER_DAY)
+	assert_eq(loaded.to_data(), world.to_data(), "Gleicher Verlauf:")
+	for each: GameWorld in [world, loaded]:
+		_kill_wave(each, 1)
+	assert_eq(loaded.get_repelled_waves(), 1, "Abgewehrt nach dem Laden:")
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Gleich nach der Abwehr:")
+
+
+func test_save_and_load_keeps_the_wave_plan_before_founding() -> void:
+	var loaded := _reload(empty_world("tiny_waves"))
+	assert_eq(loaded.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	_run_world(loaded, GameWorld.TICKS_PER_DAY)
+	assert_eq(_enemy_tiles(loaded), [EAST_SPAWN, Vector2i(19, 1), Vector2i(19, 3)] as Array[Vector2i], "Welle 1:")
+
+
 func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
