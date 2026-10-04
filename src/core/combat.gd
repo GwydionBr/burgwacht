@@ -147,14 +147,59 @@ func _update_enemy(enemy: Enemy) -> void:
 			target = _enemy_target(enemy)
 			if target != null:
 				enemy.target_id = target.id
+				enemy.target_building_id = 0
 				_world.enemy_changed.emit(enemy.id)
 	if target != null:
 		if not _fight(enemy, target):
 			_drop_enemy_target(enemy)
 		return
+	if enemy.step_progress == 0 and _attack_keep(enemy):
+		return
 	if enemy.is_moving() and enemy.step_progress == 0 and not _world._can_step(enemy):
 		_send_enemy_to_keep(enemy)
 	enemy.advance()
+
+
+## Ein Takt am Bergfried: Hat der Feind ihn in Reichweite (_in_reach_of_building()), bleibt er
+## stehen und greift ihn an, sobald die Angriffsdauer seit dem letzten Angriff um ist. false, wenn
+## er ihn nicht in Reichweite hat.
+func _attack_keep(enemy: Enemy) -> bool:
+	var keep := _world._keep()
+	if not _in_reach_of_building(enemy, keep):
+		if enemy.target_building_id != 0:
+			enemy.target_building_id = 0
+			_world.enemy_changed.emit(enemy.id)
+		return false
+	enemy.path.clear()
+	if enemy.target_building_id != keep.id:
+		enemy.target_building_id = keep.id
+		_world.enemy_changed.emit(enemy.id)
+	if enemy.cooldown == 0:
+		_hit_building(enemy, keep)
+	return true
+
+
+## Hat der Kämpfer das Gebäude in Reichweite? Nahkämpfer am Boden auf einer Nachbarkachel der
+## Grundfläche (auch schräg), Fernkämpfer bis zu ihrer Reichweite zur nächsten Kachel der
+## Grundfläche.
+func _in_reach_of_building(figure: Figure, building: Building) -> bool:
+	var type := figure.fighter_type()
+	var distance := _distance_to_building(figure.tile, building)
+	if FighterType.is_melee(type):
+		return figure.level == Figure.Level.GROUND and distance > 0.0 and distance < 1.5
+	return distance <= FighterType.range_of(type) + _range_bonus(figure) + Figure.DISTANCE_SLACK
+
+
+## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
+## der erste Treffer den Angriff; fällt er auf 0, ist die Partie verloren.
+func _hit_building(figure: Figure, building: Building) -> void:
+	var type := figure.fighter_type()
+	figure.cooldown = FighterType.attack_ticks(type)
+	building.hp = maxi(building.hp - FighterType.damage_of(type), 0)
+	if not FighterType.is_melee(type):
+		var nearest := figure.tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
+		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
+	_world.building_changed.emit(building.id)
 
 
 ## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei

@@ -29,3 +29,58 @@ func test_buildings_start_with_full_hit_points_from_data() -> void:
 	assert_eq(campfire.max_hp(), 0, "Lagerfeuer ohne Lebenspunkte:")
 	assert_true(not campfire.is_destructible(), "Lagerfeuer unzerstörbar")
 	assert_true(keep.is_destructible(), "Bergfried zerstörbar")
+
+
+## Lässt die Welt laufen, bis condition() gilt (höchstens MAX_TICKS Takte).
+func _until(world: GameWorld, condition: Callable, what: String) -> void:
+	for i in MAX_TICKS:
+		if condition.call():
+			return
+		world.step()
+	assert_true(false, "%s nach %d Takten nicht eingetreten" % [what, MAX_TICKS])
+
+
+## Lässt die Welt laufen, bis der Bergfried zum ersten Mal getroffen ist.
+func _until_keep_hit(world: GameWorld) -> void:
+	var keep := world.get_building(KEEP)
+	_until(world, func() -> bool: return keep.is_damaged(), "Treffer am Bergfried")
+
+
+func test_bandit_at_the_keep_attacks_it_at_his_attack_pace() -> void:
+	var world := _founded("tiny_bandits")
+	var bandit := world.get_enemy(1)
+	var keep := world.get_building(KEEP)
+	var changed: Array[int] = []
+	world.building_changed.connect(func(id: int) -> void: changed.append(id))
+	_until_keep_hit(world)
+	assert_true(not bandit.is_moving(), "Steht beim Angriff")
+	assert_true(Combat._distance_to_building(bandit.tile, keep) < 1.5, "Auf einer Nachbarkachel: %s" % bandit.tile)
+	assert_eq(keep.hp, 1000 - 12, "Erster Treffer:")
+	assert_eq(changed, [KEEP] as Array[int], "Gemeldet:")
+	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Bergfried an", "Tätigkeit:")
+	for i in 9:
+		world.step()
+	assert_eq(keep.hp, 1000 - 12, "Vor Ablauf der Angriffsdauer:")
+	world.step()
+	assert_eq(keep.hp, 1000 - 24, "Nach 10 Takten:")
+	# Bewohner greift er nicht an.
+	assert_eq(world.get_population(), 4, "Bewohner:")
+
+
+func test_soldier_in_reach_takes_priority_over_the_keep() -> void:
+	var world := _founded()
+	put_goods(world, 2, "stone", 100)
+	var armory := build(world, "armory", Vector2i(10, 10))
+	put_goods(world, armory, "sword", 1)
+	var barracks := build(world, "barracks", Vector2i(14, 2))
+	assert_eq(world.execute(Command.recruit(barracks, "swordsman")), "", "Anwerben:")
+	assert_eq(world.execute(Command.spawn_enemy("bandit")), "", "Erscheinen:")
+	var bandit := world.get_enemy(1)
+	var keep := world.get_building(KEEP)
+	_until_keep_hit(world)
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(Vector2i(6, 0)))), "", "Bewegen:")
+	_until(world, func() -> bool: return bandit.target_id == 1, "Räuber greift Soldaten an")
+	assert_eq(bandit.target_building_id, 0, "Lässt vom Bergfried ab:")
+	var hp := keep.hp
+	_until(world, func() -> bool: return world.get_enemy(1) == null, "Räuber fällt")
+	assert_eq(keep.hp, hp, "Kein Treffer am Bergfried, solange er den Soldaten angreift:")

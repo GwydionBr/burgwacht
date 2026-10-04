@@ -42,6 +42,8 @@ signal deposit_changed(tile: Vector2i)
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
+## Die Lebenspunkte eines Gebäudes haben sich geändert.
+signal building_changed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
@@ -630,6 +632,9 @@ func enemy_activity_of(enemy: Enemy) -> String:
 	var target := get_resident(enemy.target_id)
 	if target != null:
 		return "%s – %s" % [enemy_name, Combat.fight_text(enemy, target)]
+	var building := get_building(enemy.target_building_id)
+	if building != null:
+		return "%s – greift %s an" % [enemy_name, _building_name(building.type)]
 	return "%s – %s" % [enemy_name, "läuft zum Bergfried" if enemy.is_moving() else "wartet"]
 
 
