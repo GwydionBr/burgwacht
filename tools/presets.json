@@ -58,5 +58,9 @@
 	"wave_announced": {
 		"name": "Angekündigte Welle: Countdown im HUD und Randmarkierung",
 		"args": ["--setup=wave_announced", "--focus=11,5"]
+	},
+	"milestone7": {
+		"name": "Vorführung Meilenstein 7: Verteidigung",
+		"args": ["--setup=milestone7", "--focus=17,10"]
 	}
 }
