@@ -50,6 +50,15 @@ func update() -> void:
 		wave = planned_wave(_world._next_wave)
 
 
+## Debug-Befehl: Die nächste Welle erscheint sofort, die danach kommen wie geplant.
+func spawn_next() -> String:
+	var reason := _world.spawn_wave_error()
+	if reason != "":
+		return reason
+	_spawn(planned_wave(_world._next_wave))
+	return ""
+
+
 ## Die nächste Welle erscheint jetzt; ihre Feinde kommen in der Reihenfolge des Plans auf die
 ## Randkachel ihrer Seite bzw. die nächsten freien drumherum.
 func _spawn(wave: PlannedWave) -> void:

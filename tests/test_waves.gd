@@ -139,6 +139,26 @@ func test_wave_without_enemies_counts_as_repelled_at_once() -> void:
 	assert_eq(notices, ["Welle aus Westen!", "Welle abgewehrt"] as Array[String], "Meldungen:")
 
 
+func test_debug_command_brings_the_next_wave_now_and_the_plan_goes_on() -> void:
+	var world := _founded()
+	assert_eq(world.execute(Command.spawn_wave()), "", "Debug-Welle:")
+	assert_eq(_enemy_waves(world), [1, 1, 1] as Array[int], "Welle 1 sofort:")
+	assert_eq(world.get_day(), 1, "Tag:")
+	_run_world(world, GameWorld.TICKS_PER_DAY)
+	assert_eq(_enemy_waves(world), [1, 1, 1] as Array[int], "An Tag 2 keine weitere:")
+	_run_world(world, GameWorld.TICKS_PER_DAY)
+	assert_eq(_enemy_waves(world), [1, 1, 1, 2, 3, 3] as Array[int], "An Tag 3 wie geplant:")
+
+
+func test_debug_wave_is_refused_without_a_next_wave_or_while_founding() -> void:
+	var world := empty_world("tiny_waves")
+	assert_eq(world.execute(Command.spawn_wave()), GameWorld.FOUNDING_FIRST, "In Gründung:")
+	world = _founded("tiny_bandits")
+	var before := world.to_data()
+	assert_eq(world.execute(Command.spawn_wave()), "Keine weitere Welle geplant", "Ohne Wellenplan:")
+	assert_eq(world.to_data(), before, "Unverändert:")
+
+
 func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")

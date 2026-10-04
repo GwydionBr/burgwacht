@@ -301,6 +301,8 @@ func execute(command: Command) -> String:
 		return _combat().attack(command.resident_ids, command.enemy_id)
 	if command.kind == Command.Kind.SPAWN_ENEMY:
 		return _combat().spawn_enemy(command.enemy_type)
+	if command.kind == Command.Kind.SPAWN_WAVE:
+		return _waves().spawn_next()
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -486,6 +488,15 @@ func spawn_enemy_error(type_id: String) -> String:
 		return "Unbekannter Feind „%s“" % type_id
 	if _combat().spawn_tile().is_empty():
 		return "Kein freier Kartenrand"
+	return ""
+
+
+## Darf der Debug-Befehl jetzt die nächste Welle erscheinen lassen? Leer oder der Grund.
+func spawn_wave_error() -> String:
+	if _founding:
+		return FOUNDING_FIRST
+	if _waves().planned_wave(_next_wave) == null:
+		return "Keine weitere Welle geplant"
 	return ""
 
 

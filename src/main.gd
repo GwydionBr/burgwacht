@@ -42,7 +42,7 @@ extends Node2D
 ## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
 ## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus Mauer, Tor oder Turm liegt –;
 ## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
-## einen Räuber am Rand nächst dem Bergfried erscheinen.
+## einen Räuber am Rand nächst dem Bergfried erscheinen, F7 die nächste Welle des Wellenplans.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -374,6 +374,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F8:
 			if OS.is_debug_build():
 				_execute_or_show(Command.spawn_enemy(FighterType.enemy_ids()[0]))
+		KEY_F7:
+			if OS.is_debug_build():
+				_execute_or_show(Command.spawn_wave())
 		KEY_ESCAPE:
 			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
 			# offen, schließt Esc nur sie.
