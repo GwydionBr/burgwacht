@@ -6,7 +6,7 @@
   "start_residents": 4,
   "waves": {
     "list": [
-      { "day": 2, "enemies": { "bandit": 3 }, "side": "east" },
+      { "day": 2, "enemies": { "bandit": 1 }, "side": "east" },
       { "day": 3, "enemies": { "bandit": 1 } },
       { "day": 3, "enemies": { "bandit": 2 }, "side": "south" }
     ]

@@ -23,7 +23,8 @@ Eine Absicht des Spielers, die an die Spielwelt übergeben wird, z. B. „Gebäu
 _Avoid_: Aktion, Kommando
 
 **Niederlage**:
-Das Ende einer Partie, weil der Bergfried zerstört wurde.
+Das Ende einer Partie, weil der Bergfried keine Lebenspunkte mehr hat: Die Zeit steht, Befehle werden abgelehnt.
+_Avoid_: Game Over, Verloren-Bildschirm
 
 **Ziel**:
 Eine prüfbare Bedingung, deren Erfüllung eine Partie gewinnt. Im freien Spiel gibt es keines.
@@ -310,6 +311,10 @@ _Avoid_: Einheit, Unit, Akteur
 **Kämpfer**:
 Eine Figur mit Lebenspunkten, die angreift und angegriffen wird: Soldaten und Feinde.
 _Avoid_: Einheit, Krieger
+
+**Lebenspunkte**:
+Wie viel Schaden ein Kämpfer oder ein Gebäude noch verträgt; bei 0 stirbt der Kämpfer bzw. fällt das Gebäude. Gebäude ohne Lebenspunkte (Lagerfeuer) sind unzerstörbar und nie Ziel. Es gibt keine Heilung.
+_Avoid_: HP, Gesundheit, Trefferpunkte
 
 **Feind**:
 Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
