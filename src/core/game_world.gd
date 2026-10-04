@@ -1603,7 +1603,12 @@ func _deliver(resident: Resident, workplace: Building) -> void:
 ## Plant den kürzesten Weg einer Figur zu goal und schickt ihn los; false (und nichts
 ## ändert sich), wenn es keinen Weg gibt. Mitten im Schritt geht er den erst zu Ende.
 func _route_to(figure: Figure, goal: Vector3i) -> bool:
-	var path := _find_path(figure.plan_start(), goal, _walker_of(figure))
+	return _follow(figure, _find_path(figure.plan_start(), goal, _walker_of(figure)))
+
+
+## Schickt die Figur einen geplanten Weg ab figure.plan_start() entlang (samt Start, wie
+## Pathfinder.find_path()); false (und nichts ändert sich), wenn er leer ist.
+func _follow(figure: Figure, path: Array[Vector3i]) -> bool:
 	if path.is_empty():
 		return false
 	if figure.step_progress == 0:
@@ -1865,11 +1870,37 @@ func _demolish(id: int) -> String:
 	if error != "":
 		return error
 	var building: Building = _buildings[id]
+	_remove_building(building, _leave_lost_wall_walk)
+	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
+	var cost := goods_cost_of(building.type)
+	var changed: Dictionary[int, bool] = {}
+	for good: String in cost:
+		@warning_ignore("integer_division")
+		_store_goods(good, cost[good] / 2, changed)
+	_emit_stock_changed(changed)
+	@warning_ignore("integer_division")
+	_change_treasury(gold_cost_of(building.type) / 2)
+	return ""
+
+
+## Zerstörung (0 Lebenspunkte, Combat): Das Gebäude verschwindet wie beim Abriss, aber ohne
+## Erstattung, und sein Lagerinhalt ist verloren. Wer auf seinem Wehrgang stand, landet auf dem
+## Boden (_land_from_lost_wall_walk()). Den Bergfried trifft das nie: Sein Fall ist die Niederlage.
+func _destroy(building: Building) -> void:
+	_remove_building(building, _land_from_lost_wall_walk)
+	notice.emit("%s zerstört" % _building_name(building.type))
+
+
+## Was Abriss und Zerstörung gemeinsam haben: Das Gebäude verschwindet, Figuren auf seinem
+## Wehrgang weichen aus (leave_wall_walk), Träger zu diesem Lager suchen ein anderes, Arbeiter
+## werden Untätige, fehlender Wohnraum schickt Bewohner fort und Feinde planen neu.
+func _remove_building(building: Building, leave_wall_walk: Callable) -> void:
+	var id := building.id
 	_buildings.erase(id)
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
-	_leave_lost_wall_walk()
+	leave_wall_walk.call()
 	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
 	for resident: Resident in _residents.values():
 		if resident.task in [Resident.Task.TO_STORAGE, Resident.Task.FETCHING] and resident.storage_id == id:
@@ -1883,16 +1914,37 @@ func _demolish(id: int) -> String:
 	# Mit einem Wohnhaus kann Wohnraum fehlen.
 	_send_away_surplus()
 	_combat().replan_enemies()
-	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
-	var cost := goods_cost_of(building.type)
-	var changed: Dictionary[int, bool] = {}
-	for good: String in cost:
-		@warning_ignore("integer_division")
-		_store_goods(good, cost[good] / 2, changed)
-	_emit_stock_changed(changed)
-	@warning_ignore("integer_division")
-	_change_treasury(gold_cost_of(building.type) / 2)
-	return ""
+
+
+## Nach einer Zerstörung: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, landet ohne
+## Schaden auf der nächsten freien Bodenkachel (_landing()) und bleibt dort – das ist sein neuer
+## Posten. Lag nur der Posten eines Soldaten dort, landet der Posten ebenso und der Soldat geht
+## dorthin. Die Posten anderer Soldaten sind tabu, auch die gerade vergebenen (nach ID aufsteigend).
+func _land_from_lost_wall_walk() -> void:
+	var taken := _posts_except({})
+	for resident: Resident in _residents.values():
+		if resident.level == Figure.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
+			taken.erase(resident.post)
+			var landing := _landing(resident.tile, taken)
+			resident.place_at(landing)
+			resident.post = landing
+			resident.timer = 0
+			taken[landing] = true
+			resident_changed.emit(resident.id)
+		elif resident.is_soldier() and not _is_walkable_position(resident.post):
+			taken.erase(resident.post)
+			resident.post = _landing(resident.post_tile(), taken)
+			taken[resident.post] = true
+			_report_change(resident, _send_to_post.bind(resident))
+
+
+## Die nächste freie Bodenkachel um tile (_search_outward()): begehbar, ohne Gebäude und kein
+## Posten in taken; gibt es keine, der Boden von tile selbst.
+func _landing(tile: Vector2i, taken: Dictionary[Vector3i, bool]) -> Vector3i:
+	var found := _search_outward(tile, func(candidate: Vector2i) -> bool:
+		return is_walkable(candidate, Figure.Level.GROUND) and get_building_at(candidate) == null \
+				and not taken.has(Figure.ground(candidate)))
+	return Figure.ground(tile if found.is_empty() else found[0])
 
 
 ## Nach einem Abriss: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, weicht aus

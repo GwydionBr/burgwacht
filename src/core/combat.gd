@@ -5,6 +5,11 @@ extends RefCounted
 ## auf Befehl an. Ein Angriff trifft sofort und ohne Zufall; wer keine Lebenspunkte mehr hat,
 ## stirbt. Fällt der Bergfried, ist die Partie verloren.
 ##
+## Feinde planen ihren Weg mit Zerstörungskosten (ADR 0005): Gebäude, auf denen sie nicht stehen
+## dürfen, gelten als begehbar, kosten aber so viel, wie es dauert, sie zu zerstören
+## (_breaking_cost()). Das erste Gebäude auf dem Weg ist das Hindernis; der Feind läuft heran und
+## greift es an. Ein zerstörtes Gebäude verschwindet (GameWorld._destroy()), dann planen alle neu.
+##
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
 ## einzige Wurzel des Zustands (ADR 0002). Die Spielwelt legt für jeden Aufruf ein Combat an
 ## (GameWorld._combat()); als ihr Teil benutzt Combat ihre internen Hilfen (Wegfindung, Feinde
@@ -153,6 +158,8 @@ func _is_keep_attacked() -> bool:
 	return false
 
 
+## Ein Takt eines Feinds. Zielvorrang: ein Soldat, den er erreicht, dann das Hindernis auf seinem
+## Weg, dann der Bergfried (_attack_in_way()); sonst geht er seinen Weg weiter.
 func _update_enemy(enemy: Enemy) -> void:
 	if enemy.cooldown > 0:
 		enemy.cooldown -= 1
@@ -171,46 +178,73 @@ func _update_enemy(enemy: Enemy) -> void:
 		if not _fight(enemy, target):
 			_drop_enemy_target(enemy)
 		return
-	if enemy.step_progress == 0 and _attack_keep(enemy):
+	if enemy.step_progress == 0 and _attack_in_way(enemy):
 		return
 	if enemy.is_moving() and enemy.step_progress == 0 and not _world._can_step(enemy):
 		_send_enemy_to_keep(enemy)
 	enemy.advance()
 
 
-## Ein Takt am Bergfried: Hat der Feind ihn in Reichweite (_in_reach_of_building()), bleibt er
-## stehen und greift ihn an, sobald die Angriffsdauer seit dem letzten Angriff um ist. false, wenn
-## er ihn nicht in Reichweite hat.
-func _attack_keep(enemy: Enemy) -> bool:
+## Ein Takt am Gebäude, das dem Feind im Weg steht: zuerst das Hindernis (_obstacle_in_reach()),
+## sonst der Bergfried, wenn er ihn in Reichweite hat (_in_reach_of_building()). Er bleibt stehen
+## und greift es an, sobald die Angriffsdauer seit dem letzten Angriff um ist; seinen Weg legt er
+## dafür ab, das Ziel merkt er sich (target_building_id). false, wenn er keines in Reichweite hat.
+func _attack_in_way(enemy: Enemy) -> bool:
+	var building := _obstacle_in_reach(enemy)
 	var keep := _world._keep()
-	if not _in_reach_of_building(enemy, keep):
+	if building == null and _in_reach_of_building(enemy, keep):
+		building = keep
+	if building == null:
 		if enemy.target_building_id != 0:
 			enemy.target_building_id = 0
 			_world.enemy_changed.emit(enemy.id)
 		return false
 	enemy.path.clear()
-	if enemy.target_building_id != keep.id:
-		enemy.target_building_id = keep.id
+	if enemy.target_building_id != building.id:
+		enemy.target_building_id = building.id
 		_world.enemy_changed.emit(enemy.id)
 	if enemy.cooldown == 0:
-		_hit_building(enemy, keep)
+		_hit_building(enemy, building)
 	return true
 
 
-## Hat der Kämpfer das Gebäude in Reichweite? Nahkämpfer am Boden auf einer Nachbarkachel der
-## Grundfläche (auch schräg), Fernkämpfer bis zu ihrer Reichweite zur nächsten Kachel der
-## Grundfläche.
+## Das Hindernis, das der Feind jetzt angreift: das erste Gebäude auf seinem Weg, auf dem er nicht
+## stehen darf (_obstacle_at()), wenn er es in Reichweite hat. Ohne Weg (er greift schon an) das
+## Hindernis, das er sich gemerkt hat, solange es steht und in Reichweite ist. Sonst null.
+func _obstacle_in_reach(enemy: Enemy) -> Building:
+	var obstacle: Building = null
+	if enemy.is_moving():
+		for position in enemy.path:
+			obstacle = _obstacle_at(position)
+			if obstacle != null:
+				break
+	else:
+		obstacle = _world.get_building(enemy.target_building_id)
+		if obstacle != null and obstacle == _world._keep():
+			obstacle = null
+	if obstacle != null and _in_reach_of_building(enemy, obstacle):
+		return obstacle
+	return null
+
+
+## Hat der Kämpfer das Gebäude in Reichweite (_in_reach_at())?
 func _in_reach_of_building(figure: Figure, building: Building) -> bool:
-	var type := figure.fighter_type()
-	var distance := _distance_to_building(figure.tile, building)
+	return _in_reach_at(figure.fighter_type(), figure.position(), building)
+
+
+## Hätte ein Kämpfer dieses Typs auf position das Gebäude in Reichweite? Nahkämpfer am Boden auf
+## einer Nachbarkachel der Grundfläche (auch schräg), Fernkämpfer bis zu ihrer Reichweite zur
+## nächsten Kachel der Grundfläche.
+func _in_reach_at(type: String, position: Vector3i, building: Building) -> bool:
+	var distance := _distance_to_building(Vector2i(position.x, position.y), building)
 	if FighterType.is_melee(type):
-		return figure.level == Figure.Level.GROUND and distance > 0.0 and distance < 1.5
-	return distance <= FighterType.range_of(type) + _range_bonus(figure) + Figure.DISTANCE_SLACK
+		return position.z == Figure.Level.GROUND and distance > 0.0 and distance < 1.5
+	return distance <= FighterType.range_of(type) + _range_bonus_at(type, position) + Figure.DISTANCE_SLACK
 
 
 ## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
 ## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“); fällt er auf 0,
-## ist die Partie verloren.
+## ist die Partie verloren. Jedes andere Gebäude ist bei 0 zerstört (GameWorld._destroy()).
 func _hit_building(figure: Figure, building: Building) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
@@ -225,6 +259,8 @@ func _hit_building(figure: Figure, building: Building) -> void:
 	if building == _world._keep() and building.hp == 0:
 		_world._defeated = true
 		_world.defeated.emit()
+	elif building.hp == 0:
+		_world._destroy(building)
 
 
 ## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei
@@ -247,43 +283,92 @@ func _drop_enemy_target(enemy: Enemy) -> void:
 	_world.enemy_changed.emit(enemy.id)
 
 
-## Schickt einen Feind zur erreichbaren Kachel, die dem Bergfried am nächsten liegt
-## (_keep_goal()); steht er schon dort oder gibt es keine, bleibt er stehen und wartet.
+## Schickt einen Feind auf dem schnellsten Weg zum Bergfried (_keep_route()); steht er schon in
+## Reichweite oder erreicht er ihn gar nicht (Gelände), bleibt er stehen und wartet.
 func _send_enemy_to_keep(enemy: Enemy) -> void:
 	if enemy.is_moving() and not _world._can_step(enemy):
 		# Die Kachel, auf die er gerade tritt, ist versperrt: zurück auf seine.
 		enemy.step_progress = 0
-	var goal := _keep_goal(enemy.plan_start())
-	if goal.is_empty() or not _world._route_to(enemy, goal[0]):
+	if not _world._follow(enemy, _keep_route(enemy)):
 		enemy.stop()
 
 
-## Die von start aus für Feinde erreichbare Kachel am Boden außerhalb des Bergfrieds, die seiner Grundfläche am
-## nächsten liegt (Abstand der Kachelmitten); bei Gleichstand die mit dem kürzeren Weg, dann die
-## kleinere (zeilenweise). Ist der Weg frei, ist das eine Kachel direkt am Bergfried. Als
-## [Position], leer, wenn es keine gibt.
-func _keep_goal(start: Vector3i) -> Array[Vector3i]:
+## Der schnellste Weg des Feinds ab plan_start() zu einer Position, von der aus er den Bergfried in
+## Reichweite hat (_in_reach_at()), mit Zerstörungskosten für Hindernisse (_breaking_cost()); bei
+## gleichen Kosten zur kleineren Position (zeilenweise, dann Boden vor Wehrgang). Samt Start wie
+## Pathfinder.find_path(); leer, wenn das Gelände keinen zulässt.
+func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var keep := _world._keep()
-	var best: Array[Vector3i] = []
-	var best_distance := INF
-	var best_length := INF
-	var distances := _world._distances(start, GameWorld.Walker.ENEMY)
-	for position: Vector3i in distances:
-		var tile := Vector2i(position.x, position.y)
-		if position.z != Figure.Level.GROUND or _world.get_building_at(tile) == keep:
+	var start := enemy.plan_start()
+	var extra_cost := _breaking_cost.bind(enemy.type)
+	var costs := Pathfinder.distances(start, _is_enemy_passable, INF, _enemy_ascents, _enemy_steppable, extra_cost)
+	var goal := start
+	var best := INF
+	for position: Vector3i in costs:
+		if not _in_reach_at(enemy.type, position, keep):
 			continue
-		var distance := _distance_to_building(tile, keep)
-		var length := distances[position]
-		var better := distance < best_distance - Figure.DISTANCE_SLACK
-		if not better and absf(distance - best_distance) <= Figure.DISTANCE_SLACK:
-			better = length < best_length and not Pathfinder.same_length(length, best_length)
-			if not better and Pathfinder.same_length(length, best_length):
-				better = GameWorld._row_order(tile, Vector2i(best[0].x, best[0].y))
+		var cost := costs[position]
+		var better := cost < best and not Pathfinder.same_length(cost, best)
+		if not better and Pathfinder.same_length(cost, best):
+			better = _position_order(position, goal)
 		if better:
-			best = [position]
-			best_distance = distance
-			best_length = length
-	return best
+			goal = position
+			best = cost
+	if best == INF:
+		var none: Array[Vector3i] = []
+		return none
+	return Pathfinder.find_path(start, goal, _is_enemy_passable, _enemy_ascents, _enemy_steppable, extra_cost)
+
+
+## Feste Reihenfolge von Positionen: zeilenweise, auf derselben Kachel Boden vor Wehrgang.
+static func _position_order(a: Vector3i, b: Vector3i) -> bool:
+	if a.x == b.x and a.y == b.y:
+		return a.z < b.z
+	return GameWorld._row_order(Vector2i(a.x, a.y), Vector2i(b.x, b.y))
+
+
+## Das Hindernis auf position: ein zerstörbares Gebäude außer dem Bergfried, das am Boden auf
+## sonst begehbarem Gelände steht und auf dem Feinde nicht stehen dürfen (Mauer, Tor, Turm, alle
+## Gebäude außer Treppe und Eingängen). null, wenn dort keines ist.
+func _obstacle_at(position: Vector3i) -> Building:
+	if position.z != Figure.Level.GROUND or not _world._is_open_ground(position) \
+			or _world._can_stand(position, GameWorld.Walker.ENEMY):
+		return null
+	var building := _world.get_building_at(Vector2i(position.x, position.y))
+	if building == null or not building.is_destructible() or building == _world._keep():
+		return null
+	return building
+
+
+## Begehbar für die Wegplanung der Feinde: wo sie stehen dürfen oder ein Hindernis.
+func _is_enemy_passable(position: Vector3i) -> bool:
+	return _world._can_stand(position, GameWorld.Walker.ENEMY) or _obstacle_at(position) != null
+
+
+## Zerstörungskosten (ADR 0005): Ein Hindernis auf position kostet so viele Kacheln Weg, wie ein
+## Feind dieses Typs in der Zeit zurücklegt, die er braucht, um es zu zerstören:
+## (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Sonst 0.
+func _breaking_cost(position: Vector3i, type: String) -> float:
+	var obstacle := _obstacle_at(position)
+	if obstacle == null:
+		return 0.0
+	return float(obstacle.hp) / FighterType.damage_of(type) * FighterType.attack_ticks(type) \
+			/ FighterType.ticks_per_tile(type)
+
+
+## Ebenenwechsel der Feinde wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch
+## einen Turm, den er erst zerstört, kommt er nicht auf dessen Wehrgang.
+func _enemy_ascents(position: Vector3i) -> Array[Vector3i]:
+	if _obstacle_at(position) != null:
+		var none: Array[Vector3i] = []
+		return none
+	return _world._ascents(position)
+
+
+## Schritte der Feinde wie GameWorld._is_steppable(); auf ein Hindernis und von ihm herunter
+## immer (ein zerstörtes Gebäude hat keinen Eingang mehr).
+func _enemy_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _obstacle_at(from) != null or _obstacle_at(to) != null or _world._is_steppable(from, to)
 
 
 ## Abstand einer Kachel zur nächsten Kachel der Grundfläche eines Gebäudes (0 auf ihr).
@@ -437,12 +522,15 @@ func _stop_attack(soldier: Resident) -> void:
 
 ## Zusätzliche Reichweite auf dem Wehrgang: Bonus des Kämpfertyps und des Gebäudes darunter.
 func _range_bonus(figure: Figure) -> int:
-	var type := figure.fighter_type()
-	var result := 0
-	var below := _world.get_building_at(figure.tile)
-	if figure.level == Figure.Level.WALL_WALK and below != null:
-		result += FighterType.wall_walk_range_bonus(type) + below.range_bonus()
-	return result
+	return _range_bonus_at(figure.fighter_type(), figure.position())
+
+
+## Zusätzliche Reichweite eines Kämpfers dieses Typs auf position (_range_bonus()).
+func _range_bonus_at(type: String, position: Vector3i) -> int:
+	var below := _world.get_building_at(Vector2i(position.x, position.y))
+	if position.z == Figure.Level.WALL_WALK and below != null:
+		return FighterType.wall_walk_range_bonus(type) + below.range_bonus()
+	return 0
 
 
 ## Nächster Gegner (Abstand der Kachelmitten, bei Gleichstand kleinere ID); mit max_length
