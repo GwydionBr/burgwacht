@@ -8,6 +8,7 @@
   "start_gold": 100,
   "waves": {
     "grace_days": 5,
+    "warning_days": 1,
     "formula": {
       "every_days": 3,
       "enemies": { "bandit": { "base": 3, "growth": 1 } }
