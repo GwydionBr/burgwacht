@@ -39,6 +39,10 @@
 		"name": "Räuber greifen den Bergfried an, Lebensbalken",
 		"args": ["--setup=keep_attack", "--focus=4,4", "--hover=3,3"]
 	},
+	"siege": {
+		"name": "Räuber hacken an einer Mauer, Mauerstücke beschädigt",
+		"args": ["--setup=siege", "--focus=9,11", "--hover=7,11"]
+	},
 	"defeat": {
 		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",
 		"args": ["--setup=defeat", "--focus=4,4"]
