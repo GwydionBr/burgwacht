@@ -253,7 +253,7 @@ func test_free_play_brings_the_first_wave_on_day_six() -> void:
 	assert_eq(world.get_day(), 6, "Tag:")
 	assert_eq(_enemy_waves(world), [1, 1, 1] as Array[int], "Welle 1 mit drei Räubern:")
 	var next := scenario.wave_plan.wave(2)
-	assert_eq([next.day, next.enemies, next.side], [9, {"bandit": 4}, ""], "Welle 2 laut Plan:")
+	assert_eq([next.day, next.enemies, next.side], [9, {"bandit": 4, "poacher": 0}, ""], "Welle 2 laut Plan (Wilderer erst ab Welle 3):")
 
 
 func test_wave_on_day_one_appears_at_founding() -> void:

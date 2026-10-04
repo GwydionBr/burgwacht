@@ -317,8 +317,12 @@ Wie viel Schaden ein Kämpfer oder ein Gebäude noch verträgt; bei 0 stirbt der
 _Avoid_: HP, Gesundheit, Trefferpunkte
 
 **Feind**:
-Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
+Ein angreifender Kämpfer, der nicht zur Burg gehört: der Räuber (Nahkampf) oder der Wilderer (Fernkampf). Unbewaffnete Bewohner sind nie sein Ziel.
 _Avoid_: Gegner, Angreifer, Mob
+
+**Wilderer**:
+Ein Feind im Fernkampf, etwas schwächer als der Bogenschütze. Er schießt aus der Entfernung auf Soldaten in Reichweite, auch auf dem Wehrgang, sonst auf das Hindernis auf seinem Weg, sonst auf den Bergfried; dafür läuft er nicht heran.
+_Avoid_: Bogenschütze (das ist der eigene Soldat), Jäger (das ist ein Arbeitsplatz)
 
 **Hindernis**:
 Das erste Gebäude auf dem geplanten Weg eines Feinds, auf dem er nicht stehen darf (Mauer, Tor, Turm und alle übrigen Gebäude außer Treppe, Lagerfeuer und Bergfried). Der Feind läuft heran und greift es an, wenn das schneller ist als ein offener Umweg (ADR 0005).

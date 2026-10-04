@@ -43,6 +43,10 @@
 		"name": "Räuber hacken an einer Mauer, Mauerstücke beschädigt",
 		"args": ["--setup=siege", "--focus=9,11", "--hover=7,11"]
 	},
+	"poacher": {
+		"name": "Wilderer beschießen Bogenschützen auf dem Wehrgang, Pfeile im Flug",
+		"args": ["--setup=poacher", "--ticks=15", "--focus=6,9", "--hover=8,10"]
+	},
 	"defeat": {
 		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",
 		"args": ["--setup=defeat", "--focus=4,4"]

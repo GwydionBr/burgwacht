@@ -41,5 +41,16 @@
     "sight": 6,
     "ticks_per_tile": 6,
     "color": "#6b3a8c"
+  },
+  "poacher": {
+    "name": "Wilderer",
+    "kind": "enemy",
+    "hp": 40,
+    "damage": 10,
+    "attack_ticks": 15,
+    "range": 6,
+    "sight": 7,
+    "ticks_per_tile": 5,
+    "color": "#b0682c"
   }
 }

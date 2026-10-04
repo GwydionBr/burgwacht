@@ -54,7 +54,7 @@ func _keep_distance(tile: Vector2i) -> float:
 
 
 func test_bandit_comes_from_data() -> void:
-	assert_eq(FighterType.enemy_ids(), ["bandit"] as Array[String], "Feindtypen:")
+	assert_eq(FighterType.enemy_ids(), ["bandit", "poacher"] as Array[String], "Feindtypen (der Räuber zuerst, für den Debug-Feind):")
 	assert_true(not SoldierType.is_soldier_type("bandit"), "Kein Soldatentyp")
 	assert_eq([FighterType.name_of("bandit"), FighterType.max_hp("bandit"), FighterType.damage_of("bandit"),
 			FighterType.attack_ticks("bandit"), FighterType.is_melee("bandit"), FighterType.sight_of("bandit"),
