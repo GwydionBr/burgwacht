@@ -71,12 +71,14 @@ func _announce(wave: PlannedWave) -> void:
 	_world.announcement_changed.emit()
 
 
-## Debug-Befehl: Die nächste Welle erscheint sofort, die danach kommen wie geplant.
+## Debug-Befehl: Die nächste Welle erscheint sofort, die danach kommen wie geplant. Ist die
+## übernächste schon in ihrer Vorwarnzeit, beginnt ihre Ankündigung gleich mit (update()).
 func spawn_next() -> String:
 	var reason := _world.spawn_wave_error()
 	if reason != "":
 		return reason
 	_spawn(planned_wave(_world._next_wave))
+	update()
 	return ""
 
 

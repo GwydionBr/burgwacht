@@ -148,3 +148,14 @@ func test_debug_wave_takes_the_announced_side_and_the_next_announcement_begins()
 	_run_world(world, DAY)
 	assert_eq(world.get_announced_side(), "south", "Ankündigung von Welle 2 an Tag 2:")
 	assert_eq(world.get_enemies().size(), 1, "An Tag 2 keine weitere Welle:")
+
+
+func test_after_the_debug_wave_the_next_announcement_begins_at_once() -> void:
+	# Vorwarnzeit 2 Tage: Welle 2 (Tag 3) ist schon an Tag 1 in ihrer Vorwarnzeit.
+	var world := _founded([{"day": 2, "enemies": {"bandit": 1}, "side": "east"},
+			{"day": 3, "enemies": {"bandit": 1}, "side": "south"}], 2)
+	var notices := _notices(world)
+	assert_eq(world.execute(Command.spawn_wave()), "", "Debug-Welle:")
+	assert_eq([world.get_announced_side(), world.get_announced_ticks()], ["south", 2 * DAY], "Sofort, ohne Takt:")
+	assert_eq(notices.filter(func(text: String) -> bool: return text.begins_with("Welle")),
+			["Welle aus Osten!", "Welle aus Süden in 2 Tagen"], "Meldungen:")
