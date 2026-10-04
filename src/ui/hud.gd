@@ -250,14 +250,14 @@ func show_day(day: int) -> void:
 	_day_label.text = "Tag %d" % day
 
 
-## Ankündigung in der Titelleiste: Seite (Waves.SIDES, leer = keine) und Countdown in Spielzeit
+## Ankündigung in der Titelleiste: Seite (MapSide, leer = keine) und Countdown in Spielzeit
 ## (Minuten:Sekunden bei 1×, GameClock.TICKS_PER_SECOND), aufgerundet auf volle Sekunden.
 func show_announcement(side: String, ticks: int) -> void:
 	_announcement_panel.visible = side != ""
 	if side == "":
 		return
 	var seconds := ceili(float(ticks) / GameClock.TICKS_PER_SECOND)
-	var text := "Welle aus %s in %d:%02d" % [Waves.SIDE_NAMES[side], seconds / 60, seconds % 60]
+	var text := "Welle aus %s in %d:%02d" % [MapSide.name_of(side), seconds / 60, seconds % 60]
 	if _announcement_label.text != text:
 		_announcement_label.text = text
 		_announcement_panel.reset_size()

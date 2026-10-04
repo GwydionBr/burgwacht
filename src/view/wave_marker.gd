@@ -7,10 +7,6 @@ extends Node2D
 const COLOR := Color("#e0402a")
 const FILL_COLOR := Color(0.88, 0.25, 0.16, 0.28)
 const OUTLINE_COLOR := Color(0.12, 0.04, 0.02, 0.85)
-## Seite → Richtung aus der Karte hinaus (in Kacheln).
-const OUTWARD: Dictionary[String, Vector2i] = {
-	"north": Vector2i(0, -1), "east": Vector2i(1, 0), "south": Vector2i(0, 1), "west": Vector2i(-1, 0),
-}
 ## Der Pfeil beginnt so viele Kacheln außerhalb und endet so weit vor der Kachelmitte (Anteil).
 const ARROW_TILES := 2.6
 const ARROW_GAP := 0.45
@@ -26,7 +22,7 @@ var _side := ""
 var _time := 0.0
 
 
-## Zeigt die Markierung an dieser Randkachel der Seite (Waves.SIDES).
+## Zeigt die Markierung an dieser Randkachel der Seite (MapSide).
 func show_at(tile: Vector2i, side: String) -> void:
 	_tile = tile
 	_side = side
@@ -48,7 +44,7 @@ func _draw() -> void:
 	poly.append(poly[0])
 	draw_polyline(poly, COLOR, 2.0, true)
 	var center := Iso.tile_to_world(_tile)
-	var outside := Iso.tile_to_world(_tile + OUTWARD[_side] * 3)
+	var outside := Iso.tile_to_world(_tile + MapSide.outward(_side) * 3)
 	var direction := (center - outside).normalized()
 	var length := (center - outside).length() / 3.0
 	var tip := center - direction * (ARROW_GAP * length + BOB_PIXELS * pulse)

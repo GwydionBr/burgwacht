@@ -208,12 +208,12 @@ func _waves_data(waves: Variant) -> Dictionary:
 func test_wave_list_is_read() -> void:
 	var scenario := Scenario.from_dict("test", _waves_data({"list": [
 		{"day": 2.0, "enemies": {"bandit": 3.0}, "side": "north"},
-		{"day": 2, "enemies": {"bandit": 0}},
+		{"day": 3, "enemies": {"bandit": 0}},
 		{"day": 5, "enemies": {"bandit": 1}, "side": "west"},
 	]}))
 	assert_eq(scenario.error, "", "Fehler:")
 	var read := scenario.wave_plan.list.map(func(wave: PlannedWave) -> Array: return [wave.day, wave.enemies, wave.side])
-	assert_eq(read, [[2, {"bandit": 3}, "north"], [2, {"bandit": 0}, ""], [5, {"bandit": 1}, "west"]], "Wellen:")
+	assert_eq(read, [[2, {"bandit": 3}, "north"], [3, {"bandit": 0}, ""], [5, {"bandit": 1}, "west"]], "Wellen:")
 
 
 func test_missing_wave_plan_means_no_waves() -> void:
@@ -251,6 +251,13 @@ func test_waves_with_descending_days_are_invalid() -> void:
 	var error := _error_for(_waves_data({"list": [
 		{"day": 4, "enemies": {"bandit": 1}}, {"day": 3, "enemies": {"bandit": 1}}]}))
 	assert_true(error.contains("waves") and error.contains("aufsteigend"), "Absteigende Tage: " + error)
+
+
+func test_waves_on_the_same_day_are_invalid() -> void:
+	# Angekündigt wird nur die nächste Welle; zwei am selben Tag ließen eine unangekündigt.
+	var error := _error_for(_waves_data({"list": [
+		{"day": 3, "enemies": {"bandit": 1}}, {"day": 3, "enemies": {"bandit": 2}}]}))
+	assert_true(error.contains("waves") and error.contains("aufsteigend"), "Gleiche Tage: " + error)
 
 
 func test_wave_with_negative_count_is_invalid() -> void:
@@ -304,6 +311,17 @@ func test_without_list_the_first_formula_wave_comes_after_the_grace_days() -> vo
 		planned.append(_planned(scenario, number))
 	assert_eq(planned, [[6, {"bandit": 1}, ""], [9, {"bandit": 1}, ""], [12, {"bandit": 2}, ""],
 			[15, {"bandit": 2}, ""], [18, {"bandit": 3}, ""]], "Formelwellen:")
+
+
+func test_first_formula_wave_comes_a_day_after_the_list_at_the_earliest() -> void:
+	# every_days ist mindestens 1, also teilt die erste Formelwelle nie den Tag der letzten Listenwelle.
+	var scenario := Scenario.from_dict("test", _waves_data({
+		"list": [{"day": 2, "enemies": {"bandit": 1}}],
+		"formula": {"every_days": 1, "enemies": {"bandit": {"base": 1, "growth": 0}}},
+	}))
+	assert_eq([_planned(scenario, 1)[0], _planned(scenario, 2)[0], _planned(scenario, 3)[0]], [2, 3, 4], "Tage:")
+	assert_true(_error_for(_waves_data({"formula": {"every_days": 0, "enemies": {}}})).contains("every_days"),
+			"Abstand 0 ist ungültig")
 
 
 func test_without_grace_days_the_first_formula_wave_comes_on_day_one() -> void:

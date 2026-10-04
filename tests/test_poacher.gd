@@ -131,6 +131,21 @@ func test_poacher_shoots_an_archer_on_the_wall_walk() -> void:
 	assert_eq(world.enemy_activity_of(poacher), "Wilderer – greift Bogenschütze an", "Tätigkeit:")
 
 
+func test_poacher_on_a_tower_gets_no_range_bonus() -> void:
+	var world := _with_soldiers(["swordsman"] as Array[String])
+	var swordsman := world.get_resident(1)
+	_place(world, 1, Figure.ground(Vector2i(12, 24)))
+	var tower := build(world, "tower", Vector2i(12, 16))
+	assert_true(world.get_building(tower).range_bonus() > 0, "Turm mit Reichweitenbonus")
+	# Oben auf dem Turm, 8 Kacheln vom Schwertkämpfer: außer Reichweite 6, auch wenn Bogenschützen
+	# dort weiter reichen.
+	var poacher := add_enemy(world, "poacher", Vector2i(18, 30))
+	poacher.place_at(Vector3i(12, 16, Figure.Level.WALL_WALK))
+	world.step()
+	assert_eq(poacher.target_id, 0, "Kein Ziel außer Reichweite:")
+	assert_eq(swordsman.hp, 100, "Unverletzt:")
+
+
 func test_swordsman_hunts_down_the_poacher_like_any_enemy() -> void:
 	var world := _with_soldiers(["swordsman"] as Array[String])
 	var post := Figure.ground(Vector2i(13, 6))

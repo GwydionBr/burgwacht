@@ -7,7 +7,7 @@ extends RefCounted
 var day: int
 ## Feindtyp aus units.json → Anzahl, in der Reihenfolge der Datei; in dieser Reihenfolge erscheinen sie.
 var enemies: Dictionary[String, int] = {}
-## Eine Seite aus Waves.SIDES oder leer.
+## Eine Seite (MapSide) oder leer.
 var side := ""
 
 

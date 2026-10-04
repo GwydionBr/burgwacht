@@ -79,6 +79,18 @@ func test_bandit_breaks_the_wall_when_the_detour_is_too_long() -> void:
 	assert_eq(target.hp, 300 - 12, "Erster Treffer:")
 
 
+func test_wide_building_costs_its_destruction_only_once() -> void:
+	var world := _founded()
+	# Waffenkammer (3×3, 150 LP, x = 8..10, y = 10..12) in der Mauerlinie; Mauern vor ihrem
+	# Eingang (9, 12), damit man sie nur ganz durchqueren kann. Einmal durchbrechen ≈ 20,8 Kacheln,
+	# billiger als die volle Mauer daneben (≈ 41,7). Je durchquerter Kachel berechnet wären es ≈ 62,5.
+	var armory := _in_line(world, "armory", Vector2i(WALL_X - 2, 10))
+	_wall(world, Vector2i(WALL_X - 3, 13), Vector2i(WALL_X - 1, 13))
+	var bandit := add_enemy(world, "bandit", Vector2i(16, 11))
+	_until(world, func() -> bool: return bandit.target_building_id != 0, "Angriff")
+	assert_eq(bandit.target_building_id, armory, "Greift die Waffenkammer an:")
+
+
 # --- Zerstörung --------------------------------------------------------------------------------
 
 ## Baut ein Gebäude dieses Typs bei origin, dessen rechte Spalte in der Mauerlinie x = WALL_X
@@ -188,6 +200,18 @@ func _gate_or_wall(gate_hp: int) -> String:
 func test_damaged_gate_is_preferred_over_a_full_wall_once_it_is_cheaper() -> void:
 	assert_eq(_gate_or_wall(400), "wall", "Volles Tor (≈ 55,6) teurer als die Mauer daneben (≈ 41,7):")
 	assert_eq(_gate_or_wall(240), "gate", "Angeschlagenes Tor (≈ 33,3) billiger:")
+
+
+func test_obstacle_takes_priority_over_the_keep() -> void:
+	var world := _founded()
+	# Mauer bei (6, 3) direkt östlich am Bergfried; der Räuber steht bei (6, 4), neben beiden, und
+	# sein Weg führt durch die Mauer: Er greift erst das Hindernis an.
+	var wall := build(world, "wall", Vector2i(6, 3))
+	var bandit := add_enemy(world, "bandit", Vector2i(6, 4))
+	bandit.path = [Figure.ground(Vector2i(6, 3)), Figure.ground(Vector2i(6, 2))] as Array[Vector3i]
+	world.step()
+	assert_eq(bandit.target_building_id, wall, "Greift die Mauer an:")
+	assert_eq([world.get_building(wall).hp, world.get_building(KEEP).hp], [300 - 12, 1000], "Lebenspunkte:")
 
 
 func test_bandit_walks_on_through_the_destroyed_wall() -> void:

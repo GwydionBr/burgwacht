@@ -14,10 +14,14 @@ extends RefCounted
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
 ## einzige Wurzel des Zustands (ADR 0002). Die Spielwelt legt für jeden Aufruf ein Combat an
 ## (GameWorld._combat()); als ihr Teil benutzt Combat ihre internen Hilfen (Wegfindung, Feinde
-## hinzufügen und entfernen).
+## hinzufügen und entfernen, Meldung am Bergfried, Niederlage), schreibt ihren Zustand aber nicht
+## selbst.
 
 ## Meldung beim ersten Treffer eines Angriffs auf den Bergfried.
 const KEEP_ATTACKED := "Der Bergfried wird angegriffen!"
+## Nahkampf-Reichweite zu einem Gebäude: Abstand zur nächsten Kachel der Grundfläche unter diesem
+## Wert, also auf einer Nachbarkachel, auch schräg (√2 < 1,5).
+const MELEE_REACH := 1.5
 
 var _world: GameWorld
 
@@ -141,13 +145,13 @@ func enemy_hit(enemy: Enemy) -> void:
 ## läuft er weiter zum Bergfried (_send_enemy_to_keep()).
 func update_enemies() -> void:
 	for enemy in _world.get_enemies():
-		if _world._defeated:
+		if _world.is_defeated():
 			return
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
-	if _world._keep_alarmed_waves.has(0) and not _is_keep_attacked_without_wave():
+	if _world._is_keep_alarmed(0) and not _is_keep_attacked_without_wave():
 		# Der Angriff der Feinde ohne Welle ist vorbei; der nächste wird wieder gemeldet.
-		_world._keep_alarmed_waves.erase(0)
+		_world._end_keep_alarm(0)
 
 
 ## Greift gerade ein Feind ohne Welle (Startfeind, Debug-Feind) den Bergfried an?
@@ -240,7 +244,7 @@ func _in_reach_of_building(figure: Figure, building: Building) -> bool:
 func _in_reach_at(type: String, position: Vector3i, building: Building) -> bool:
 	var distance := _distance_to_building(Vector2i(position.x, position.y), building)
 	if FighterType.is_melee(type):
-		return position.z == Figure.Level.GROUND and distance > 0.0 and distance < 1.5
+		return position.z == Figure.Level.GROUND and distance > 0.0 and distance < MELEE_REACH
 	return distance <= FighterType.range_of(type) + _range_bonus_at(type, position) + Figure.DISTANCE_SLACK
 
 
@@ -257,12 +261,10 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
 	var wave := (figure as Enemy).wave if figure is Enemy else 0
-	if building == _world._keep() and not _world._keep_alarmed_waves.has(wave):
-		_world._keep_alarmed_waves.append(wave)
+	if building == _world._keep() and _world._alarm_keep(wave):
 		_world.notice.emit(KEEP_ATTACKED)
 	if building == _world._keep() and building.hp == 0:
-		_world._defeated = true
-		_world.defeated.emit()
+		_world._lose()
 	elif building.hp == 0:
 		_world._destroy(building)
 
@@ -318,13 +320,13 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var keep := _world._keep()
 	var type := enemy.type
 	var is_goal := func(position: Vector3i) -> bool: return _in_reach_at(type, position, keep)
-	# Nahkämpfer: Eine Kachel in Reichweite liegt höchstens √2 < 1,5 von der Grundfläche entfernt,
-	# also fehlen von position aus mindestens so viele Kacheln weniger 1,5. Fernkämpfer suchen
-	# ohne Schätzung (ihre Reichweite hängt am Wehrgang darunter).
+	# Nahkämpfer: Eine Kachel in Reichweite liegt weniger als MELEE_REACH von der Grundfläche
+	# entfernt, also fehlen von position aus mindestens so viele Kacheln weniger MELEE_REACH.
+	# Fernkämpfer suchen ohne Schätzung.
 	var estimate := Callable()
 	if FighterType.is_melee(type):
 		estimate = func(position: Vector3i) -> float:
-			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - 1.5, 0.0)
+			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - MELEE_REACH, 0.0)
 	var map := _EnemyMap.new(self, type)
 	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, map.is_passable, map.ascents,
 			map.is_steppable, map.extra_cost, estimate)
@@ -344,10 +346,11 @@ func _obstacle_at(position: Vector3i) -> Building:
 
 
 ## Die Karte, wie ein Feind dieses Typs sie für seinen Weg sieht (ADR 0005): Wo er stehen darf,
-## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber so viele Kacheln
-## Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu zerstören:
-## (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Merkt sich das je
-## Position, denn die Wegfindung fragt dieselbe Position oft.
+## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber beim Hineingehen
+## von außerhalb so viele Kacheln Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu
+## zerstören: (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Innerhalb
+## desselben Gebäudes kostet ein Schritt nichts extra, denn eine Zerstörung genügt. Merkt sich die
+## Kosten je Position, denn die Wegfindung fragt dieselbe Position oft.
 class _EnemyMap:
 	## Kein Hindernis, aber auch nicht begehbar.
 	const BLOCKED := -1.0
@@ -355,34 +358,44 @@ class _EnemyMap:
 	var _combat: Combat
 	var _type: String
 	var _costs: Dictionary[Vector3i, float] = {}
+	## Position → das Hindernis dort (null: keines), wie _costs gemerkt.
+	var _obstacles: Dictionary[Vector3i, Building] = {}
 
 	func _init(combat: Combat, type: String) -> void:
 		_combat = combat
 		_type = type
 
-	## Zusatzkosten auf position: 0, wo er stehen darf, Zerstörungskosten auf einem Hindernis,
-	## sonst BLOCKED.
+	## Kosten auf position: 0, wo er stehen darf, Zerstörungskosten auf einem Hindernis, sonst
+	## BLOCKED.
 	func cost_at(position: Vector3i) -> float:
 		if _costs.has(position):
 			return _costs[position]
 		var cost := BLOCKED
+		var obstacle: Building = null
 		if _combat._world._can_stand(position, GameWorld.Walker.ENEMY):
 			cost = 0.0
 		else:
-			var obstacle := _combat._obstacle_at(position)
+			obstacle = _combat._obstacle_at(position)
 			if obstacle != null:
 				cost = float(obstacle.hp) / FighterType.damage_of(_type) * FighterType.attack_ticks(_type) \
 						/ FighterType.ticks_per_tile(_type)
 		_costs[position] = cost
+		_obstacles[position] = obstacle
 		return cost
 
 	## Begehbar für die Wegplanung: wo er stehen darf oder ein Hindernis.
 	func is_passable(position: Vector3i) -> bool:
 		return cost_at(position) != BLOCKED
 
-	## Zerstörungskosten beim Betreten (Pathfinder, extra_cost).
-	func extra_cost(position: Vector3i) -> float:
-		return maxf(cost_at(position), 0.0)
+	## Zerstörungskosten für den Schritt von from auf to (Pathfinder, extra_cost): nur beim
+	## Hineingehen in ein Hindernis von außerhalb, nicht von einer anderen Kachel desselben.
+	func extra_cost(from: Vector3i, to: Vector3i) -> float:
+		var cost := maxf(cost_at(to), 0.0)
+		if cost > 0.0:
+			cost_at(from)
+			if _obstacles[from] == _obstacles[to]:
+				return 0.0
+		return cost
 
 	## Ebenenwechsel wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch einen Turm,
 	## den er erst zerstört, kommt er nicht auf dessen Wehrgang.
@@ -409,24 +422,24 @@ func spawn_enemy(type_id: String) -> String:
 	var reason := _world.spawn_enemy_error(type_id)
 	if reason != "":
 		return reason
-	_add_enemy(type_id, spawn_tile()[0])
+	add_enemy(type_id, spawn_tile()[0])
 	return ""
 
 
 ## Die Randkachel, auf der ein Feind erscheint: die freie, die der Grundfläche des Bergfrieds am
-## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
+## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (reaches_keep());
 ## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
-## nächste freie. Mit side (Waves.SIDES) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
+## nächste freie. Mit side (MapSide) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
 ## keine freie gibt.
 func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
-	var reaching := _reaches_keep()
+	var reaching := reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
 	var best_reaches := false
 	for tile in _edge_tiles(side):
-		if not _is_free_enemy_tile(tile):
+		if not is_free_enemy_tile(tile):
 			continue
 		var reaches := reaching.has(Figure.ground(tile))
 		var distance := _distance_to_building(tile, keep)
@@ -441,7 +454,7 @@ func spawn_tile(side := "") -> Array[Vector2i]:
 ## Die Randkacheln der Seite (leer: aller Seiten), zeilenweise.
 func _edge_tiles(side: String) -> Array[Vector2i]:
 	if side != "":
-		return Waves.side_tiles(_world.map, side)
+		return MapSide.tiles(_world.map, side)
 	var result: Array[Vector2i] = []
 	var map := _world.map
 	for y in map.height:
@@ -454,7 +467,7 @@ func _edge_tiles(side: String) -> Array[Vector2i]:
 ## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
 ## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground()). Je
 ## Zusammenhangsgebiet genügt eine Suche.
-func _reaches_keep() -> Dictionary[Vector3i, float]:
+func reaches_keep() -> Dictionary[Vector3i, float]:
 	var keep := _world._keep()
 	var result: Dictionary[Vector3i, float] = {}
 	for tile in Building.adjacent_tiles(keep.type, keep.origin):
@@ -465,7 +478,7 @@ func _reaches_keep() -> Dictionary[Vector3i, float]:
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).
-func _is_free_enemy_tile(tile: Vector2i) -> bool:
+func is_free_enemy_tile(tile: Vector2i) -> bool:
 	return _world.is_walkable(tile, Figure.Level.GROUND) and _world.get_building_at(tile) == null
 
 
@@ -474,15 +487,15 @@ func _is_free_enemy_tile(tile: Vector2i) -> bool:
 func add_start_enemies(start_enemies: Array[StartEnemy]) -> void:
 	for entry in start_enemies:
 		var found: Array[Vector2i] = [entry.tile]
-		if not _is_free_enemy_tile(entry.tile):
-			found = _world._search_outward(entry.tile, _is_free_enemy_tile)
+		if not is_free_enemy_tile(entry.tile):
+			found = _world._search_outward(entry.tile, is_free_enemy_tile)
 		if not found.is_empty():
-			_add_enemy(entry.type_id, found[0])
+			add_enemy(entry.type_id, found[0])
 
 
 ## Ein neuer Feind mit vollen Lebenspunkten (aus der Welle mit dieser Nummer, 0 = keiner); er
 ## läuft gleich zum Bergfried.
-func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+func add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
 	var enemy := _world._add_enemy(type_id, tile, wave)
 	_send_enemy_to_keep(enemy)
 	return enemy
@@ -559,13 +572,16 @@ func _stop_attack(soldier: Resident) -> void:
 	soldier.post = soldier.plan_start()
 
 
-## Zusätzliche Reichweite auf dem Wehrgang: Bonus des Kämpfertyps und des Gebäudes darunter.
+## Zusätzliche Reichweite auf dem Wehrgang: Bonus des Kämpfertyps und des Gebäudes darunter (Turm).
+## Nur für Soldaten; Feinde bekommen keinen (der Wilderer reicht überall 6).
 func _range_bonus(figure: Figure) -> int:
 	return _range_bonus_at(figure.fighter_type(), figure.position())
 
 
 ## Zusätzliche Reichweite eines Kämpfers dieses Typs auf position (_range_bonus()).
 func _range_bonus_at(type: String, position: Vector3i) -> int:
+	if FighterType.is_enemy_type(type):
+		return 0
 	var below := _world.get_building_at(Vector2i(position.x, position.y))
 	if position.z == Figure.Level.WALL_WALK and below != null:
 		return FighterType.wall_walk_range_bonus(type) + below.range_bonus()
