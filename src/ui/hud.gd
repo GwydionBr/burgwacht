@@ -83,7 +83,7 @@ var _demolish_button: Button
 var _defeat_panel: PanelContainer
 ## Dunkelt hinter der Niederlage-Ansicht das Spiel ab und fängt Klicks ab.
 var _defeat_dim: ColorRect
-## Erreichter Tag in der Niederlage-Ansicht.
+## Erreichter Tag und abgewehrte Wellen in der Niederlage-Ansicht.
 var _defeat_day_label: Label
 
 
@@ -213,9 +213,10 @@ func _ready() -> void:
 	_defeat_panel.visible = false
 
 
-## Zeigt die Niederlage-Ansicht mit dem erreichten Tag; das Spiel dahinter wird abgedunkelt.
-func show_defeat(day: int) -> void:
-	_defeat_day_label.text = "Erreicht: Tag %d" % day
+## Zeigt die Niederlage-Ansicht mit dem erreichten Tag und den abgewehrten Wellen; das Spiel
+## dahinter wird abgedunkelt.
+func show_defeat(day: int, repelled_waves: int) -> void:
+	_defeat_day_label.text = "Erreicht: Tag %d\nAbgewehrte Wellen: %d" % [day, repelled_waves]
 	_defeat_panel.visible = true
 	_defeat_dim.visible = true
 	_defeat_panel.reset_size()
