@@ -325,7 +325,15 @@ Eine Gruppe von Feinden, die gemeinsam zu einem bestimmten Zeitpunkt am Kartenra
 _Avoid_: Angriff, Invasion
 
 **Wellenplan**:
-Die Festlegung im Szenario, wann welche Wellen mit welchen Feinden von wo kommen.
+Die Festlegung im Szenario, wann welche Wellen mit welchen Feinden von wo kommen: zuerst eine feste Liste, danach endlos nach der Steigerungsformel.
+
+**Steigerungsformel**:
+Der Teil des Wellenplans, nach dem auf die feste Liste endlos weitere Wellen folgen: im Abstand von `every_days` Tagen, je Feindtyp abgerundet `base + growth × n` Feinde (n = Nummer der Formelwelle ab 0), jede von zufälliger Seite. Die erste Formelwelle kommt `every_days` nach der letzten Listenwelle.
+_Avoid_: Wachstumsformel, Endloswellen
+
+**Schonfrist**:
+Die Tage zu Beginn einer Partie ohne Welle, wenn die feste Liste leer ist (`grace_days`): Die erste Formelwelle kommt an Tag Schonfrist + 1. Im freien Spiel 5 Tage.
+_Avoid_: Friedenszeit, Aufbauphase
 
 **Seite**:
 Der Kartenrand, von dem eine Welle kommt: Norden, Osten, Süden oder Westen. Steht sie nicht im Wellenplan, wählt der Zufall der Spielwelt bei der Ankündigung eine, von der das Gelände den Bergfried erreicht.

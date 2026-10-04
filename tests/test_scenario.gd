@@ -272,3 +272,82 @@ func test_negative_or_broken_warning_days_are_invalid() -> void:
 	for days: Variant in [-1, 0.5, "1", null]:
 		var error := _error_for(_waves_data({"warning_days": days}))
 		assert_true(error.contains("waves") and error.contains("warning_days"), "Vorwarnzeit %s: %s" % [str(days), error])
+
+
+## Die Welle Nummer number des Wellenplans als [Tag, Feinde, Seite], [] ohne sie.
+func _planned(scenario: Scenario, number: int) -> Array:
+	var wave := scenario.wave_plan.wave(number)
+	return [] if wave == null else [wave.day, wave.enemies, wave.side]
+
+
+func test_wave_formula_follows_the_list() -> void:
+	var scenario := Scenario.from_dict("test", _waves_data({
+		"list": [{"day": 2, "enemies": {"bandit": 1}, "side": "east"}],
+		"formula": {"every_days": 3, "enemies": {"bandit": {"base": 3, "growth": 1}}},
+	}))
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(_planned(scenario, 1), [2, {"bandit": 1}, "east"], "Listenwelle:")
+	assert_eq(_planned(scenario, 2), [5, {"bandit": 3}, ""], "Erste Formelwelle:")
+	assert_eq(_planned(scenario, 3), [8, {"bandit": 4}, ""], "Zweite Formelwelle:")
+	assert_eq(_planned(scenario, 12), [35, {"bandit": 13}, ""], "Elfte Formelwelle:")
+
+
+func test_without_list_the_first_formula_wave_comes_after_the_grace_days() -> void:
+	var scenario := Scenario.from_dict("test", _waves_data({
+		"grace_days": 5,
+		"formula": {"every_days": 3, "enemies": {"bandit": {"base": 1, "growth": 0.5}}},
+	}))
+	assert_eq(scenario.error, "", "Fehler:")
+	# Abgerundet 1 + 0,5 × n: 1, 1, 2, 2, 3.
+	var planned: Array = []
+	for number in range(1, 6):
+		planned.append(_planned(scenario, number))
+	assert_eq(planned, [[6, {"bandit": 1}, ""], [9, {"bandit": 1}, ""], [12, {"bandit": 2}, ""],
+			[15, {"bandit": 2}, ""], [18, {"bandit": 3}, ""]], "Formelwellen:")
+
+
+func test_without_grace_days_the_first_formula_wave_comes_on_day_one() -> void:
+	var scenario := Scenario.from_dict("test", _waves_data({
+		"formula": {"every_days": 2, "enemies": {"bandit": {"base": 2, "growth": 0}}}}))
+	assert_eq(_planned(scenario, 1), [1, {"bandit": 2}, ""], "Erste Formelwelle:")
+
+
+func test_without_formula_no_wave_follows_the_list() -> void:
+	var scenario := Scenario.from_dict("test", _waves_data({"list": [{"day": 2, "enemies": {"bandit": 1}}]}))
+	assert_eq(_planned(scenario, 2), [], "Nach der Liste:")
+
+
+func _formula_error(formula: Variant) -> String:
+	return _error_for(_waves_data({"formula": formula}))
+
+
+func test_formula_with_unknown_enemy_type_is_invalid() -> void:
+	for type_id: String in ["swordsman", "drache"]:
+		var error := _formula_error({"every_days": 3, "enemies": {type_id: {"base": 1, "growth": 1}}})
+		assert_true(error.contains("waves") and error.contains("Feindtyp") and error.contains(type_id),
+				"Feindtyp %s: %s" % [type_id, error])
+
+
+func test_formula_every_days_below_one_is_invalid() -> void:
+	for every_days: Variant in [0, -2, 1.5, "3", null]:
+		var error := _formula_error({"every_days": every_days, "enemies": {"bandit": {"base": 1, "growth": 1}}})
+		assert_true(error.contains("waves") and error.contains("every_days"), "every_days %s: %s" % [str(every_days), error])
+
+
+func test_formula_with_negative_or_missing_numbers_is_invalid() -> void:
+	for numbers: Variant in [{"base": -1, "growth": 1}, {"base": 1, "growth": -0.5}, {"growth": 1}, {"base": "1", "growth": 1}, 3]:
+		var error := _formula_error({"every_days": 3, "enemies": {"bandit": numbers}})
+		assert_true(error.contains("waves") and error.contains("base") and error.contains("growth"),
+				"Werte %s: %s" % [str(numbers), error])
+
+
+func test_bad_formula_shape_is_invalid() -> void:
+	for formula: Variant in [3, [], {"every_days": 3}, {"every_days": 3, "enemies": [1]}]:
+		var error := _formula_error(formula)
+		assert_true(error.contains("waves") and error.contains("formula"), "Formel %s: %s" % [str(formula), error])
+
+
+func test_negative_grace_days_are_invalid() -> void:
+	for grace_days: Variant in [-1, 2.5, "5"]:
+		var error := _error_for(_waves_data({"grace_days": grace_days}))
+		assert_true(error.contains("waves") and error.contains("grace_days"), "Schonfrist %s: %s" % [str(grace_days), error])
