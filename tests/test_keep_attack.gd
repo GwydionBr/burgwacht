@@ -110,3 +110,46 @@ func test_first_hit_on_the_keep_is_announced_once_per_attack() -> void:
 	world.execute(Command.spawn_enemy("bandit"))
 	_until(world, func() -> bool: return world.get_building(KEEP).hp < hp, "Zweiter Angriff")
 	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Zweiter Angriff gemeldet:")
+
+
+## Fünf Räuber um den Bergfried: Er fällt nach gut 160 Takten.
+func _besieged() -> GameWorld:
+	var world := _founded()
+	for tile: Vector2i in [Vector2i(1, 2), Vector2i(1, 3), Vector2i(1, 4), Vector2i(2, 1), Vector2i(3, 1)]:
+		add_enemy(world, "bandit", tile)
+	return world
+
+
+func test_keep_at_zero_is_defeat_time_stops_and_commands_are_rejected() -> void:
+	var world := _besieged()
+	var defeats: Array[int] = []
+	world.defeated.connect(func() -> void: defeats.append(world.get_tick()))
+	assert_true(not world.is_defeated(), "Noch nicht verloren")
+	_until(world, world.is_defeated, "Niederlage")
+	assert_eq(world.get_building(KEEP).hp, 0, "Bergfried:")
+	assert_eq(defeats, [world.get_tick()] as Array[int], "Einmal gemeldet:")
+	var data := world.to_data()
+	for i in 20:
+		world.step()
+	assert_eq(world.get_tick(), int(data["tick"]), "Die Zeit steht:")
+	assert_eq(world.get_day(), 1, "Erreichter Tag:")
+	for command: Command in [Command.build("house", Vector2i(14, 2)), Command.spawn_enemy("bandit"),
+			Command.set_tax_rate("none"), Command.demolish(2)]:
+		assert_eq(world.execute(command), GameWorld.DEFEATED, "Abgelehnt:")
+	assert_eq(world.to_data(), data, "Nichts geändert")
+	assert_eq(defeats.size(), 1, "Nicht noch einmal gemeldet:")
+
+
+func test_defeat_is_saved_and_loaded() -> void:
+	var world := _besieged()
+	_until(world, func() -> bool: return world.get_building(KEEP).hp < 500, "Bergfried beschädigt")
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	assert_eq(loaded.get_building(KEEP).hp, world.get_building(KEEP).hp, "Lebenspunkte geladen:")
+	for i in 300:
+		world.step()
+		loaded.step()
+	assert_true(world.is_defeated(), "Verloren")
+	assert_eq(world_snapshot(loaded), world_snapshot(world), "Gleicher Verlauf:")
+	assert_eq(loaded.to_data(), world.to_data(), "Gleiche Daten:")
+	var reloaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	assert_true(reloaded.is_defeated(), "Niederlage geladen")

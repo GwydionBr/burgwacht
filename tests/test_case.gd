@@ -146,7 +146,7 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 		factors.append(factor.to_data())
 	return {
 		"tick": world.get_tick(), "size": Vector2i(map.width, map.height), "terrain": terrain, "deposits": deposits,
-		"founding": world.is_founding(), "buildings": buildings, "stock": stock, "residents": residents,
+		"founding": world.is_founding(), "defeated": world.is_defeated(), "buildings": buildings, "stock": stock, "residents": residents,
 		"enemies": enemies,
 		"popularity": world.get_popularity(), "ration": world.get_ration(), "eaten_ration": world.get_eaten_ration(),
 		"short_of_food": world.is_short_of_food(), "treasury": world.get_treasury(), "tax_rate": world.get_tax_rate(),

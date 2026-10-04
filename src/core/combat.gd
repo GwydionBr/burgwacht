@@ -134,6 +134,8 @@ func enemy_hit(enemy: Enemy) -> void:
 ## zum Bergfried (_send_enemy_to_keep()).
 func update_enemies() -> void:
 	for enemy in _world.get_enemies():
+		if _world._defeated:
+			return
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
 	if _world._keep_alarmed and not _is_keep_attacked():
@@ -206,7 +208,8 @@ func _in_reach_of_building(figure: Figure, building: Building) -> bool:
 
 
 ## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
-## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“).
+## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“); fällt er auf 0,
+## ist die Partie verloren.
 func _hit_building(figure: Figure, building: Building) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
@@ -218,6 +221,9 @@ func _hit_building(figure: Figure, building: Building) -> void:
 	if building == _world._keep() and not _world._keep_alarmed:
 		_world._keep_alarmed = true
 		_world.notice.emit(KEEP_ATTACKED)
+	if building == _world._keep() and building.hp == 0:
+		_world._defeated = true
+		_world.defeated.emit()
 
 
 ## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei
