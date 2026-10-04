@@ -244,6 +244,18 @@ func test_save_and_load_between_formula_waves_continues_the_same() -> void:
 	assert_eq(loaded.to_data(), world.to_data(), "Gleicher Verlauf bis Tag 8:")
 
 
+func test_free_play_brings_the_first_wave_on_day_six() -> void:
+	var scenario := Scenario.load_named(Scenario.DEFAULT)
+	var world := found_castle(GameWorld.create(scenario, 1))
+	_run_world(world, 5 * GameWorld.TICKS_PER_DAY - 1)
+	assert_eq(world.get_enemies().size(), 0, "Feinde in der Schonfrist:")
+	world.step()
+	assert_eq(world.get_day(), 6, "Tag:")
+	assert_eq(_enemy_waves(world), [1, 1, 1] as Array[int], "Welle 1 mit drei Räubern:")
+	var next := scenario.wave_plan.wave(2)
+	assert_eq([next.day, next.enemies, next.side], [9, {"bandit": 4}, ""], "Welle 2 laut Plan:")
+
+
 func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
