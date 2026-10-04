@@ -1,0 +1,9 @@
+{
+  "name": "Vorführung Meilenstein 7: Verteidigung",
+  "map": { "width": 32, "height": 28 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50, "apples": 150 },
+  "start_residents": 12,
+  "start_popularity": 80,
+  "start_gold": 300
+}
