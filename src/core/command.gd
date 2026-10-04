@@ -2,7 +2,7 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY }
+enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY, SPAWN_WAVE }
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes; bei BUILD_LINE der Anfang der Linie.
@@ -127,4 +127,12 @@ static func spawn_enemy(type_id: String) -> Command:
 	var command := Command.new()
 	command.kind = Kind.SPAWN_ENEMY
 	command.enemy_type = type_id
+	return command
+
+
+## Debug-Befehl: Die nächste Welle des Wellenplans erscheint sofort; der Plan läuft danach
+## normal weiter.
+static func spawn_wave() -> Command:
+	var command := Command.new()
+	command.kind = Kind.SPAWN_WAVE
 	return command

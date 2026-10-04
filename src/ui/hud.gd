@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Belegung je Lagerart, Bewohnern und Gold, Meldungen oben
-## rechts darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
+## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und die Bauleiste mit einem Knopf je baubarem Gebäude samt Kosten und dem Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
 ## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln;
@@ -45,6 +45,9 @@ const DEFEAT_DIM_COLOR := Color(0, 0, 0, 0.45)
 var _info_label: Label
 var _seed_label: Label
 var _day_label: Label
+## Ankündigung der nächsten Welle („Welle aus Norden in 0:42“); unsichtbar, wenn keine läuft.
+var _announcement_panel: PanelContainer
+var _announcement_label: Label
 var _speed_label: Label
 var _message_label: Label
 var _message_panel: PanelContainer
@@ -83,7 +86,7 @@ var _demolish_button: Button
 var _defeat_panel: PanelContainer
 ## Dunkelt hinter der Niederlage-Ansicht das Spiel ab und fängt Klicks ab.
 var _defeat_dim: ColorRect
-## Erreichter Tag in der Niederlage-Ansicht.
+## Erreichter Tag und abgewehrte Wellen in der Niederlage-Ansicht.
 var _defeat_day_label: Label
 
 
@@ -125,6 +128,14 @@ func _ready() -> void:
 	_message_timer.one_shot = true
 	_message_timer.timeout.connect(func() -> void: _message_panel.visible = false)
 	add_child(_message_timer)
+
+	_announcement_panel = _make_panel()
+	_announcement_label = _make_label("", BLOCKED_COLOR, 18)
+	_announcement_panel.add_child(_announcement_label)
+	add_child(_announcement_panel)
+	_announcement_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, MARGIN)
+	_announcement_panel.offset_top = BUILD_HINT_TOP
+	_announcement_panel.visible = false
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
@@ -213,9 +224,10 @@ func _ready() -> void:
 	_defeat_panel.visible = false
 
 
-## Zeigt die Niederlage-Ansicht mit dem erreichten Tag; das Spiel dahinter wird abgedunkelt.
-func show_defeat(day: int) -> void:
-	_defeat_day_label.text = "Erreicht: Tag %d" % day
+## Zeigt die Niederlage-Ansicht mit dem erreichten Tag und den abgewehrten Wellen; das Spiel
+## dahinter wird abgedunkelt.
+func show_defeat(day: int, repelled_waves: int) -> void:
+	_defeat_day_label.text = "Erreicht: Tag %d\nAbgewehrte Wellen: %d" % [day, repelled_waves]
 	_defeat_panel.visible = true
 	_defeat_dim.visible = true
 	_defeat_panel.reset_size()
@@ -236,6 +248,19 @@ func set_seed(map_seed: int) -> void:
 
 func show_day(day: int) -> void:
 	_day_label.text = "Tag %d" % day
+
+
+## Ankündigung in der Titelleiste: Seite (Waves.SIDES, leer = keine) und Countdown in Spielzeit
+## (Minuten:Sekunden bei 1×, GameClock.TICKS_PER_SECOND), aufgerundet auf volle Sekunden.
+func show_announcement(side: String, ticks: int) -> void:
+	_announcement_panel.visible = side != ""
+	if side == "":
+		return
+	var seconds := ceili(float(ticks) / GameClock.TICKS_PER_SECOND)
+	var text := "Welle aus %s in %d:%02d" % [Waves.SIDE_NAMES[side], seconds / 60, seconds % 60]
+	if _announcement_label.text != text:
+		_announcement_label.text = text
+		_announcement_panel.reset_size()
 
 
 func show_speed(speed: int, paused: bool) -> void:

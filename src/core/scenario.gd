@@ -6,7 +6,8 @@ extends RefCounted
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
 ## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
 ## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0) und "enemies" (Feinde, die bei der Gründung
-## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}).
+## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}) und "waves" (der
+## Wellenplan, siehe WavePlan).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -31,6 +32,8 @@ var start_popularity := DEFAULT_POPULARITY
 var start_gold := 0
 ## Feinde bei der Gründung, in der Reihenfolge der Datei.
 var start_enemies: Array[StartEnemy] = []
+## Der Wellenplan (Feld "waves", siehe WavePlan); ohne das Feld leer, dann kommen keine Wellen.
+var wave_plan := WavePlan.new()
 var error := ""
 
 
@@ -96,6 +99,9 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		problems.append("„start_gold“ muss eine ganze Zahl ab 0 sein")
 
 	_read_enemies(scenario, data.get("enemies", []), problems)
+
+	if data.has("waves"):
+		scenario.wave_plan = WavePlan.parse(data["waves"], problems)
 
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]

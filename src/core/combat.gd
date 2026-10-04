@@ -144,16 +144,16 @@ func update_enemies() -> void:
 			return
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
-	if _world._keep_alarmed and not _is_keep_attacked():
-		# Der Angriff ist vorbei; der nächste wird wieder gemeldet.
-		_world._keep_alarmed = false
+	if _world._keep_alarmed_waves.has(0) and not _is_keep_attacked_without_wave():
+		# Der Angriff der Feinde ohne Welle ist vorbei; der nächste wird wieder gemeldet.
+		_world._keep_alarmed_waves.erase(0)
 
 
-## Greift gerade ein Feind den Bergfried an?
-func _is_keep_attacked() -> bool:
+## Greift gerade ein Feind ohne Welle (Startfeind, Debug-Feind) den Bergfried an?
+func _is_keep_attacked_without_wave() -> bool:
 	var keep := _world._keep()
 	for enemy in _world.get_enemies():
-		if enemy.target_building_id == keep.id:
+		if enemy.wave == 0 and enemy.target_building_id == keep.id:
 			return true
 	return false
 
@@ -243,8 +243,9 @@ func _in_reach_at(type: String, position: Vector3i, building: Building) -> bool:
 
 
 ## Ein Angriff auf ein Gebäude trifft sofort und ohne Zufall, wie _hit(). Am Bergfried meldet
-## der erste Treffer eines Angriffs diesen („Der Bergfried wird angegriffen!“); fällt er auf 0,
-## ist die Partie verloren. Jedes andere Gebäude ist bei 0 zerstört (GameWorld._destroy()).
+## der erste Treffer einer Welle diesen („Der Bergfried wird angegriffen!“; bei Feinden ohne
+## Welle der erste Treffer eines Angriffs); fällt er auf 0, ist die Partie verloren. Jedes andere
+## Gebäude ist bei 0 zerstört (GameWorld._destroy()).
 func _hit_building(figure: Figure, building: Building) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
@@ -253,8 +254,9 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		var nearest := figure.tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
-	if building == _world._keep() and not _world._keep_alarmed:
-		_world._keep_alarmed = true
+	var wave := (figure as Enemy).wave if figure is Enemy else 0
+	if building == _world._keep() and not _world._keep_alarmed_waves.has(wave):
+		_world._keep_alarmed_waves.append(wave)
 		_world.notice.emit(KEEP_ATTACKED)
 	if building == _world._keep() and building.hp == 0:
 		_world._defeated = true
@@ -399,27 +401,38 @@ func spawn_enemy(type_id: String) -> String:
 ## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
 ## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
-## nächste freie. Als [Kachel], leer, wenn es keine freie gibt.
-func spawn_tile() -> Array[Vector2i]:
+## nächste freie. Mit side (Waves.SIDES) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
+## keine freie gibt.
+func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
 	var reaching := _reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
 	var best_reaches := false
+	for tile in _edge_tiles(side):
+		if not _is_free_enemy_tile(tile):
+			continue
+		var reaches := reaching.has(Figure.ground(tile))
+		var distance := _distance_to_building(tile, keep)
+		if (reaches and not best_reaches) \
+				or (reaches == best_reaches and distance < best_distance - Figure.DISTANCE_SLACK):
+			best = [tile]
+			best_distance = distance
+			best_reaches = reaches
+	return best
+
+
+## Die Randkacheln der Seite (leer: aller Seiten), zeilenweise.
+func _edge_tiles(side: String) -> Array[Vector2i]:
+	if side != "":
+		return Waves.side_tiles(_world.map, side)
+	var result: Array[Vector2i] = []
 	var map := _world.map
 	for y in map.height:
 		for x in map.width:
-			var tile := Vector2i(x, y)
-			if not map.is_edge(tile) or not _is_free_enemy_tile(tile):
-				continue
-			var reaches := reaching.has(Figure.ground(tile))
-			var distance := _distance_to_building(tile, keep)
-			if (reaches and not best_reaches) \
-					or (reaches == best_reaches and distance < best_distance - Figure.DISTANCE_SLACK):
-				best = [tile]
-				best_distance = distance
-				best_reaches = reaches
-	return best
+			if map.is_edge(Vector2i(x, y)):
+				result.append(Vector2i(x, y))
+	return result
 
 
 ## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
@@ -451,9 +464,10 @@ func add_start_enemies(start_enemies: Array[StartEnemy]) -> void:
 			_add_enemy(entry.type_id, found[0])
 
 
-## Ein neuer Feind mit vollen Lebenspunkten; er läuft gleich zum Bergfried.
-func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
-	var enemy := _world._add_enemy(type_id, tile)
+## Ein neuer Feind mit vollen Lebenspunkten (aus der Welle mit dieser Nummer, 0 = keiner); er
+## läuft gleich zum Bergfried.
+func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+	var enemy := _world._add_enemy(type_id, tile, wave)
 	_send_enemy_to_keep(enemy)
 	return enemy
 

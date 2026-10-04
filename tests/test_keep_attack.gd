@@ -86,7 +86,7 @@ func test_soldier_in_reach_takes_priority_over_the_keep() -> void:
 	assert_eq(keep.hp, hp, "Kein Treffer am Bergfried, solange er den Soldaten angreift:")
 
 
-func test_first_hit_on_the_keep_is_announced_once_per_attack() -> void:
+func test_keep_attack_by_enemies_without_wave_is_announced_once_per_attack() -> void:
 	var world := _founded()
 	put_goods(world, 2, "stone", 100)
 	var armory := build(world, "armory", Vector2i(10, 10))
@@ -110,6 +110,43 @@ func test_first_hit_on_the_keep_is_announced_once_per_attack() -> void:
 	world.execute(Command.spawn_enemy("bandit"))
 	_until(world, func() -> bool: return world.get_building(KEEP).hp < hp, "Zweiter Angriff")
 	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Zweiter Angriff gemeldet:")
+
+
+func test_keep_attack_is_announced_once_per_wave() -> void:
+	var world := _founded()
+	var notices: Array[String] = []
+	world.notice.connect(func(text: String) -> void: notices.append(text))
+	# Räuber A der Welle 1 steht am Bergfried, Räuber B derselben Welle kommt von weit her.
+	var first := add_enemy(world, "bandit", Vector2i(1, 3), 1)
+	var second := add_enemy(world, "bandit", Vector2i(19, 15), 1)
+	_until_keep_hit(world)
+	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Erster Treffer der Welle 1:")
+	kill_enemy(world, first)
+	var keep := world.get_building(KEEP)
+	var hp := keep.hp
+	_until(world, func() -> bool: return keep.hp < hp, "Räuber B greift an")
+	assert_true(second.target_building_id == KEEP, "Räuber B greift an")
+	assert_eq(notices, ["Der Bergfried wird angegriffen!"] as Array[String], "Welle 1 nicht noch einmal:")
+	add_enemy(world, "bandit", Vector2i(1, 4), 2)
+	hp = keep.hp
+	_until(world, func() -> bool: return keep.hp <= hp - 24, "Welle 2 greift an")
+	assert_eq(notices, ["Der Bergfried wird angegriffen!", "Der Bergfried wird angegriffen!"] as Array[String],
+			"Welle 2 wird gemeldet:")
+
+
+func test_keep_alarm_per_wave_is_saved_and_loaded() -> void:
+	var world := _founded()
+	var first := add_enemy(world, "bandit", Vector2i(1, 3), 1)
+	add_enemy(world, "bandit", Vector2i(19, 15), 1)
+	_until_keep_hit(world)
+	kill_enemy(world, first)
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	var notices: Array[String] = []
+	loaded.notice.connect(func(text: String) -> void: notices.append(text))
+	var keep := loaded.get_building(KEEP)
+	var hp := keep.hp
+	_until(loaded, func() -> bool: return keep.hp < hp, "Räuber B greift an")
+	assert_eq(notices, [] as Array[String], "Nach dem Laden nicht noch einmal:")
 
 
 ## Fünf Räuber um den Bergfried: Er fällt nach gut 160 Takten.
