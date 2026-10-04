@@ -202,6 +202,18 @@ func test_damaged_gate_is_preferred_over_a_full_wall_once_it_is_cheaper() -> voi
 	assert_eq(_gate_or_wall(240), "gate", "Angeschlagenes Tor (≈ 33,3) billiger:")
 
 
+func test_obstacle_takes_priority_over_the_keep() -> void:
+	var world := _founded()
+	# Mauer bei (6, 3) direkt östlich am Bergfried; der Räuber steht bei (6, 4), neben beiden, und
+	# sein Weg führt durch die Mauer: Er greift erst das Hindernis an.
+	var wall := build(world, "wall", Vector2i(6, 3))
+	var bandit := add_enemy(world, "bandit", Vector2i(6, 4))
+	bandit.path = [Figure.ground(Vector2i(6, 3)), Figure.ground(Vector2i(6, 2))] as Array[Vector3i]
+	world.step()
+	assert_eq(bandit.target_building_id, wall, "Greift die Mauer an:")
+	assert_eq([world.get_building(wall).hp, world.get_building(KEEP).hp], [300 - 12, 1000], "Lebenspunkte:")
+
+
 func test_bandit_walks_on_through_the_destroyed_wall() -> void:
 	var world := _founded()
 	_wall_with_gap(world, world.map.height - 1)
