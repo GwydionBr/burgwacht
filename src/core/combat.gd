@@ -344,10 +344,11 @@ func _obstacle_at(position: Vector3i) -> Building:
 
 
 ## Die Karte, wie ein Feind dieses Typs sie für seinen Weg sieht (ADR 0005): Wo er stehen darf,
-## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber so viele Kacheln
-## Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu zerstören:
-## (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Merkt sich das je
-## Position, denn die Wegfindung fragt dieselbe Position oft.
+## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber beim Hineingehen
+## von außerhalb so viele Kacheln Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu
+## zerstören: (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Innerhalb
+## desselben Gebäudes kostet ein Schritt nichts extra, denn eine Zerstörung genügt. Merkt sich die
+## Kosten je Position, denn die Wegfindung fragt dieselbe Position oft.
 class _EnemyMap:
 	## Kein Hindernis, aber auch nicht begehbar.
 	const BLOCKED := -1.0
@@ -355,34 +356,44 @@ class _EnemyMap:
 	var _combat: Combat
 	var _type: String
 	var _costs: Dictionary[Vector3i, float] = {}
+	## Position → das Hindernis dort (null: keines), wie _costs gemerkt.
+	var _obstacles: Dictionary[Vector3i, Building] = {}
 
 	func _init(combat: Combat, type: String) -> void:
 		_combat = combat
 		_type = type
 
-	## Zusatzkosten auf position: 0, wo er stehen darf, Zerstörungskosten auf einem Hindernis,
-	## sonst BLOCKED.
+	## Kosten auf position: 0, wo er stehen darf, Zerstörungskosten auf einem Hindernis, sonst
+	## BLOCKED.
 	func cost_at(position: Vector3i) -> float:
 		if _costs.has(position):
 			return _costs[position]
 		var cost := BLOCKED
+		var obstacle: Building = null
 		if _combat._world._can_stand(position, GameWorld.Walker.ENEMY):
 			cost = 0.0
 		else:
-			var obstacle := _combat._obstacle_at(position)
+			obstacle = _combat._obstacle_at(position)
 			if obstacle != null:
 				cost = float(obstacle.hp) / FighterType.damage_of(_type) * FighterType.attack_ticks(_type) \
 						/ FighterType.ticks_per_tile(_type)
 		_costs[position] = cost
+		_obstacles[position] = obstacle
 		return cost
 
 	## Begehbar für die Wegplanung: wo er stehen darf oder ein Hindernis.
 	func is_passable(position: Vector3i) -> bool:
 		return cost_at(position) != BLOCKED
 
-	## Zerstörungskosten beim Betreten (Pathfinder, extra_cost).
-	func extra_cost(position: Vector3i) -> float:
-		return maxf(cost_at(position), 0.0)
+	## Zerstörungskosten für den Schritt von from auf to (Pathfinder, extra_cost): nur beim
+	## Hineingehen in ein Hindernis von außerhalb, nicht von einer anderen Kachel desselben.
+	func extra_cost(from: Vector3i, to: Vector3i) -> float:
+		var cost := maxf(cost_at(to), 0.0)
+		if cost > 0.0:
+			cost_at(from)
+			if _obstacles[from] == _obstacles[to]:
+				return 0.0
+		return cost
 
 	## Ebenenwechsel wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch einen Turm,
 	## den er erst zerstört, kommt er nicht auf dessen Wehrgang.

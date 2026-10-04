@@ -6,9 +6,10 @@ extends RefCounted
 ## (mit gemeinsamer Kante) begehbar sind – niemand schneidet Ecken von Hindernissen, eine
 ## diagonale Mauer ist dicht. Oben auf dem Wehrgang gilt diese Eckregel nicht, damit man auf
 ## diagonalen Mauern entlanggehen kann. Einzelne Schritte kann der Aufrufer verbieten (steppable).
-## Optional kostet das Betreten einer Position zusätzlich (extra_cost), z. B. für Feinde, die ein
-## Gebäude erst durchbrechen müssen (ADR 0005). Eine Kachel mit Zusatzkosten zählt für die Eckregel
-## als Hindernis, sonst schlüpfte man kostenlos schräg zwischen zwei Mauerkacheln hindurch.
+## Optional kostet ein Schritt zusätzlich (extra_cost, abhängig von Herkunft und Ziel), z. B. für
+## Feinde, die ein Gebäude erst durchbrechen müssen (ADR 0005). Eine Kachel, deren Betreten von hier
+## aus zusätzlich kostet, zählt für die Eckregel als Hindernis, sonst schlüpfte man kostenlos schräg
+## zwischen zwei Mauerkacheln hindurch.
 ## Deterministisch (ADR 0001): Nachbarn in fester Reihenfolge, bei gleicher Schätzung
 ## gewinnt die Kachel näher am Ziel, dann die früher gefundene.
 
@@ -26,8 +27,8 @@ const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), 
 ## Array[Vector3i] nennt die Positionen auf einer anderen Ebene, die man von einer Position aus
 ## mit einem geraden Schritt erreicht (leer gelassen: keine). steppable(Vector3i, Vector3i) -> bool
 ## sagt, ob man von einer begehbaren Position auf eine benachbarte treten darf (leer gelassen:
-## immer), z. B. einen Eingang nur von vorn. extra_cost(Vector3i) -> float sind nicht negative
-## Zusatzkosten beim Betreten einer Position (leer gelassen: keine).
+## immer), z. B. einen Eingang nur von vorn. extra_cost(Vector3i, Vector3i) -> float sind nicht
+## negative Zusatzkosten für den Schritt von der ersten auf die zweite Position (leer gelassen: keine).
 static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascents := Callable(),
 		steppable := Callable(), extra_cost := Callable()) -> Array[Vector3i]:
 	if start != goal and not walkable.call(goal):
@@ -72,7 +73,7 @@ static func _search(start: Vector3i, is_goal: Callable, estimate: Callable, walk
 		for next in neighbors(current, walkable, ascents, steppable, extra_cost):
 			if closed.has(next):
 				continue
-			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, next)
+			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, current, next)
 			if cost_so_far.has(next) and cost_so_far[next] <= cost:
 				continue
 			cost_so_far[next] = cost
@@ -105,7 +106,7 @@ static func distances(start: Vector3i, walkable: Callable, max_length := INF,
 			continue
 		result[current] = cost_so_far[current]
 		for next in neighbors(current, walkable, ascents, steppable, extra_cost):
-			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, next)
+			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, current, next)
 			if result.has(next) or cost > max_length + LENGTH_EPSILON \
 					or (cost_so_far.has(next) and cost_so_far[next] <= cost):
 				continue
@@ -122,7 +123,8 @@ static func same_length(a: float, b: float) -> bool:
 
 ## Die begehbaren Nachbarn einer Position, die man von ihr aus betreten darf (steppable), in
 ## fester Reihenfolge (gerade vor schräg, dann die Ebenenwechsel in ihrer Reihenfolge). Schräg am
-## Boden nur, wenn beide Kacheln daneben frei sind: begehbar und ohne Zusatzkosten (extra_cost).
+## Boden nur, wenn beide Kacheln daneben frei sind: begehbar und von hier aus ohne Zusatzkosten
+## (extra_cost).
 static func neighbors(position: Vector3i, walkable: Callable, ascents := Callable(),
 		steppable := Callable(), extra_cost := Callable()) -> Array[Vector3i]:
 	var candidates: Array[Vector3i] = []
@@ -131,8 +133,8 @@ static func neighbors(position: Vector3i, walkable: Callable, ascents := Callabl
 			candidates.append(position + step)
 	for step in DIAGONAL_STEPS:
 		if walkable.call(position + step) and (position.z != Figure.Level.GROUND
-				or _is_free(position + Vector3i(step.x, 0, 0), walkable, extra_cost)
-				and _is_free(position + Vector3i(0, step.y, 0), walkable, extra_cost)):
+				or _is_free(position, position + Vector3i(step.x, 0, 0), walkable, extra_cost)
+				and _is_free(position, position + Vector3i(0, step.y, 0), walkable, extra_cost)):
 			candidates.append(position + step)
 	if ascents.is_valid():
 		for next: Vector3i in ascents.call(position):
@@ -160,14 +162,15 @@ static func path_length(path: Array[Vector3i]) -> float:
 	return length
 
 
-## Zusatzkosten beim Betreten von position (0 ohne extra_cost).
-static func _extra(extra_cost: Callable, position: Vector3i) -> float:
-	return extra_cost.call(position) if extra_cost.is_valid() else 0.0
+## Zusatzkosten für den Schritt von from auf to (0 ohne extra_cost).
+static func _extra(extra_cost: Callable, from: Vector3i, to: Vector3i) -> float:
+	return extra_cost.call(from, to) if extra_cost.is_valid() else 0.0
 
 
-## Begehbar und ohne Zusatzkosten? Nur solche Kacheln lassen eine Ecke schräg passieren.
-static func _is_free(position: Vector3i, walkable: Callable, extra_cost: Callable) -> bool:
-	return walkable.call(position) and _extra(extra_cost, position) <= 0.0
+## Begehbar und von from aus ohne Zusatzkosten zu betreten? Nur solche Kacheln lassen eine Ecke
+## schräg passieren.
+static func _is_free(from: Vector3i, position: Vector3i, walkable: Callable, extra_cost: Callable) -> bool:
+	return walkable.call(position) and _extra(extra_cost, from, position) <= 0.0
 
 
 ## Untere Schranke der Weglänge ohne Hindernisse (Oktil-Abstand).

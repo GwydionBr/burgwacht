@@ -170,8 +170,9 @@ func _walkable_or_costly(position: Vector3i) -> bool:
 	return _walkable(position) or _costs.has(Vector2i(position.x, position.y))
 
 
-func _extra_cost(position: Vector3i) -> float:
-	return _costs.get(Vector2i(position.x, position.y), 0.0)
+## Zusatzkosten beim Schritt auf to: die Kosten dieser Kachel, egal woher.
+func _extra_cost(_from: Vector3i, to: Vector3i) -> float:
+	return _costs.get(Vector2i(to.x, to.y), 0.0)
 
 
 func _costly_path(from: Vector2i, to: Vector2i) -> Array[Vector3i]:
@@ -228,6 +229,29 @@ func test_costly_tiles_count_as_corners() -> void:
 	var path := _costly_path(Vector2i(0, 0), Vector2i(1, 1))
 	assert_eq(path.size(), 3, "Über eine der Mauerkacheln: %s" % str(_tiles(path)))
 	assert_true(is_equal_approx(_costly_distances(Vector2i(0, 0))[Vector3i(1, 1, GROUND)], 7.0), "2 Schritte + 5")
+
+
+func test_extra_cost_depends_on_where_the_step_comes_from() -> void:
+	# Ein Block x = 3..5, y = 0..4: Hinein kostet 3, innerhalb nichts (wie ein breites Gebäude, das
+	# man nur einmal durchbricht). Gerade hindurch 6 + 3 = 9; der Umweg unten herum ≈ 12,8; je
+	# Kachel berechnet wären es 6 + 9 = 15.
+	var block: Dictionary[Vector2i, bool] = {}
+	for x in range(3, 6):
+		for y in 5:
+			_set_cost(Vector2i(x, y), 3.0)
+			block[Vector2i(x, y)] = true
+	var entering := func(from: Vector3i, to: Vector3i) -> float:
+		var inside := func(position: Vector3i) -> bool: return block.has(Vector2i(position.x, position.y))
+		return 3.0 if inside.call(to) and not inside.call(from) else 0.0
+	var path := Pathfinder.find_path(Vector3i(1, 1, GROUND), Vector3i(7, 1, GROUND), _walkable_or_costly,
+			Callable(), Callable(), entering)
+	var expected: Array[Vector2i] = []
+	for x in range(1, 8):
+		expected.append(Vector2i(x, 1))
+	assert_eq(_tiles(path), expected, "Gerade durch den Block:")
+	var distances := Pathfinder.distances(Vector3i(1, 1, GROUND), _walkable_or_costly, INF, Callable(), Callable(),
+			entering)
+	assert_true(is_equal_approx(distances[Vector3i(7, 1, GROUND)], 9.0), "6 Schritte + einmal 3")
 
 
 func test_extra_cost_on_the_goal_counts() -> void:

@@ -79,6 +79,18 @@ func test_bandit_breaks_the_wall_when_the_detour_is_too_long() -> void:
 	assert_eq(target.hp, 300 - 12, "Erster Treffer:")
 
 
+func test_wide_building_costs_its_destruction_only_once() -> void:
+	var world := _founded()
+	# Waffenkammer (3×3, 150 LP, x = 8..10, y = 10..12) in der Mauerlinie; Mauern vor ihrem
+	# Eingang (9, 12), damit man sie nur ganz durchqueren kann. Einmal durchbrechen ≈ 20,8 Kacheln,
+	# billiger als die volle Mauer daneben (≈ 41,7). Je durchquerter Kachel berechnet wären es ≈ 62,5.
+	var armory := _in_line(world, "armory", Vector2i(WALL_X - 2, 10))
+	_wall(world, Vector2i(WALL_X - 3, 13), Vector2i(WALL_X - 1, 13))
+	var bandit := add_enemy(world, "bandit", Vector2i(16, 11))
+	_until(world, func() -> bool: return bandit.target_building_id != 0, "Angriff")
+	assert_eq(bandit.target_building_id, armory, "Greift die Waffenkammer an:")
+
+
 # --- Zerstörung --------------------------------------------------------------------------------
 
 ## Baut ein Gebäude dieses Typs bei origin, dessen rechte Spalte in der Mauerlinie x = WALL_X
