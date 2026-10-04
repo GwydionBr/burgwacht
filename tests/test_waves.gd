@@ -196,6 +196,54 @@ func test_save_and_load_keeps_the_wave_plan_before_founding() -> void:
 	assert_eq(_enemy_tiles(loaded), [EAST_SPAWN] as Array[Vector2i], "Welle 1:")
 
 
+## Gegründete Spielwelt 20×16 (nur Wiese): Welle 1 an Tag 2 aus Osten, danach die Formel alle
+## 2 Tage mit abgerundet 1 + 0,5 × n Räubern.
+func _world_with_formula() -> GameWorld:
+	var scenario := Scenario.from_dict("test_waves", {
+		"name": "Test", "map": {"width": 20, "height": 16}, "seed": 7, "waves": {
+			"list": [{"day": 2, "enemies": {"bandit": 1}, "side": "east"}],
+			"formula": {"every_days": 2, "enemies": {"bandit": {"base": 1, "growth": 0.5}}}}})
+	assert_eq(scenario.error, "", "Szenario:")
+	var world := clear_map(GameWorld.create(scenario, 7))
+	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	return world
+
+
+## Lässt die Welt bis zum Beginn von Tag last_day laufen; jede Welle wird nach ihrem Erscheinen
+## abgewehrt, damit der Bergfried steht. Ergebnis: Tag → Feinde je erschienener Welle.
+func _formula_course(world: GameWorld, last_day: int) -> Dictionary[int, Array]:
+	var course: Dictionary[int, Array] = {}
+	while world.get_day() < last_day:
+		_run_world(world, GameWorld.TICKS_PER_DAY)
+		var waves := _enemy_waves(world)
+		if not waves.is_empty():
+			course[world.get_day()] = waves
+		for wave in waves:
+			_kill_wave(world, wave)
+	return course
+
+
+func test_formula_waves_follow_the_list_and_grow() -> void:
+	var world := _world_with_formula()
+	assert_eq(_formula_course(world, 9), {2: [1], 4: [2], 6: [3], 8: [4, 4]} as Dictionary[int, Array], "Verlauf:")
+	assert_eq(world.get_repelled_waves(), 4, "Abgewehrt:")
+
+
+func test_save_and_load_between_formula_waves_continues_the_same() -> void:
+	var world := _world_with_formula()
+	_formula_course(world, 5)
+	var loaded := _reload(world)
+	for each: GameWorld in [world, loaded]:
+		_run_world(each, GameWorld.TICKS_PER_DAY + 50)
+	assert_eq(_enemy_waves(loaded), [3] as Array[int], "Welle 3 an Tag 6:")
+	assert_eq(loaded.to_data(), world.to_data(), "Gleicher Verlauf bis Tag 6:")
+	for each: GameWorld in [world, loaded]:
+		_kill_wave(each, 3)
+		_run_world(each, 2 * GameWorld.TICKS_PER_DAY)
+	assert_eq(_enemy_waves(loaded), [4, 4] as Array[int], "Welle 4 an Tag 8:")
+	assert_eq(loaded.to_data(), world.to_data(), "Gleicher Verlauf bis Tag 8:")
+
+
 func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")

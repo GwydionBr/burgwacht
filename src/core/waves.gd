@@ -38,8 +38,7 @@ static func side_tiles(map: MapData, side: String) -> Array[Vector2i]:
 
 ## Die Welle mit dieser Nummer (ab 1) laut Plan; null, wenn keine mehr kommt.
 func planned_wave(number: int) -> PlannedWave:
-	var plan := _world._wave_plan
-	return plan.list[number - 1] if number <= plan.list.size() else null
+	return _world._wave_plan.wave(number)
 
 
 ## In jedem Takt (und bei der Gründung): Jede Welle, deren Tag begonnen hat, erscheint.
