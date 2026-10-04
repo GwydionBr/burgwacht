@@ -33,7 +33,8 @@ extends RefCounted
 ## Feinde (z. B. Räuber) erscheinen aus dem Szenario bei der Gründung oder per Debug-Befehl am
 ## Kartenrand und laufen zum Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen
 ## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt. Die Regeln dafür stehen in
-## Combat; den Zustand hält weiter die Spielwelt.
+## Combat; den Zustand hält weiter die Spielwelt. Ebenso kommen Wellen von Feinden nach dem
+## Wellenplan des Szenarios (Regeln: Waves).
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
