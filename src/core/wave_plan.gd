@@ -3,10 +3,17 @@ extends RefCounted
 ## Der Wellenplan eines Szenarios (Feld "waves"): wann welche Wellen mit welchen Feinden von wo
 ## kommen. Bisher nur die feste Liste ("list"): Einträge {"day": Tag ab 1, "enemies": {Feindtyp:
 ## Anzahl}, "side": optional "north"/"east"/"south"/"west"}, Tage aufsteigend (gleiche erlaubt).
-## Fehlt das Feld, kommen keine Wellen. Reine Daten; den Ablauf regelt Waves.
+## Fehlt das Feld, kommen keine Wellen. Dazu die Vorwarnzeit ("warning_days", optional, ganze
+## Tage ab 0, Standard 1): So lange vor ihrem Erscheinen wird die nächste Welle angekündigt.
+## Reine Daten; den Ablauf regelt Waves.
+
+## Vorwarnzeit, wenn das Szenario keine angibt.
+const DEFAULT_WARNING_DAYS := 1
 
 ## Die feste Liste: Welle Nummer n (ab 1) ist list[n - 1].
 var list: Array[PlannedWave] = []
+## So viele Tage vor ihrem Erscheinen beginnt die Ankündigung der nächsten Welle.
+var warning_days := DEFAULT_WARNING_DAYS
 
 
 ## Liest den Wellenplan aus dem Szenariofeld "waves"; jeder Fehler kommt als Grund mit dem
@@ -17,6 +24,11 @@ static func parse(value: Variant, problems: PackedStringArray) -> WavePlan:
 		problems.append("„waves“ muss ein Objekt sein")
 		return plan
 	var fields: Dictionary = value
+	var warning_value: Variant = fields.get("warning_days", DEFAULT_WARNING_DAYS)
+	if not Scenario._is_whole_number(warning_value) or int(warning_value) < 0:
+		problems.append("„waves“: „warning_days“ muss eine ganze Zahl ab 0 sein")
+	else:
+		plan.warning_days = int(warning_value)
 	var list_value: Variant = fields.get("list", [])
 	if not list_value is Array:
 		problems.append("„waves“: „list“ muss eine Liste sein")
@@ -71,7 +83,10 @@ static func _parse_wave(entry: Variant, problems: PackedStringArray) -> PlannedW
 
 ## Als reine Daten für den Spielstand.
 func to_data() -> Dictionary:
-	return {"list": list.map(func(wave: PlannedWave) -> Dictionary: return wave.to_data())}
+	return {
+		"list": list.map(func(wave: PlannedWave) -> Dictionary: return wave.to_data()),
+		"warning_days": warning_days,
+	}
 
 
 ## Gegenstück zu to_data().
@@ -79,4 +94,5 @@ static func from_data(data: Dictionary) -> WavePlan:
 	var plan := WavePlan.new()
 	for entry: Dictionary in data["list"]:
 		plan.list.append(PlannedWave.from_data(entry))
+	plan.warning_days = int(data["warning_days"])
 	return plan

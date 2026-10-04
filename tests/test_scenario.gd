@@ -257,3 +257,18 @@ func test_wave_with_negative_count_is_invalid() -> void:
 	for count: Variant in [-1, 1.5, "2"]:
 		var error := _error_for(_waves_data({"list": [{"day": 1, "enemies": {"bandit": count}}]}))
 		assert_true(error.contains("waves") and error.contains("Anzahl"), "Anzahl %s: %s" % [str(count), error])
+
+
+func test_warning_days_are_read_with_one_day_as_default() -> void:
+	assert_eq(Scenario.from_dict("test", _waves_data({})).wave_plan.warning_days, 1, "Standard:")
+	assert_eq(Scenario.from_dict("test", _valid_data()).wave_plan.warning_days, 1, "Ohne Wellenplan:")
+	for days: int in [0, 3]:
+		var scenario := Scenario.from_dict("test", _waves_data({"warning_days": float(days)}))
+		assert_eq(scenario.error, "", "Fehler:")
+		assert_eq(scenario.wave_plan.warning_days, days, "Vorwarnzeit:")
+
+
+func test_negative_or_broken_warning_days_are_invalid() -> void:
+	for days: Variant in [-1, 0.5, "1", null]:
+		var error := _error_for(_waves_data({"warning_days": days}))
+		assert_true(error.contains("waves") and error.contains("warning_days"), "Vorwarnzeit %s: %s" % [str(days), error])
