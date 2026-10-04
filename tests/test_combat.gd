@@ -102,17 +102,17 @@ func test_scenario_bandits_appear_at_founding_and_are_no_residents() -> void:
 	assert_eq(world.get_enemies_at(BANDIT_START), [bandit] as Array[Enemy], "Auf der Kachel:")
 
 
-func test_bandit_walks_to_the_keep_and_waits_there() -> void:
+func test_bandit_walks_to_the_keep_and_attacks_it() -> void:
 	var world := _founded("tiny_bandits")
 	var bandit := world.get_enemy(1)
 	assert_true(bandit.is_moving(), "Läuft los")
 	assert_eq(world.enemy_activity_of(bandit), "Räuber – läuft zum Bergfried", "Unterwegs:")
 	_until_still(world, bandit)
 	assert_eq(_keep_distance(bandit.tile), 1.0, "Am Bergfried:")
-	assert_eq(world.enemy_activity_of(bandit), "Räuber – wartet", "Steht:")
 	for i in 100:
 		world.step()
 	assert_true(not bandit.is_moving(), "Bleibt stehen")
+	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Bergfried an", "Steht:")
 	# Bewohner greift er nicht an.
 	assert_eq(world.get_population(), 4, "Bewohner:")
 

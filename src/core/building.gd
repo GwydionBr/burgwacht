@@ -13,14 +13,33 @@ var unreachable := false
 ## Nur bei Arbeitsstätten: Vor diesem Takt wird nach einer gescheiterten Zuteilung nicht
 ## erneut geprüft.
 var retry_tick := 0
+## Lebenspunkte; beim Bau voll (max_hp()). Ohne Lebenspunkte in den Daten immer 0.
+var hp := 0
 
 
+## Neues Gebäude mit vollen Lebenspunkten.
 static func create(building_id: int, type_id: String, origin_tile: Vector2i) -> Building:
 	var building := Building.new()
 	building.id = building_id
 	building.type = type_id
 	building.origin = origin_tile
+	building.hp = building.max_hp()
 	return building
+
+
+## Volle Lebenspunkte laut Daten ("hp"); 0 bei Gebäuden ohne Lebenspunkte (Lagerfeuer).
+func max_hp() -> int:
+	return int(def().get("hp", 0))
+
+
+## Hat das Gebäude Lebenspunkte? Nur dann kann es angegriffen werden.
+func is_destructible() -> bool:
+	return max_hp() > 0
+
+
+## Hat es Lebenspunkte verloren?
+func is_damaged() -> bool:
+	return hp < max_hp()
 
 
 func def() -> Dictionary:
@@ -311,7 +330,7 @@ static func front_of_entrance(type_id: String, origin_tile: Vector2i) -> Vector2
 func to_data() -> Dictionary:
 	return {
 		"id": id, "type": type, "x": origin.x, "y": origin.y, "contents": contents.duplicate(),
-		"unreachable": unreachable, "retry_tick": retry_tick,
+		"unreachable": unreachable, "retry_tick": retry_tick, "hp": hp,
 	}
 
 
@@ -323,6 +342,7 @@ static func from_data(data: Dictionary) -> Building:
 		building.contents[str(good)] = int(stored_goods[good])
 	building.unreachable = bool(data["unreachable"])
 	building.retry_tick = int(data["retry_tick"])
+	building.hp = int(data["hp"])
 	return building
 
 

@@ -31,8 +31,9 @@ extends RefCounted
 ## bleiben Bewohner (Wohnraum, Essen, Steuern), arbeiten aber nicht und gehen nie fort.
 ##
 ## Feinde (z. B. Räuber) erscheinen aus dem Szenario bei der Gründung oder per Debug-Befehl am
-## Kartenrand und laufen zum Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen
-## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt. Die Regeln dafür stehen in
+## Kartenrand und laufen zum Bergfried, den sie angreifen; Soldaten in Sichtweite greifen sie an.
+## Soldaten greifen Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt; fällt der
+## Bergfried, ist die Partie verloren (Niederlage). Die Regeln dafür stehen in
 ## Combat; den Zustand hält weiter die Spielwelt.
 
 signal deposit_added(tile: Vector2i)
@@ -42,6 +43,8 @@ signal deposit_changed(tile: Vector2i)
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
+## Die Lebenspunkte eines Gebäudes haben sich geändert.
+signal building_changed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
@@ -68,11 +71,13 @@ signal factors_changed()
 signal settings_changed()
 ## Eine Meldung für den Spieler, z. B. bei Nahrungsmangel.
 signal notice(text: String)
+## Der Bergfried ist gefallen: Die Partie ist verloren (is_defeated()).
+signal defeated()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 12
+const SAVE_VERSION := 13
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -81,6 +86,8 @@ const FOUNDING_TYPE := "keep"
 const NO_SITE := Vector2i(-1, -1)
 ## Grund für jeden anderen Befehl während der Gründung.
 const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
+## Grund für jeden Befehl nach der Niederlage.
+const DEFEATED := "Die Partie ist verloren: Der Bergfried ist gefallen."
 ## Schlüssel in den Baukosten für Gold aus dem Schatz (keine Ware).
 const GOLD := "gold"
 
@@ -115,6 +122,11 @@ var _start_enemies: Array[StartEnemy] = []
 ## Nach ID aufsteigend eingefügt; eigene IDs, getrennt von denen der Bewohner.
 var _enemies: Dictionary[int, Enemy] = {}
 var _next_enemy_id := 1
+## Wurde der laufende Angriff auf den Bergfried schon gemeldet? Zurückgesetzt, sobald kein Feind
+## ihn mehr angreift.
+var _keep_alarmed := false
+## Ist der Bergfried gefallen? Dann steht die Zeit, und Befehle werden abgelehnt.
+var _defeated := false
 ## Wie gern die Bewohner in der Burg leben, 0–100.
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
@@ -181,6 +193,8 @@ func to_data() -> Dictionary:
 		"start_enemies": _start_enemies.map(func(entry: StartEnemy) -> Dictionary: return entry.to_data()),
 		"next_enemy_id": _next_enemy_id,
 		"enemies": _enemies.values().map(func(enemy: Enemy) -> Dictionary: return enemy.to_data()),
+		"keep_alarmed": _keep_alarmed,
+		"defeated": _defeated,
 		"popularity": _popularity,
 		"ration": _ration,
 		"tax_rate": _tax_rate,
@@ -234,6 +248,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["enemies"]:
 		var enemy := Enemy.from_data(entry)
 		world._enemies[enemy.id] = enemy
+	world._keep_alarmed = bool(data["keep_alarmed"])
+	world._defeated = bool(data["defeated"])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._tax_rate = str(data["tax_rate"])
@@ -247,15 +263,18 @@ static func from_data(data: Dictionary) -> GameWorld:
 	return world
 
 
-## Genau ein Takt; in Gründung steht die Zeit still.
+## Genau ein Takt; in Gründung und nach der Niederlage steht die Zeit still. Fällt der
+## Bergfried, endet der Takt sofort.
 func step() -> void:
-	if _founding:
+	if _founding or _defeated:
 		return
 	_tick += 1
 	_spread_deposits()
 	_assign_workers()
 	_update_residents()
 	_combat().update_enemies()
+	if _defeated:
+		return
 	_migrate()
 	if _tick % TICKS_PER_DAY == 0:
 		_start_day()
@@ -263,8 +282,10 @@ func step() -> void:
 
 
 ## Führt einen Befehl sofort aus. Leer bei Erfolg, sonst der Grund auf Deutsch;
-## ein abgelehnter Befehl ändert nichts.
+## ein abgelehnter Befehl ändert nichts. Nach der Niederlage wird jeder abgelehnt.
 func execute(command: Command) -> String:
+	if _defeated:
+		return DEFEATED
 	if command.kind == Command.Kind.FOUND:
 		return _found(command.origin)
 	if command.kind == Command.Kind.BUILD:
@@ -294,6 +315,11 @@ func execute(command: Command) -> String:
 
 func is_founding() -> bool:
 	return _founding
+
+
+## Ist die Partie verloren (der Bergfried gefallen)? Der erreichte Tag ist dann get_day().
+func is_defeated() -> bool:
+	return _defeated
 
 
 ## Darf ein Gebäude vom Typ type_id mit diesem Ursprung stehen? Leer oder der Grund.
@@ -630,6 +656,9 @@ func enemy_activity_of(enemy: Enemy) -> String:
 	var target := get_resident(enemy.target_id)
 	if target != null:
 		return "%s – %s" % [enemy_name, Combat.fight_text(enemy, target)]
+	var building := get_building(enemy.target_building_id)
+	if building != null:
+		return "%s – greift %s an" % [enemy_name, _building_name(building.type)]
 	return "%s – %s" % [enemy_name, "läuft zum Bergfried" if enemy.is_moving() else "wartet"]
 
 
