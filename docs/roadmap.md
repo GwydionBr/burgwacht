@@ -1,6 +1,6 @@
 # Fahrplan
 
-Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt das Neue. Begriffe wie in `CONTEXT.md`, Grundsatzentscheidungen in `docs/adr/`. Pro Meilenstein gibt es ein GitHub-Issue; eine ausführliche Spezifikation und Teil-Issues entstehen erst kurz vor dem Start.
+Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt das Neue. Begriffe wie in `GLOSSARY.md`, Grundsatzentscheidungen in `docs/adr/`. Pro Meilenstein gibt es ein GitHub-Issue; eine ausführliche Spezifikation und Teil-Issues entstehen erst kurz vor dem Start.
 
 1. ✅ **Karte**: Isometrische Karte, Kamera (Tastatur, Trackpad, Maus), Bäume/Felsen/Eisen, Kachel-Info
 2. ✅ **Fundament**: Spielwelt mit festem Takt (10/s), Pause und Zeitraffer, Tag als Zeiteinheit, Partie startet aus einem Szenario, Umbenennung Ressource → Vorkommen, Bäume wachsen nach, Spielwelt lässt sich (intern) speichern und laden
