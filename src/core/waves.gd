@@ -59,16 +59,20 @@ func _spawn(wave: PlannedWave) -> void:
 	var combat := _world._combat()
 	var spawn := combat.spawn_tile(side)
 	_world.notice.emit("Welle aus %s!" % SIDE_NAMES[side])
-	if spawn.is_empty():
-		return
+	var spawned := 0
 	for type_id: String in wave.enemies:
 		for _i in wave.enemies[type_id]:
-			var found: Array[Vector2i] = [spawn[0]]
-			if not _is_free(spawn[0]):
+			var found: Array[Vector2i] = []
+			if not spawn.is_empty() and _is_free(spawn[0]):
+				found = spawn
+			elif not spawn.is_empty():
 				found = _world._search_outward(spawn[0], _is_free)
-			if found.is_empty():
-				return
-			combat._add_enemy(type_id, found[0], number)
+			if not found.is_empty():
+				combat._add_enemy(type_id, found[0], number)
+				spawned += 1
+	# Ohne einen einzigen Feind (Anzahl 0 oder kein Platz) ist sie sofort abgewehrt.
+	if spawned == 0:
+		_repel()
 
 
 ## Eine Seite aus dem Zufall der Spielwelt (ADR 0001): nur unter denen, von denen aus das
@@ -92,6 +96,16 @@ func _is_free(tile: Vector2i) -> bool:
 	return _world._combat()._is_free_enemy_tile(tile) and _world.get_enemies_at(tile).is_empty()
 
 
-## Ein Feind ist gestorben.
-func enemy_removed(_enemy: Enemy) -> void:
-	pass
+## Ein Feind ist gestorben: War er der letzte seiner Welle, ist sie abgewehrt.
+func enemy_removed(enemy: Enemy) -> void:
+	if enemy.wave == 0:
+		return
+	for other in _world.get_enemies():
+		if other.wave == enemy.wave:
+			return
+	_repel()
+
+
+func _repel() -> void:
+	_world._repelled_waves += 1
+	_world.notice.emit("Welle abgewehrt")

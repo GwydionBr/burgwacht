@@ -94,6 +94,51 @@ func test_random_side_is_deterministic_for_the_same_seed() -> void:
 	assert_true(sides.size() > 1, "Bei verschiedenen Seeds verschiedene Seiten: %s" % str(sides.keys()))
 
 
+func _kill_wave(world: GameWorld, wave: int) -> void:
+	for enemy in world.get_enemies():
+		if enemy.wave == wave:
+			kill_enemy(world, enemy)
+
+
+func test_overlapping_waves_are_repelled_each_when_all_their_enemies_are_dead() -> void:
+	var world := _founded()
+	_run_world(world, 2 * GameWorld.TICKS_PER_DAY)
+	var notices := _notices(world)
+	kill_enemy(world, world.get_enemies()[0])
+	assert_eq(world.get_repelled_waves(), 0, "Welle 1 lebt noch zum Teil:")
+	_kill_wave(world, 2)
+	assert_eq(world.get_repelled_waves(), 1, "Welle 2 abgewehrt, Welle 1 lebt noch:")
+	_kill_wave(world, 1)
+	assert_eq(world.get_repelled_waves(), 2, "Welle 1 und 2 abgewehrt:")
+	assert_eq(notices, ["Welle abgewehrt", "Welle abgewehrt"] as Array[String], "Meldungen:")
+	assert_eq(_enemy_waves(world), [3, 3] as Array[int], "Übrig:")
+
+
+func test_wave_notice_names_its_side() -> void:
+	var world := _founded()
+	var notices := _notices(world)
+	_run_world(world, GameWorld.TICKS_PER_DAY)
+	# Ohne Nahrung meldet der Tagesbeginn außerdem den Mangel.
+	assert_eq(notices.filter(func(text: String) -> bool: return text.begins_with("Welle")),
+			["Welle aus Osten!"], "Meldungen:")
+
+
+func test_start_enemies_belong_to_no_wave() -> void:
+	var world := _founded("tiny_bandits")
+	var bandit := world.get_enemies()[0]
+	assert_eq(bandit.wave, 0, "Welle des Startfeinds:")
+	kill_enemy(world, bandit)
+	assert_eq(world.get_repelled_waves(), 0, "Abgewehrte Wellen:")
+
+
+func test_wave_without_enemies_counts_as_repelled_at_once() -> void:
+	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 0}, "side": "west"}])
+	var notices := _notices(world)
+	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	assert_eq(world.get_repelled_waves(), 1, "Abgewehrte Wellen:")
+	assert_eq(notices, ["Welle aus Westen!", "Welle abgewehrt"] as Array[String], "Meldungen:")
+
+
 func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
