@@ -80,6 +80,7 @@ var _right_pressed_on_map := false
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
 @onready var _objects: Node2D = $Objects
+@onready var _wave_marker: WaveMarker = $WaveMarker
 @onready var _highlight: TileHighlight = $Highlight
 @onready var _preview: PlacementPreview = $Preview
 @onready var _camera: CameraController = $Camera
@@ -195,6 +196,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_announcement()
 	var tile := Iso.world_to_tile(get_global_mouse_position())
 	if tile != _hovered:
 		_hovered = tile
@@ -450,6 +452,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.treasury_changed.connect(_update_treasury)
 	world.notice.connect(_hud.show_message)
 	world.defeated.connect(_on_defeated)
+	world.announcement_changed.connect(_update_wave_marker)
 	_clock.world = world
 	_build_type = ""
 	_demolishing = false
@@ -495,6 +498,8 @@ func _show_world(new_world: GameWorld) -> void:
 	_update_treasury()
 	_update_hover()
 	_update_preview()
+	_update_wave_marker()
+	_update_announcement()
 	if world.is_defeated():
 		_on_defeated()
 	else:
@@ -586,8 +591,24 @@ func _add_building_view(id: int) -> void:
 	_building_views[id] = view
 
 
+## Ankündigung samt Countdown in der Titelleiste (in jedem Bild, da der Countdown mit der Zeit läuft).
+func _update_announcement() -> void:
+	_hud.show_announcement(world.get_announced_side(), world.get_announced_ticks())
+
+
+## Die Randmarkierung auf die Erscheinungskachel der angekündigten Welle; Gebäude am Rand können
+## die Kachel verschieben.
+func _update_wave_marker() -> void:
+	var tile := world.get_announced_tile()
+	if tile.is_empty():
+		_wave_marker.visible = false
+	else:
+		_wave_marker.show_at(tile[0], world.get_announced_side())
+
+
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
+	_update_wave_marker()
 	_update_residents()
 	_update_stock()
 	_update_hover()
@@ -602,6 +623,7 @@ func _on_building_changed(id: int) -> void:
 
 
 func _on_building_removed(id: int) -> void:
+	_update_wave_marker()
 	if _building_views.has(id):
 		_building_views[id].queue_free()
 		_building_views.erase(id)
