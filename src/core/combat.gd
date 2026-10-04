@@ -320,7 +320,7 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var is_goal := func(position: Vector3i) -> bool: return _in_reach_at(type, position, keep)
 	# Nahkämpfer: Eine Kachel in Reichweite liegt höchstens √2 < 1,5 von der Grundfläche entfernt,
 	# also fehlen von position aus mindestens so viele Kacheln weniger 1,5. Fernkämpfer suchen
-	# ohne Schätzung (ihre Reichweite hängt am Wehrgang darunter).
+	# ohne Schätzung.
 	var estimate := Callable()
 	if FighterType.is_melee(type):
 		estimate = func(position: Vector3i) -> float:
@@ -570,13 +570,16 @@ func _stop_attack(soldier: Resident) -> void:
 	soldier.post = soldier.plan_start()
 
 
-## Zusätzliche Reichweite auf dem Wehrgang: Bonus des Kämpfertyps und des Gebäudes darunter.
+## Zusätzliche Reichweite auf dem Wehrgang: Bonus des Kämpfertyps und des Gebäudes darunter (Turm).
+## Nur für Soldaten; Feinde bekommen keinen (der Wilderer reicht überall 6).
 func _range_bonus(figure: Figure) -> int:
 	return _range_bonus_at(figure.fighter_type(), figure.position())
 
 
 ## Zusätzliche Reichweite eines Kämpfers dieses Typs auf position (_range_bonus()).
 func _range_bonus_at(type: String, position: Vector3i) -> int:
+	if FighterType.is_enemy_type(type):
+		return 0
 	var below := _world.get_building_at(Vector2i(position.x, position.y))
 	if position.z == Figure.Level.WALL_WALK and below != null:
 		return FighterType.wall_walk_range_bonus(type) + below.range_bonus()
