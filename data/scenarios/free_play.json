@@ -7,7 +7,7 @@
   "start_popularity": 50,
   "start_gold": 100,
   "waves": {
-    "grace_days": 5,
+    "grace_days": 10,
     "warning_days": 1,
     "formula": {
       "every_days": 3,

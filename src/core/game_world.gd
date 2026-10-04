@@ -571,6 +571,28 @@ func _gold_error(amount: int, spent := 0) -> String:
 	return ""
 
 
+## Woher diese Ware kommt, als Hinweis für den Spieler, z. B. „Schmied (Eisen) oder Markt“:
+## die baubaren Gebäudetypen, die sie herstellen ("product", in Klammern ihr "input") oder aus
+## einem Vorkommen gewinnen ("deposit", dessen "yields"), in Datenreihenfolge, zuletzt der Markt,
+## wenn die Ware handelbar ist. Leer, wenn es keine Quelle gibt.
+static func supply_hint(good: String) -> String:
+	var defs := GameDefs.get_instance()
+	var sources: PackedStringArray = []
+	for type_id in buildable_types():
+		var def: Dictionary = defs.buildings[type_id]
+		var deposit: String = def.get("deposit", "")
+		var produces: bool = def.get("product", "") == good
+		if not produces and (deposit == "" or defs.deposits[deposit]["yields"] != good):
+			continue
+		var source := str(def["name"])
+		if def.has("input"):
+			source += " (%s)" % defs.goods[def["input"]]["name"]
+		sources.append(source)
+	if Market.is_tradable(good):
+		sources.append("Markt")
+	return " oder ".join(sources)
+
+
 ## Darf der Spieler diesen Gebäudetyp bauen? Baubar ist, was in den Daten eine Taste für
 ## die Bauleiste hat; Bauleiste und Befehl richten sich beide danach.
 static func is_buildable(type_id: String) -> bool:

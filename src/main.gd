@@ -859,8 +859,8 @@ func _open_barracks(id: int) -> void:
 	_update_barracks()
 
 
-## Kasernenansicht: Untätige, Waffen (die Waren der Anwerbekosten) und je Soldatentyp der
-## Grund, warum Anwerben gerade nicht geht.
+## Kasernenansicht: Untätige, Waffen (die Waren der Anwerbekosten), Gold und je Soldatentyp
+## der Grund, warum Anwerben gerade nicht geht.
 func _update_barracks() -> void:
 	if _barracks_id == 0:
 		return
@@ -870,7 +870,7 @@ func _update_barracks() -> void:
 		weapons[good] = world.get_stock(good)
 	for type_id in SoldierType.ids():
 		errors[type_id] = world.recruit_error(_barracks_id, type_id)
-	_hud.show_barracks(world.get_idle_count(), weapons, errors)
+	_hud.show_barracks(world.get_idle_count(), weapons, world.get_treasury(), errors)
 
 
 ## Anwerben aus der Kasernenansicht als Befehl abschicken.

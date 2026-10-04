@@ -32,6 +32,8 @@ const PANEL_COLOR := Color(0.08, 0.07, 0.05, 0.82)
 const TEXT_COLOR := Color("#e8dcc0")
 const HINT_COLOR := Color("#a89c80")
 const BLOCKED_COLOR := Color("#ff8a70")
+## Breite einer Spalte (Knopf, Grund, Hinweis) je Soldatentyp in der Kasernenansicht.
+const RECRUIT_COLUMN_WIDTH := 250
 ## So lange bleibt eine Meldung (z. B. „Gespeichert“) stehen, in Sekunden.
 const MESSAGE_SECONDS := 3.0
 ## Abstand des Bauhinweises und der Meldungen vom oberen Rand, unterhalb der Titelleiste.
@@ -77,6 +79,10 @@ var _barracks_panel: PanelContainer
 var _barracks_stock_label: Label
 ## Soldatentyp → Knopf „anwerben“ in der Kasernenansicht.
 var _recruit_buttons: Dictionary[String, Button] = {}
+## Soldatentyp → Grund unter dem Knopf, solange Anwerben nicht geht.
+var _recruit_reason_labels: Dictionary[String, Label] = {}
+## Soldatentyp → Hinweis unter dem Knopf, woher die fehlende Waffe kommt.
+var _recruit_supply_labels: Dictionary[String, Label] = {}
 var _build_label: Label
 var _build_panel: PanelContainer
 var _build_bar: PanelContainer
@@ -350,16 +356,29 @@ func is_barracks_open() -> bool:
 	return _barracks_panel.visible
 
 
-## Inhalt der Kasernenansicht: Untätige, Bestand je Waffe (Ware → Menge) und je Soldatentyp
-## der Grund, warum Anwerben gerade nicht geht (leer = möglich); gesperrte Knöpfe zeigen ihn als
-## Hinweis.
-func show_barracks(idle: int, weapons: Dictionary[String, int], errors: Dictionary[String, String]) -> void:
+## Inhalt der Kasernenansicht: Untätige, Bestand je Waffe (Ware → Menge), Gold im Schatz und je
+## Soldatentyp der Grund, warum Anwerben gerade nicht geht (leer = möglich). Gesperrte Knöpfe
+## zeigen ihn rot darunter; fehlt dem Typ eine Waffe, steht darunter, woher sie kommt.
+func show_barracks(idle: int, weapons: Dictionary[String, int], gold: int,
+		errors: Dictionary[String, String]) -> void:
+	var defs := GameDefs.get_instance()
 	var parts: PackedStringArray = ["Untätige %d" % idle]
 	for good: String in weapons:
-		parts.append("%s %d" % [GameDefs.get_instance().goods[good]["name"], weapons[good]])
+		parts.append("%s %d" % [defs.goods[good]["name"], weapons[good]])
+	parts.append("Gold %d" % gold)
 	_barracks_stock_label.text = "  ·  ".join(parts)
 	for type_id: String in _recruit_buttons:
-		_set_button_reason(_recruit_buttons[type_id], errors[type_id])
+		var reason := errors[type_id]
+		_set_button_reason(_recruit_buttons[type_id], reason)
+		_recruit_reason_labels[type_id].text = reason
+		_recruit_reason_labels[type_id].visible = reason != ""
+		var hints: PackedStringArray = []
+		var cost := SoldierType.goods_cost_of(type_id)
+		for good: String in cost:
+			if weapons.get(good, 0) < cost[good]:
+				hints.append("%s: %s" % [defs.goods[good]["name"], GameWorld.supply_hint(good)])
+		_recruit_supply_labels[type_id].text = "\n".join(hints)
+		_recruit_supply_labels[type_id].visible = not hints.is_empty()
 	_barracks_panel.reset_size()
 
 
@@ -519,8 +538,9 @@ func _make_market_panel() -> PanelContainer:
 	return panel
 
 
-## Die Kasernenansicht: Untätige und Waffen, darunter je Soldatentyp ein Knopf mit den
-## Anwerbekosten, der den Befehl „Anwerben“ auslöst.
+## Die Kasernenansicht: Untätige, Waffen und Gold, darunter je Soldatentyp eine Spalte mit
+## einem Knopf samt Anwerbekosten, der den Befehl „Anwerben“ auslöst, und darunter dem Grund,
+## warum er gesperrt ist, und woher eine fehlende Waffe kommt.
 func _make_barracks_panel() -> PanelContainer:
 	var panel := _make_panel()
 	var column := VBoxContainer.new()
@@ -530,20 +550,25 @@ func _make_barracks_panel() -> PanelContainer:
 	_barracks_stock_label = _make_label("", TEXT_COLOR, 16)
 	column.add_child(_barracks_stock_label)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 16)
 	column.add_child(row)
 	for type_id in SoldierType.ids():
+		var type_column := VBoxContainer.new()
+		type_column.add_theme_constant_override("separation", 4)
+		type_column.custom_minimum_size = Vector2(RECRUIT_COLUMN_WIDTH, 0)
+		row.add_child(type_column)
 		var button := Button.new()
-		button.text = "%s anwerben\n%s" % [FighterType.name_of(type_id),
+		button.text = "%s anwerben\nKosten: %s" % [FighterType.name_of(type_id),
 				_cost_text(SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id))]
 		button.focus_mode = Control.FOCUS_NONE
 		button.disabled = true
 		button.add_theme_font_size_override("font_size", 14)
-		button.custom_minimum_size = Vector2(160, 0)
 		button.pressed.connect(func() -> void: recruit_requested.emit(type_id))
-		row.add_child(button)
+		type_column.add_child(button)
 		_recruit_buttons[type_id] = button
-	column.add_child(_make_label("Gesperrte Knöpfe nennen den Grund  ·  Esc: schließen", HINT_COLOR, 13))
+		_recruit_reason_labels[type_id] = _make_wrapped_label(type_column, BLOCKED_COLOR, 14)
+		_recruit_supply_labels[type_id] = _make_wrapped_label(type_column, HINT_COLOR, 13)
+	column.add_child(_make_label("Esc: schließen", HINT_COLOR, 13))
 	return panel
 
 
@@ -652,6 +677,18 @@ func _make_panel() -> PanelContainer:
 	style.content_margin_right = 16
 	panel.add_theme_stylebox_override("panel", style)
 	return panel
+
+
+## Leeres, umbrechendes Textfeld so breit wie eine Spalte der Kasernenansicht, zunächst
+## ausgeblendet. Die feste Breite braucht es, damit die Höhe beim Umbruch stimmt.
+func _make_wrapped_label(parent: Container, color: Color, font_size: int) -> Label:
+	var label := _make_label("", color, font_size)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(RECRUIT_COLUMN_WIDTH, 0)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.visible = false
+	parent.add_child(label)
+	return label
 
 
 func _make_label(text: String, color: Color, font_size: int) -> Label:
