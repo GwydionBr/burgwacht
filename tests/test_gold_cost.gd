@@ -56,6 +56,14 @@ func test_goods_are_checked_before_gold() -> void:
 	assert_eq(world.build_error("market", SITE), "Zu wenig Holz (20 nötig)", "Waren zuerst:")
 
 
+func test_cost_error_checks_only_the_costs() -> void:
+	var world := _founded("tiny_gold")
+	assert_eq(world.cost_error("woodcutter"), "", "3 Holz reichen:")
+	assert_eq(world.cost_error("market"), "Nicht genug Gold (30 nötig)", "Gold fehlt:")
+	put_goods(world, WAREHOUSE, "wood", 10)
+	assert_eq(world.cost_error("market"), "Zu wenig Holz (20 nötig)", "Waren zuerst:")
+
+
 func test_demolish_refunds_half_the_gold() -> void:
 	var world := _founded()
 	var id := build(world, "market", SITE)

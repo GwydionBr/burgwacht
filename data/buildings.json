@@ -38,6 +38,7 @@
     "missing_text": "Kein Warenlager",
     "rules": [{ "kind": "next_to_same_storage", "reason": "Muss an ein Warenlager grenzen" }],
     "hotkey": "L",
+    "category": "castle",
     "color": "#9a7445",
     "height": 22
   },
@@ -53,6 +54,7 @@
     "missing_text": "Kein Kornspeicher",
     "rules": [{ "kind": "next_to_same_storage", "reason": "Muss an einen Kornspeicher grenzen" }],
     "hotkey": "G",
+    "category": "castle",
     "color": "#c9a24a",
     "height": 26
   },
@@ -68,6 +70,7 @@
     "missing_text": "Keine Waffenkammer",
     "rules": [{ "kind": "next_to_same_storage", "reason": "Muss an eine Waffenkammer grenzen" }],
     "hotkey": "A",
+    "category": "weapons",
     "color": "#6e6a78",
     "height": 24
   },
@@ -86,6 +89,7 @@
     "cost": { "wood": 3 },
     "hp": 150,
     "hotkey": "H",
+    "category": "resources",
     "color": "#5f7a3a",
     "height": 30
   },
@@ -105,6 +109,7 @@
     "hp": 150,
     "rules": [{ "kind": "next_to_deposit", "deposit": "stone", "reason": "Muss an Felsen grenzen" }],
     "hotkey": "B",
+    "category": "resources",
     "color": "#9c9a92",
     "height": 18
   },
@@ -123,6 +128,7 @@
     "cost": { "wood": 5 },
     "hp": 150,
     "hotkey": "J",
+    "category": "food",
     "color": "#6b4a2e",
     "height": 24
   },
@@ -135,6 +141,7 @@
     "cost": { "wood": 6 },
     "hp": 150,
     "hotkey": "O",
+    "category": "castle",
     "color": "#a8673f",
     "height": 26
   },
@@ -153,6 +160,7 @@
     "hp": 150,
     "rules": [{ "kind": "on_terrain", "terrain": ["grass", "meadow"], "reason": "Nur auf Wiese" }],
     "hotkey": "P",
+    "category": "food",
     "decor": "trees",
     "color": "#7a9a3a",
     "height": 6
@@ -172,6 +180,7 @@
     "hp": 150,
     "rules": [{ "kind": "on_terrain", "terrain": ["grass", "meadow"], "reason": "Nur auf Wiese" }],
     "hotkey": "W",
+    "category": "food",
     "decor": "wheat",
     "color": "#c9a93e",
     "height": 4
@@ -192,6 +201,7 @@
     "hp": 150,
     "rules": [{ "kind": "next_to_deposit", "deposit": "iron", "reason": "Muss an ein Eisenvorkommen grenzen" }],
     "hotkey": "E",
+    "category": "resources",
     "color": "#5a5550",
     "height": 22
   },
@@ -211,6 +221,7 @@
     "cost": { "wood": 20, "gold": 20 },
     "hp": 150,
     "hotkey": "U",
+    "category": "food",
     "color": "#d9d0b8",
     "height": 34
   },
@@ -230,6 +241,7 @@
     "cost": { "wood": 10, "gold": 10 },
     "hp": 150,
     "hotkey": "K",
+    "category": "food",
     "color": "#b07a4a",
     "height": 24
   },
@@ -249,6 +261,7 @@
     "cost": { "wood": 20, "gold": 40 },
     "hp": 150,
     "hotkey": "S",
+    "category": "weapons",
     "color": "#4a4440",
     "height": 26
   },
@@ -268,6 +281,7 @@
     "cost": { "wood": 10, "gold": 20 },
     "hp": 150,
     "hotkey": "R",
+    "category": "weapons",
     "color": "#8c6a3c",
     "height": 24
   },
@@ -279,6 +293,7 @@
     "cost": { "wood": 20, "gold": 30 },
     "hp": 150,
     "hotkey": "T",
+    "category": "castle",
     "color": "#b5523b",
     "height": 20
   },
@@ -290,6 +305,7 @@
     "cost": { "wood": 20, "stone": 10 },
     "hp": 150,
     "hotkey": "C",
+    "category": "military",
     "color": "#7a3b34",
     "height": 30
   },
@@ -302,6 +318,7 @@
     "line": true,
     "walkway": true,
     "hotkey": "Q",
+    "category": "military",
     "color": "#8f897d",
     "height": 28
   },
@@ -314,6 +331,7 @@
     "walkable": true,
     "rules": [{ "kind": "next_to_behavior", "behavior": ["wall", "gate", "defense"], "reason": "Muss an Mauer, Tor oder Turm grenzen" }],
     "hotkey": "I",
+    "category": "military",
     "color": "#a39d90",
     "height": 12
   },
@@ -327,6 +345,7 @@
     "walkway": true,
     "range_bonus": 3,
     "hotkey": "Z",
+    "category": "military",
     "color": "#7d776c",
     "height": 46
   },
@@ -339,6 +358,7 @@
     "walkable": true,
     "walkway": true,
     "hotkey": "Y",
+    "category": "military",
     "color": "#857a68",
     "height": 28
   }

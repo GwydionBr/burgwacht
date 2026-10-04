@@ -122,6 +122,21 @@ func test_buildable_types_come_from_data() -> void:
 			"Baubare Typen:")
 
 
+func test_every_buildable_type_has_a_known_category() -> void:
+	for type_id in GameWorld.buildable_types():
+		assert_true(GameWorld.build_category_of(type_id) in GameWorld.build_categories(), "Kategorie von %s:" % type_id)
+
+
+func test_build_categories_come_from_data() -> void:
+	assert_eq(GameWorld.build_categories(), ["castle", "resources", "food", "weapons", "military"] as Array[String],
+			"Kategorien:")
+	assert_eq(GameWorld.build_category_name("food"), "Nahrung", "Name:")
+	assert_eq(GameWorld.buildable_types_in("food"), ["hunter", "orchard", "wheat_farm", "mill", "bakery"] as Array[String],
+			"Nahrung in Datenreihenfolge:")
+	for category in GameWorld.build_categories():
+		assert_true(not GameWorld.buildable_types_in(category).is_empty(), "Kategorie %s nicht leer:" % category)
+
+
 func test_campfire_cannot_be_built() -> void:
 	var world := _founded_world()
 	var before := world.to_data()

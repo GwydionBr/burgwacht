@@ -1,0 +1,7 @@
+{
+  "castle": { "name": "Burg" },
+  "resources": { "name": "Rohstoffe" },
+  "food": { "name": "Nahrung" },
+  "weapons": { "name": "Waffen" },
+  "military": { "name": "Militär" }
+}
