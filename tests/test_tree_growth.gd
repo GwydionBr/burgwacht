@@ -1,5 +1,8 @@
 extends TestCase
-## Simulationstests: Bäume wachsen nach.
+## Simulationstests: Bäume wachsen nach. In den Spieldaten ist das Wachstum
+## vorerst aus (Chance 0); die Tests setzen dafür eine eigene Chance.
+
+const GROWTH_CHANCE := 0.005
 
 
 func _interval() -> int:
@@ -33,20 +36,18 @@ func _tree_tiles(world: GameWorld) -> Array[Vector2i]:
 	return tiles
 
 
-## Läuft N Tage und liefert die per Signal gemeldeten neuen Vorkommen.
+## Läuft N Tage mit GROWTH_CHANCE und liefert die per Signal gemeldeten neuen Vorkommen.
 func _run_days_collecting_added(world: GameWorld, days: int) -> Array[Vector2i]:
 	var added: Array[Vector2i] = []
 	world.deposit_added.connect(func(tile: Vector2i) -> void: added.append(tile))
-	for i in GameWorld.TICKS_PER_DAY * days:
-		world.step()
+	_run_with_chance(world, GameWorld.TICKS_PER_DAY * days, GROWTH_CHANCE)
 	return added
 
 
 func test_trees_grow_over_days() -> void:
 	var world := run_scenario("tiny", 0)
 	var before := _tree_tiles(world).size()
-	for i in GameWorld.TICKS_PER_DAY * 5:
-		world.step()
+	_run_with_chance(world, GameWorld.TICKS_PER_DAY * 5, GROWTH_CHANCE)
 	var after := _tree_tiles(world).size()
 	assert_true(after > before, "Nach 5 Tagen sollten mehr Bäume stehen als %d, sind %d" % [before, after])
 

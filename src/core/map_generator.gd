@@ -75,9 +75,9 @@ static func _terrain_for(height: float, dist_from_start: float) -> String:
 static func _deposit_for(forest: float, rock: float, rng: RandomNumberGenerator) -> String:
 	if rock > 0.38:
 		return "iron" if rock > 0.5 and rng.randf() < 0.7 else "stone"
-	if forest > 0.1 and rng.randf() < remap(forest, 0.1, 0.5, 0.4, 0.95):
+	if forest > 0.25 and rng.randf() < remap(forest, 0.25, 0.6, 0.35, 0.9):
 		return "tree"
-	if rng.randf() < 0.012:
+	if rng.randf() < 0.006:
 		return "tree"
 	return ""
 

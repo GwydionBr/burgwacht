@@ -28,9 +28,14 @@ func test_loaded_world_continues_exactly_like_unsaved_one() -> void:
 	var added_loaded: Array[Vector2i] = []
 	original.deposit_added.connect(func(tile: Vector2i) -> void: added_original.append(tile))
 	loaded.deposit_added.connect(func(tile: Vector2i) -> void: added_loaded.append(tile))
+	# Baumwachstum ist in den Spieldaten vorerst aus; hier an, damit der Zufall mitläuft.
+	var spread: Dictionary = GameDefs.get_instance().deposits["tree"]["spread"]
+	var old_chance: float = spread["chance"]
+	spread["chance"] = 0.005
 	for i in ticks_after:
 		original.step()
 		loaded.step()
+	spread["chance"] = old_chance
 	assert_true(original.map.deposits.size() > trees_before, "Es sollten Bäume nachwachsen")
 	assert_eq(added_loaded, added_original, "Nachgewachsene Bäume (gemeldet):")
 	assert_eq(world_snapshot(loaded), world_snapshot(original), "Zustand nach weiteren %d Takten:" % ticks_after)
