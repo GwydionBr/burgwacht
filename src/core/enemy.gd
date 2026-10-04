@@ -6,12 +6,15 @@ extends Figure
 
 ## Feindtyp aus units.json, z. B. "bandit".
 var type: String
+## Nummer der Welle, mit der er kam (ab 1); 0 bei Startfeinden und Feinden per Debug-Befehl.
+var wave := 0
 
 
-static func create(enemy_id: int, type_id: String, start_tile: Vector2i) -> Enemy:
+static func create(enemy_id: int, type_id: String, start_tile: Vector2i, wave_number := 0) -> Enemy:
 	var enemy := Enemy.new()
 	enemy.id = enemy_id
 	enemy.type = type_id
+	enemy.wave = wave_number
 	enemy.tile = start_tile
 	enemy.hp = FighterType.max_hp(type_id)
 	return enemy
@@ -33,6 +36,7 @@ func report_hit(combat: Combat) -> void:
 func to_data() -> Dictionary:
 	var data := _figure_data()
 	data["type"] = type
+	data["wave"] = wave
 	return data
 
 
@@ -41,4 +45,5 @@ static func from_data(data: Dictionary) -> Enemy:
 	var enemy := Enemy.new()
 	enemy._read_figure_data(data)
 	enemy.type = str(data["type"])
+	enemy.wave = int(data["wave"])
 	return enemy

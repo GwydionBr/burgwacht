@@ -115,6 +115,12 @@ var _start_enemies: Array[StartEnemy] = []
 ## Nach ID aufsteigend eingefügt; eigene IDs, getrennt von denen der Bewohner.
 var _enemies: Dictionary[int, Enemy] = {}
 var _next_enemy_id := 1
+## Der Wellenplan aus dem Szenario (Ablauf: Waves).
+var _wave_plan := WavePlan.new()
+## Nummer der nächsten Welle laut Plan (ab 1).
+var _next_wave := 1
+## So viele Wellen sind abgewehrt (keiner ihrer Feinde lebt mehr).
+var _repelled_waves := 0
 ## Wie gern die Bewohner in der Burg leben, 0–100.
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
@@ -151,6 +157,7 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._start_goods = scenario.start_goods.duplicate()
 	world._start_residents = scenario.start_residents
 	world._start_enemies = scenario.start_enemies.duplicate()
+	world._wave_plan = WavePlan.from_data(scenario.wave_plan.to_data())
 	world._popularity = scenario.start_popularity
 	world._ration = Population.default_ration()
 	world._tax_rate = Population.default_tax_rate()
@@ -181,6 +188,9 @@ func to_data() -> Dictionary:
 		"start_enemies": _start_enemies.map(func(entry: StartEnemy) -> Dictionary: return entry.to_data()),
 		"next_enemy_id": _next_enemy_id,
 		"enemies": _enemies.values().map(func(enemy: Enemy) -> Dictionary: return enemy.to_data()),
+		"wave_plan": _wave_plan.to_data(),
+		"next_wave": _next_wave,
+		"repelled_waves": _repelled_waves,
 		"popularity": _popularity,
 		"ration": _ration,
 		"tax_rate": _tax_rate,
@@ -234,6 +244,9 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["enemies"]:
 		var enemy := Enemy.from_data(entry)
 		world._enemies[enemy.id] = enemy
+	world._wave_plan = WavePlan.from_data(data["wave_plan"])
+	world._next_wave = int(data["next_wave"])
+	world._repelled_waves = int(data["repelled_waves"])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._tax_rate = str(data["tax_rate"])
@@ -260,6 +273,7 @@ func step() -> void:
 	if _tick % TICKS_PER_DAY == 0:
 		_start_day()
 		day_started.emit(get_day())
+	_waves().update()
 
 
 ## Führt einen Befehl sofort aus. Leer bei Erfolg, sonst der Grund auf Deutsch;
@@ -633,6 +647,16 @@ func enemy_activity_of(enemy: Enemy) -> String:
 	return "%s – %s" % [enemy_name, "läuft zum Bergfried" if enemy.is_moving() else "wartet"]
 
 
+## Nummer der nächsten Welle laut Wellenplan (ab 1; die erste, die noch nicht erschienen ist).
+func get_next_wave() -> int:
+	return _next_wave
+
+
+## So viele Wellen sind abgewehrt: Keiner ihrer Feinde lebt mehr.
+func get_repelled_waves() -> int:
+	return _repelled_waves
+
+
 ## Alle Bewohner nach ID aufsteigend – auch die gehenden, die nicht mehr mitzählen
 ## (get_population()).
 func get_residents() -> Array[Resident]:
@@ -1003,6 +1027,8 @@ func _found(origin: Vector2i) -> String:
 	_add_start_residents(campfire)
 	_combat().add_start_enemies(_start_enemies)
 	_founding = false
+	# Wellen für Tag 1 erscheinen gleich mit der Gründung.
+	_waves().update()
 	founded.emit()
 	return ""
 
@@ -1215,9 +1241,15 @@ func _combat() -> Combat:
 	return Combat.new(self)
 
 
-## Ein neuer Feind mit vollen Lebenspunkten (losschicken: Combat).
-func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
-	var enemy := Enemy.create(_next_enemy_id, type_id, tile)
+## Angriffswellen (Waves); ohne eigenen Zustand, daher für jeden Aufruf neu.
+func _waves() -> Waves:
+	return Waves.new(self)
+
+
+## Ein neuer Feind mit vollen Lebenspunkten, der zur Welle mit dieser Nummer gehört (0 = keiner;
+## losschicken: Combat).
+func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+	var enemy := Enemy.create(_next_enemy_id, type_id, tile, wave)
 	_next_enemy_id += 1
 	_enemies[enemy.id] = enemy
 	enemy_added.emit(enemy.id)
@@ -1228,6 +1260,7 @@ func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
 func _remove_enemy(enemy: Enemy) -> void:
 	_enemies.erase(enemy.id)
 	enemy_removed.emit(enemy.id)
+	_waves().enemy_removed(enemy)
 
 
 ## Ein Takt für einen Bewohner (siehe _update_residents()).
