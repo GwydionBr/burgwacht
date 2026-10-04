@@ -74,6 +74,9 @@ signal settings_changed()
 signal notice(text: String)
 ## Der Bergfried ist gefallen: Die Partie ist verloren (is_defeated()).
 signal defeated()
+## Eine Ankündigung hat begonnen oder ist mit dem Erscheinen ihrer Welle vorbei
+## (get_announced_side()).
+signal announcement_changed()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
@@ -129,6 +132,9 @@ var _wave_plan := WavePlan.new()
 var _next_wave := 1
 ## So viele Wellen sind abgewehrt (keiner ihrer Feinde lebt mehr).
 var _repelled_waves := 0
+## Seite der laufenden Ankündigung der nächsten Welle (_next_wave), bei ihrem Beginn festgelegt;
+## leer, solange keine läuft.
+var _announced_side := ""
 ## Die Wellen, deren Angriff auf den Bergfried schon gemeldet ist („Der Bergfried wird
 ## angegriffen!“ höchstens einmal je Welle); eine abgewehrte fällt heraus. 0 steht für Feinde ohne
 ## Welle (Startfeinde, Debug-Feinde): Bei ihnen wird jeder Angriff gemeldet, 0 fällt also heraus,
@@ -206,6 +212,7 @@ func to_data() -> Dictionary:
 		"wave_plan": _wave_plan.to_data(),
 		"next_wave": _next_wave,
 		"repelled_waves": _repelled_waves,
+		"announced_side": _announced_side,
 		"keep_alarmed_waves": _keep_alarmed_waves.duplicate(),
 		"defeated": _defeated,
 		"popularity": _popularity,
@@ -264,6 +271,7 @@ static func from_data(data: Dictionary) -> GameWorld:
 	world._wave_plan = WavePlan.from_data(data["wave_plan"])
 	world._next_wave = int(data["next_wave"])
 	world._repelled_waves = int(data["repelled_waves"])
+	world._announced_side = str(data["announced_side"])
 	for wave: Variant in data["keep_alarmed_waves"]:
 		world._keep_alarmed_waves.append(int(wave))
 	world._defeated = bool(data["defeated"])
@@ -699,6 +707,26 @@ func get_next_wave() -> int:
 ## So viele Wellen sind abgewehrt: Keiner ihrer Feinde lebt mehr.
 func get_repelled_waves() -> int:
 	return _repelled_waves
+
+
+## Seite der laufenden Ankündigung der nächsten Welle (Waves.SIDES); leer, wenn keine läuft.
+func get_announced_side() -> String:
+	return _announced_side
+
+
+## Die Kachel, auf der die angekündigte Welle erscheinen wird (Combat.spawn_tile() ihrer Seite);
+## leer, wenn keine Ankündigung läuft oder die Seite keine freie Randkachel hat.
+func get_announced_tile() -> Array[Vector2i]:
+	if _announced_side == "":
+		return []
+	return _combat().spawn_tile(_announced_side)
+
+
+## So viele Takte noch bis zum Erscheinen der angekündigten Welle; 0, wenn keine Ankündigung läuft.
+func get_announced_ticks() -> int:
+	if _announced_side == "":
+		return 0
+	return _waves().appearance_tick(_waves().planned_wave(_next_wave)) - _tick
 
 
 ## Alle Bewohner nach ID aufsteigend – auch die gehenden, die nicht mehr mitzählen

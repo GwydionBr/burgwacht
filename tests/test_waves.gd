@@ -126,8 +126,8 @@ func test_wave_notice_names_its_side() -> void:
 	var world := _founded()
 	var notices := _notices(world)
 	_run_world(world, GameWorld.TICKS_PER_DAY)
-	# Ohne Nahrung meldet der Tagesbeginn außerdem den Mangel.
-	assert_eq(notices.filter(func(text: String) -> bool: return text.begins_with("Welle")),
+	# Ohne Nahrung meldet der Tagesbeginn außerdem den Mangel, dazu kommt die Ankündigung der nächsten.
+	assert_eq(notices.filter(func(text: String) -> bool: return text.begins_with("Welle") and text.ends_with("!")),
 			["Welle aus Osten!"], "Meldungen:")
 
 

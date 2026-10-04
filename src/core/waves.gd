@@ -5,8 +5,13 @@ extends RefCounted
 ## (Combat.spawn_tile()); ihre Feinde verteilen sich auf die freien Kacheln drumherum. Wellen
 ## kommen strikt nach Plan, auch wenn ältere noch leben.
 ##
-## Hält keinen eigenen Zustand: Plan, Nummer der nächsten Welle und abgewehrte Wellen hält die
-## Spielwelt, die Welle eines Feinds der Feind selbst; die Spielwelt bleibt die einzige Wurzel des
+## Eine Vorwarnzeit (WavePlan.warning_days) vor ihrem Erscheinen wird die nächste Welle angekündigt;
+## dabei wird ihre Seite festgelegt (ist keine geplant, aus dem Zufall der Spielwelt). Angekündigt
+## wird immer nur die nächste; mit dem Erscheinen endet die Ankündigung. Erscheinen mehrere Wellen
+## zugleich, wird nur die erste angekündigt.
+##
+## Hält keinen eigenen Zustand: Plan, Nummer der nächsten Welle, Seite der laufenden Ankündigung
+## und abgewehrte Wellen hält die Spielwelt, die Welle eines Feinds der Feind selbst; die Spielwelt bleibt die einzige Wurzel des
 ## Zustands (ADR 0002). Wie Combat legt sie für jeden Aufruf ein Waves an (GameWorld._waves()).
 
 ## Die Seiten der Karte, in der Reihenfolge, in der der Zufall unter ihnen wählt.
@@ -42,12 +47,29 @@ func planned_wave(number: int) -> PlannedWave:
 	return plan.list[number - 1] if number <= plan.list.size() else null
 
 
-## In jedem Takt (und bei der Gründung): Jede Welle, deren Tag begonnen hat, erscheint.
+## Der Takt, mit dem die Welle erscheint: der Beginn ihres Tages.
+func appearance_tick(wave: PlannedWave) -> int:
+	return (wave.day - 1) * GameWorld.TICKS_PER_DAY
+
+
+## In jedem Takt (und bei der Gründung): Jede Welle, deren Tag begonnen hat, erscheint; danach
+## beginnt, wenn es Zeit ist, die Ankündigung der nächsten (bei der Gründung auch verspätet).
 func update() -> void:
 	var wave := planned_wave(_world._next_wave)
 	while wave != null and wave.day <= _world.get_day():
 		_spawn(wave)
 		wave = planned_wave(_world._next_wave)
+	var warning := _world._wave_plan.warning_days * GameWorld.TICKS_PER_DAY
+	if wave != null and _world._announced_side == "" and _world.get_tick() >= appearance_tick(wave) - warning:
+		_announce(wave)
+
+
+## Die Ankündigung der nächsten Welle beginnt: Ihre Seite steht ab jetzt fest.
+func _announce(wave: PlannedWave) -> void:
+	_world._announced_side = wave.side if wave.side != "" else _random_side()
+	var days := ceili(float(appearance_tick(wave) - _world.get_tick()) / GameWorld.TICKS_PER_DAY)
+	_world.notice.emit("Welle aus %s in %d %s" % [SIDE_NAMES[_world._announced_side], days, "Tag" if days == 1 else "Tagen"])
+	_world.announcement_changed.emit()
 
 
 ## Debug-Befehl: Die nächste Welle erscheint sofort, die danach kommen wie geplant.
@@ -64,7 +86,15 @@ func spawn_next() -> String:
 func _spawn(wave: PlannedWave) -> void:
 	var number := _world._next_wave
 	_world._next_wave += 1
-	var side := wave.side if wave.side != "" else _random_side()
+	# Die Seite der laufenden Ankündigung (sie gilt immer dieser, der nächsten Welle).
+	var side := _world._announced_side
+	if side != "":
+		_world._announced_side = ""
+		_world.announcement_changed.emit()
+	elif wave.side != "":
+		side = wave.side
+	else:
+		side = _random_side()
 	var combat := _world._combat()
 	var spawn := combat.spawn_tile(side)
 	_world.notice.emit("Welle aus %s!" % SIDE_NAMES[side])
