@@ -73,6 +73,33 @@ static func tab_style(selected: bool, hovered := false) -> StyleBoxFlat:
 	return style
 
 
+## Titelleiste über die ganze Breite: deckendes Holz, unten ein Goldrand und ein Schatten.
+static func title_bar_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = BAR_COLOR
+	style.border_color = GOLD_COLOR.darkened(0.3)
+	style.border_width_bottom = 2
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 2)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	return style
+
+
+## Füllbalken der Titelleiste (Lager, Beliebtheit): dunkle Rinne, Füllung in fill.
+static func meter_styles(fill: Color) -> Array[StyleBoxFlat]:
+	var background := card_style(Color(0, 0, 0, 0.5), PANEL_BORDER_COLOR.darkened(0.2))
+	background.set_corner_radius_all(2)
+	background.set_content_margin_all(0)
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = fill
+	fill_style.set_corner_radius_all(2)
+	return [background, fill_style]
+
+
 ## Gibt einem Knopf für alle Zustände die Stile einer Karte der Bauleiste.
 static func apply_card_style(button: Button) -> void:
 	button.add_theme_stylebox_override("normal", card_style(WOOD_COLOR, PANEL_BORDER_COLOR))

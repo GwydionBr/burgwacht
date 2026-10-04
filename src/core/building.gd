@@ -248,14 +248,19 @@ static func storage_missing_text(storage_type: String) -> String:
 	return "Kein Lager für %s" % storage_name(storage_type)
 
 
-## Daten des ersten Gebäudetyps (Reihenfolge in den Daten), der Waren dieser Lagerart lagert;
-## leer, wenn es keinen gibt.
-static func _storage_def(storage_type: String) -> Dictionary:
-	var buildings := GameDefs.get_instance().buildings
-	for type_id: String in buildings:
+## Der erste Gebäudetyp (Reihenfolge in den Daten), der Waren dieser Lagerart lagert, z. B.
+## „granary“; leer, wenn es keinen gibt.
+static func storage_building_of(storage_type: String) -> String:
+	for type_id: String in GameDefs.get_instance().buildings:
 		if storage_type_of(type_id) == storage_type:
-			return buildings[type_id]
-	return {}
+			return type_id
+	return ""
+
+
+## Daten von storage_building_of(); leer, wenn es keinen gibt.
+static func _storage_def(storage_type: String) -> Dictionary:
+	var type_id := storage_building_of(storage_type)
+	return GameDefs.get_instance().buildings[type_id] if type_id != "" else {}
 
 
 ## Die Lagerarten der Waren, in der Reihenfolge ihrer ersten Ware in den Daten.

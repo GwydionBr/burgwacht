@@ -58,6 +58,8 @@ func test_armory_data() -> void:
 	assert_eq(Building.storage_type_of("armory"), "armory", "Lagerart:")
 	assert_eq(Building.storage_name("armory"), "Waffenkammer", "Name der Lagerart:")
 	assert_eq(Building.storage_missing_text("armory"), "Keine Waffenkammer", "Grund ohne Waffenkammer:")
+	assert_eq(Building.storage_building_of("armory"), "armory", "Gebäude der Lagerart:")
+	assert_eq(Building.storage_building_of("treasure"), "", "Lagerart ohne Gebäude:")
 	assert_true(GameWorld.is_buildable("armory"), "Hat eine Bautaste")
 
 
