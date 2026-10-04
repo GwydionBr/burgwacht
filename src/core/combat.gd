@@ -18,6 +18,9 @@ extends RefCounted
 
 ## Meldung beim ersten Treffer eines Angriffs auf den Bergfried.
 const KEEP_ATTACKED := "Der Bergfried wird angegriffen!"
+## Nahkampf-Reichweite zu einem Gebäude: Abstand zur nächsten Kachel der Grundfläche unter diesem
+## Wert, also auf einer Nachbarkachel, auch schräg (√2 < 1,5).
+const MELEE_REACH := 1.5
 
 var _world: GameWorld
 
@@ -240,7 +243,7 @@ func _in_reach_of_building(figure: Figure, building: Building) -> bool:
 func _in_reach_at(type: String, position: Vector3i, building: Building) -> bool:
 	var distance := _distance_to_building(Vector2i(position.x, position.y), building)
 	if FighterType.is_melee(type):
-		return position.z == Figure.Level.GROUND and distance > 0.0 and distance < 1.5
+		return position.z == Figure.Level.GROUND and distance > 0.0 and distance < MELEE_REACH
 	return distance <= FighterType.range_of(type) + _range_bonus_at(type, position) + Figure.DISTANCE_SLACK
 
 
@@ -318,13 +321,13 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var keep := _world._keep()
 	var type := enemy.type
 	var is_goal := func(position: Vector3i) -> bool: return _in_reach_at(type, position, keep)
-	# Nahkämpfer: Eine Kachel in Reichweite liegt höchstens √2 < 1,5 von der Grundfläche entfernt,
-	# also fehlen von position aus mindestens so viele Kacheln weniger 1,5. Fernkämpfer suchen
-	# ohne Schätzung.
+	# Nahkämpfer: Eine Kachel in Reichweite liegt weniger als MELEE_REACH von der Grundfläche
+	# entfernt, also fehlen von position aus mindestens so viele Kacheln weniger MELEE_REACH.
+	# Fernkämpfer suchen ohne Schätzung.
 	var estimate := Callable()
 	if FighterType.is_melee(type):
 		estimate = func(position: Vector3i) -> float:
-			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - 1.5, 0.0)
+			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - MELEE_REACH, 0.0)
 	var map := _EnemyMap.new(self, type)
 	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, map.is_passable, map.ascents,
 			map.is_steppable, map.extra_cost, estimate)
