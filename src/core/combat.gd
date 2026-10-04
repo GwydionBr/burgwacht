@@ -1,14 +1,15 @@
 class_name Combat
 extends RefCounted
-## Kampf und Feinde der Spielwelt: Feinde (z. B. Räuber) erscheinen am Kartenrand, laufen zum
-## Bergfried und greifen ihn an; Soldaten in Sichtweite greifen sie an. Soldaten greifen Feinde
-## auf Befehl an. Ein Angriff trifft sofort und ohne Zufall; wer keine Lebenspunkte mehr hat,
-## stirbt. Fällt der Bergfried, ist die Partie verloren.
+## Kampf und Feinde der Spielwelt: Feinde (Räuber im Nahkampf, Wilderer im Fernkampf) erscheinen
+## am Kartenrand, laufen zum Bergfried und greifen ihn an; Soldaten in Sichtweite bzw. Reichweite
+## greifen sie an. Soldaten greifen Feinde auf Befehl an. Ein Angriff trifft sofort und ohne
+## Zufall; wer keine Lebenspunkte mehr hat, stirbt. Fällt der Bergfried, ist die Partie verloren.
 ##
 ## Feinde planen ihren Weg mit Zerstörungskosten (ADR 0005): Gebäude, auf denen sie nicht stehen
 ## dürfen, gelten als begehbar, kosten aber so viel, wie es dauert, sie zu zerstören
 ## (_EnemyMap). Das erste Gebäude auf dem Weg ist das Hindernis; der Feind läuft heran und
-## greift es an. Ein zerstörtes Gebäude verschwindet (GameWorld._destroy()), dann planen alle neu.
+## greift es an, ein Fernkämpfer schon aus der Entfernung. Ein zerstörtes Gebäude verschwindet
+## (GameWorld._destroy()), dann planen alle neu.
 ##
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
 ## einzige Wurzel des Zustands (ADR 0002). Die Spielwelt legt für jeden Aufruf ein Combat an
@@ -135,9 +136,9 @@ func enemy_hit(enemy: Enemy) -> void:
 
 
 ## Feinde laufen in ID-Reihenfolge einen Takt weiter: Ein Feind ohne Ziel sucht zwischen zwei
-## Schritten den nächsten Soldaten in Sichtweite, den er erreicht (_enemy_target()), und greift
-## ihn an (_fight()); verliert er ihn aus der Sicht oder erreicht ihn nicht mehr, läuft er weiter
-## zum Bergfried (_send_enemy_to_keep()).
+## Schritten den nächsten Soldaten, den er erreicht bzw. in Reichweite hat (_enemy_target()), und
+## greift ihn an (_fight()); verliert er ihn (_enemy_keeps_target()) oder erreicht ihn nicht mehr,
+## läuft er weiter zum Bergfried (_send_enemy_to_keep()).
 func update_enemies() -> void:
 	for enemy in _world.get_enemies():
 		if _world._defeated:
@@ -158,14 +159,15 @@ func _is_keep_attacked_without_wave() -> bool:
 	return false
 
 
-## Ein Takt eines Feinds. Zielvorrang: ein Soldat, den er erreicht, dann das Hindernis auf seinem
-## Weg, dann der Bergfried (_attack_in_way()); sonst geht er seinen Weg weiter.
+## Ein Takt eines Feinds. Zielvorrang: ein Soldat, den er erreicht bzw. in Reichweite hat
+## (_enemy_target()), dann das Hindernis auf seinem Weg, dann der Bergfried (_attack_in_way());
+## sonst geht er seinen Weg weiter.
 func _update_enemy(enemy: Enemy) -> void:
 	if enemy.cooldown > 0:
 		enemy.cooldown -= 1
 	var target := _world.get_resident(enemy.target_id)
 	if enemy.step_progress == 0:
-		if target != null and enemy.distance_to(target) > FighterType.sight_of(enemy.type) + Figure.DISTANCE_SLACK:
+		if target != null and not _enemy_keeps_target(enemy, target):
 			_drop_enemy_target(enemy)
 			target = null
 		if target == null:
@@ -265,17 +267,31 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		_world._destroy(building)
 
 
-## Der Soldat in Sichtweite, den der Feind angreift: der nächste (Abstand der Kachelmitten, bei
-## Gleichstand kleinere ID), den er erreicht – mit einem Weg von höchstens doppelter Sichtweite,
-## damit Soldaten hinter Hindernissen nicht jeden Takt die ganze Karte durchsuchen lassen. null,
-## wenn es keinen gibt.
+## Der Soldat, den der Feind angreift (unbewaffnete Bewohner sind nie Ziel): der nächste (Abstand
+## der Kachelmitten, bei Gleichstand kleinere ID). Ein Nahkämpfer nimmt einen in Sichtweite, den er
+## erreicht – mit einem Weg von höchstens doppelter Sichtweite, damit Soldaten hinter Hindernissen
+## nicht jeden Takt die ganze Karte durchsuchen lassen. Ein Fernkämpfer (Wilderer) nimmt einen in
+## Reichweite, auch auf einer anderen Ebene (Wehrgang), ohne Weg. null, wenn es keinen gibt.
 func _enemy_target(enemy: Enemy) -> Resident:
 	var sight := FighterType.sight_of(enemy.type)
+	var melee := FighterType.is_melee(enemy.type)
 	var candidates: Array[Figure] = []
 	for resident: Resident in _world.get_residents():
-		if resident.is_soldier() and enemy.distance_to(resident) <= sight + Figure.DISTANCE_SLACK:
+		if not resident.is_soldier():
+			continue
+		if melee and enemy.distance_to(resident) <= sight + Figure.DISTANCE_SLACK:
 			candidates.append(resident)
-	return _nearest_opponent(enemy, candidates, 2.0 * sight) as Resident
+		elif not melee and enemy.in_reach(resident, _range_bonus(enemy)):
+			candidates.append(resident)
+	return _nearest_opponent(enemy, candidates, 2.0 * sight if melee else -1.0) as Resident
+
+
+## Bleibt der Feind an seinem Soldaten dran? Ein Nahkämpfer, solange er ihn sieht; ein Fernkämpfer,
+## solange er ihn in Reichweite hat, sonst geht er seinen Weg weiter, statt ihm nachzulaufen.
+func _enemy_keeps_target(enemy: Enemy, target: Resident) -> bool:
+	if FighterType.is_melee(enemy.type):
+		return enemy.distance_to(target) <= FighterType.sight_of(enemy.type) + Figure.DISTANCE_SLACK
+	return enemy.in_reach(target, _range_bonus(enemy))
 
 
 ## Der Feind gibt sein Ziel auf und läuft weiter zum Bergfried.

@@ -11,7 +11,10 @@
     "warning_days": 1,
     "formula": {
       "every_days": 3,
-      "enemies": { "bandit": { "base": 3, "growth": 1 } }
+      "enemies": {
+        "bandit": { "base": 3, "growth": 1 },
+        "poacher": { "base": 0, "growth": 0.5 }
+      }
     }
   }
 }
