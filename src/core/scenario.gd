@@ -6,7 +6,8 @@ extends RefCounted
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
 ## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
 ## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0) und "enemies" (Feinde, die bei der Gründung
-## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}).
+## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}) und "waves" (der
+## Wellenplan, siehe WavePlan).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -31,6 +32,8 @@ var start_popularity := DEFAULT_POPULARITY
 var start_gold := 0
 ## Feinde bei der Gründung, in der Reihenfolge der Datei.
 var start_enemies: Array[StartEnemy] = []
+## Der Wellenplan (Feld "waves", siehe WavePlan); ohne das Feld leer, dann kommen keine Wellen.
+var wave_plan := WavePlan.new()
 var error := ""
 
 
@@ -70,7 +73,7 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 	var seed_value: Variant = data.get("seed")
 	if seed_value is String and seed_value == RANDOM_SEED:
 		scenario.random_seed = true
-	elif _is_whole_number(seed_value):
+	elif is_whole_number(seed_value):
 		scenario.fixed_seed = int(seed_value)
 	else:
 		problems.append("„seed“ muss eine ganze Zahl oder \"%s\" sein" % RANDOM_SEED)
@@ -78,24 +81,27 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 	_read_start_goods(scenario, data.get("start_goods", {}), problems)
 
 	var residents_value: Variant = data.get("start_residents", 0)
-	if _is_whole_number(residents_value) and int(residents_value) >= 0:
+	if is_whole_number_from(residents_value, 0):
 		scenario.start_residents = int(residents_value)
 	else:
 		problems.append("„start_residents“ muss eine ganze Zahl ab 0 sein")
 
 	var popularity_value: Variant = data.get("start_popularity", DEFAULT_POPULARITY)
-	if _is_whole_number(popularity_value) and int(popularity_value) >= 0 and int(popularity_value) <= 100:
+	if is_whole_number_from(popularity_value, 0) and int(popularity_value) <= 100:
 		scenario.start_popularity = int(popularity_value)
 	else:
 		problems.append("„start_popularity“ muss eine ganze Zahl von 0 bis 100 sein")
 
 	var gold_value: Variant = data.get("start_gold", 0)
-	if _is_whole_number(gold_value) and int(gold_value) >= 0:
+	if is_whole_number_from(gold_value, 0):
 		scenario.start_gold = int(gold_value)
 	else:
 		problems.append("„start_gold“ muss eine ganze Zahl ab 0 sein")
 
 	_read_enemies(scenario, data.get("enemies", []), problems)
+
+	if data.has("waves"):
+		scenario.wave_plan = WavePlan.parse(data["waves"], problems)
 
 	if not problems.is_empty():
 		scenario.error = "Szenario „%s“ ist ungültig: %s." % [scenario_id, "; ".join(problems)]
@@ -118,7 +124,7 @@ static func _read_start_goods(scenario: Scenario, value: Variant, problems: Pack
 		var amount: Variant = entries[good]
 		if not goods.has(good):
 			problems.append("„start_goods“ enthält die unbekannte Ware „%s“" % str(good))
-		elif not _is_whole_number(amount) or int(amount) < 0:
+		elif not is_whole_number_from(amount, 0):
 			problems.append("„start_goods“: Menge für „%s“ muss eine ganze Zahl ab 0 sein" % str(good))
 		else:
 			scenario.start_goods[str(good)] = int(amount)
@@ -136,7 +142,7 @@ static func _read_enemies(scenario: Scenario, value: Variant, problems: PackedSt
 		var tile_array: Array = tile_value if tile_value is Array else []
 		if not (type_value is String and FighterType.is_enemy_type(type_value)):
 			problems.append("„enemies“: unbekannter Feindtyp „%s“" % str(type_value))
-		elif tile_array.size() != 2 or not _is_whole_number(tile_array[0]) or not _is_whole_number(tile_array[1]) \
+		elif tile_array.size() != 2 or not is_whole_number(tile_array[0]) or not is_whole_number(tile_array[1]) \
 				or not Rect2i(Vector2i.ZERO, scenario.map_size).has_point(Vector2i(int(tile_array[0]), int(tile_array[1]))):
 			problems.append("„enemies“: „tile“ muss eine Kachel [x, y] auf der Karte sein")
 		else:
@@ -150,10 +156,21 @@ static func _failed(scenario_id: String, message: String) -> Scenario:
 	return scenario
 
 
-## JSON kennt nur Kommazahlen; ganze Zahlen kommen als float mit Nachkommateil 0.
-static func _is_whole_number(value: Variant) -> bool:
+## Ist der Wert eine ganze Zahl? JSON kennt nur Kommazahlen; ganze Zahlen kommen als float mit
+## Nachkommateil 0. Gemeinsame Prüfung für alle Felder des Szenarios (auch WavePlan, WaveFormula).
+static func is_whole_number(value: Variant) -> bool:
 	return (value is float and value == floorf(value)) or value is int
 
 
+## Ist der Wert eine ganze Zahl ab minimum?
+static func is_whole_number_from(value: Variant, minimum: int) -> bool:
+	return is_whole_number(value) and int(value) >= minimum
+
+
+## Ist der Wert eine Zahl (ganz oder mit Komma) ab minimum?
+static func is_number_from(value: Variant, minimum: float) -> bool:
+	return (value is int or value is float) and float(value) >= minimum
+
+
 static func _positive_int(value: Variant) -> int:
-	return int(value) if _is_whole_number(value) and int(value) > 0 else 0
+	return int(value) if is_whole_number_from(value, 1) else 0

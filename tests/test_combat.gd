@@ -54,7 +54,7 @@ func _keep_distance(tile: Vector2i) -> float:
 
 
 func test_bandit_comes_from_data() -> void:
-	assert_eq(FighterType.enemy_ids(), ["bandit"] as Array[String], "Feindtypen:")
+	assert_eq(FighterType.enemy_ids(), ["bandit", "poacher"] as Array[String], "Feindtypen (der Räuber zuerst, für den Debug-Feind):")
 	assert_true(not SoldierType.is_soldier_type("bandit"), "Kein Soldatentyp")
 	assert_eq([FighterType.name_of("bandit"), FighterType.max_hp("bandit"), FighterType.damage_of("bandit"),
 			FighterType.attack_ticks("bandit"), FighterType.is_melee("bandit"), FighterType.sight_of("bandit"),
@@ -102,22 +102,22 @@ func test_scenario_bandits_appear_at_founding_and_are_no_residents() -> void:
 	assert_eq(world.get_enemies_at(BANDIT_START), [bandit] as Array[Enemy], "Auf der Kachel:")
 
 
-func test_bandit_walks_to_the_keep_and_waits_there() -> void:
+func test_bandit_walks_to_the_keep_and_attacks_it() -> void:
 	var world := _founded("tiny_bandits")
 	var bandit := world.get_enemy(1)
 	assert_true(bandit.is_moving(), "Läuft los")
 	assert_eq(world.enemy_activity_of(bandit), "Räuber – läuft zum Bergfried", "Unterwegs:")
 	_until_still(world, bandit)
 	assert_eq(_keep_distance(bandit.tile), 1.0, "Am Bergfried:")
-	assert_eq(world.enemy_activity_of(bandit), "Räuber – wartet", "Steht:")
 	for i in 100:
 		world.step()
 	assert_true(not bandit.is_moving(), "Bleibt stehen")
+	assert_eq(world.enemy_activity_of(bandit), "Räuber – greift Bergfried an", "Steht:")
 	# Bewohner greift er nicht an.
 	assert_eq(world.get_population(), 4, "Bewohner:")
 
 
-func test_blocked_bandit_waits_nearest_to_the_keep_and_replans_after_demolish() -> void:
+func test_blocked_bandit_attacks_the_house_in_the_way_and_replans_after_demolish() -> void:
 	var world := empty_world("tiny_bandits")
 	# Felsen um (14..16, 11..13); die Lücke links oben schließt ein Wohnhaus bei (12, 10).
 	for x in range(13, 18):
@@ -128,12 +128,13 @@ func test_blocked_bandit_waits_nearest_to_the_keep_and_replans_after_demolish() 
 	world.execute(Command.found(KEEP_ORIGIN))
 	var bandit := world.get_enemy(1)
 	var house := build(world, "house", Vector2i(12, 10))
-	_until_still(world, bandit)
-	assert_eq(bandit.tile, Vector2i(14, 11), "Nächste erreichbare Kachel am Bergfried:")
+	_until(world, func() -> bool: return bandit.target_building_id != 0, "Angriff")
+	assert_eq(bandit.target_building_id, house, "Greift das Wohnhaus an, das ihm im Weg steht:")
+	assert_eq(bandit.tile, Vector2i(14, 11), "Davor:")
 	assert_eq(world.execute(Command.demolish(house)), "", "Abriss:")
 	assert_true(bandit.is_moving(), "Plant neu")
 	_until_still(world, bandit)
-	assert_eq(_keep_distance(bandit.tile), 1.0, "Am Bergfried:")
+	assert_true(_keep_distance(bandit.tile) < 1.5, "Am Bergfried: %s" % bandit.tile)
 
 
 func test_building_over_the_waiting_bandit_makes_him_replan() -> void:
@@ -184,12 +185,13 @@ func test_spawn_ignores_buildings_on_the_way_to_the_keep() -> void:
 			add_deposit(world, Vector2i(x, 1), "stone")
 	add_deposit(world, Vector2i(12, 0), "stone")
 	world.execute(Command.found(Vector2i(5, 4)))
-	build(world, "house", Vector2i(5, 1))
+	var house := build(world, "house", Vector2i(5, 1))
 	assert_eq(world.execute(Command.spawn_enemy("bandit")), "", "Erscheinen:")
 	var bandit := world.get_enemy(1)
 	assert_eq(bandit.tile, Vector2i(5, 0), "Nächster Rand, obwohl das Wohnhaus den Weg versperrt:")
 	_until_still(world, bandit)
-	assert_eq(bandit.tile, Vector2i(5, 0), "Wartet am Rand:")
+	assert_eq(bandit.tile, Vector2i(5, 0), "Bleibt am Rand:")
+	assert_eq(bandit.target_building_id, house, "Greift das Wohnhaus an:")
 
 
 func test_spawn_reasons() -> void:
@@ -269,7 +271,7 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 	assert_eq(world.get_stock("bow"), bows, "Bogen verloren, nicht zurück in der Waffenkammer:")
 	assert_eq(bandit.target_id, 0, "Räuber ohne Ziel:")
 	_until_still(world, bandit)
-	assert_eq(_keep_distance(bandit.tile), 1.0, "Weiter zum Bergfried:")
+	assert_true(_keep_distance(bandit.tile) < 1.5, "Weiter zum Bergfried: %s" % bandit.tile)
 
 
 ## Zwei Schwertkämpfer (IDs 1 und 2) stehen auf diesen Kacheln, dann erscheint ein Räuber bei

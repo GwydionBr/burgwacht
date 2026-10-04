@@ -153,3 +153,128 @@ func test_steppable_forbids_single_steps() -> void:
 	var distances := Pathfinder.distances(Vector3i(2, 1, GROUND), _walkable, INF, Callable(), _steppable)
 	assert_true(is_equal_approx(distances[Vector3i(3, 1, GROUND)], 1.0 + sqrt(2.0)), "Über die Kachel davor")
 	assert_true(is_equal_approx(distances[Vector3i(4, 1, GROUND)], 2.0 * sqrt(2.0)), "Außen herum")
+
+
+## Zusatzkosten beim Betreten (z. B. eine Mauer, die ein Feind durchbrechen kann): Diese Kacheln
+## sind begehbar, kosten aber so viel mehr.
+var _costs: Dictionary[Vector2i, float] = {}
+
+
+## Sperrt die Kachel für _walkable() und macht sie für _walkable_or_costly() teuer.
+func _set_cost(tile: Vector2i, cost: float) -> void:
+	_blocked[tile] = true
+	_costs[tile] = cost
+
+
+func _walkable_or_costly(position: Vector3i) -> bool:
+	return _walkable(position) or _costs.has(Vector2i(position.x, position.y))
+
+
+## Zusatzkosten beim Schritt auf to: die Kosten dieser Kachel, egal woher.
+func _extra_cost(_from: Vector3i, to: Vector3i) -> float:
+	return _costs.get(Vector2i(to.x, to.y), 0.0)
+
+
+func _costly_path(from: Vector2i, to: Vector2i) -> Array[Vector3i]:
+	return Pathfinder.find_path(Vector3i(from.x, from.y, GROUND), Vector3i(to.x, to.y, GROUND), _walkable_or_costly,
+			Callable(), Callable(), _extra_cost)
+
+
+func _costly_distances(from: Vector2i) -> Dictionary[Vector3i, float]:
+	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _walkable_or_costly, INF, Callable(), Callable(),
+			_extra_cost)
+
+
+## Mauer bei x = 3 von y = 0 bis 4 (wie test_detour_around_wall), jede Kachel mit diesen Zusatzkosten.
+func _costly_wall(cost: float) -> void:
+	for y in 5:
+		_set_cost(Vector2i(3, y), cost)
+
+
+func test_cheap_extra_cost_breaks_through() -> void:
+	_costly_wall(2.0)
+	var path := _costly_path(Vector2i(1, 1), Vector2i(5, 1))
+	var expected: Array[Vector2i] = [Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1), Vector2i(5, 1)]
+	assert_eq(_tiles(path), expected, "Gerade durch die Mauer:")
+	assert_true(is_equal_approx(_costly_distances(Vector2i(1, 1))[Vector3i(5, 1, GROUND)], 6.0), "4 Schritte + 2")
+
+
+func test_expensive_extra_cost_takes_the_detour() -> void:
+	_costly_wall(10.0)
+	var path := _costly_path(Vector2i(1, 1), Vector2i(5, 1))
+	assert_true(_tiles(path).has(Vector2i(3, 5)), "Umweg unter der Mauer hindurch: %s" % str(_tiles(path)))
+	assert_true(is_equal_approx(_costly_distances(Vector2i(1, 1))[Vector3i(5, 1, GROUND)], 8.0 + 2.0 * sqrt(2.0)),
+			"Länge des Umwegs")
+
+
+func test_equal_extra_costs_are_deterministic() -> void:
+	# Ganze Spalte x = 3 dicht, zwei gleich teure Lücken symmetrisch zum Weg.
+	for y in SIZE.y:
+		_blocked[Vector2i(3, y)] = true
+	_set_cost(Vector2i(3, 0), 3.0)
+	_set_cost(Vector2i(3, 2), 3.0)
+	var first := _costly_path(Vector2i(1, 1), Vector2i(5, 1))
+	assert_true(_tiles(first).has(Vector2i(3, 0)) != _tiles(first).has(Vector2i(3, 2)), "Durch genau eine Lücke")
+	for i in 3:
+		assert_eq(_costly_path(Vector2i(1, 1), Vector2i(5, 1)), first, "Gleicher Weg:")
+	# Gerade ist oben vor unten (Reihenfolge der Nachbarn): die obere Lücke.
+	assert_true(_tiles(first).has(Vector2i(3, 0)), "Obere Lücke: %s" % str(_tiles(first)))
+
+
+func test_costly_tiles_count_as_corners() -> void:
+	# Zwei schräg aneinanderstoßende Mauerkacheln: Schräg hindurch ginge es kostenlos, das ist
+	# verboten; eine von beiden muss durchbrochen werden.
+	_set_cost(Vector2i(1, 0), 5.0)
+	_set_cost(Vector2i(0, 1), 5.0)
+	var path := _costly_path(Vector2i(0, 0), Vector2i(1, 1))
+	assert_eq(path.size(), 3, "Über eine der Mauerkacheln: %s" % str(_tiles(path)))
+	assert_true(is_equal_approx(_costly_distances(Vector2i(0, 0))[Vector3i(1, 1, GROUND)], 7.0), "2 Schritte + 5")
+
+
+func test_extra_cost_depends_on_where_the_step_comes_from() -> void:
+	# Ein Block x = 3..5, y = 0..4: Hinein kostet 3, innerhalb nichts (wie ein breites Gebäude, das
+	# man nur einmal durchbricht). Gerade hindurch 6 + 3 = 9; der Umweg unten herum ≈ 12,8; je
+	# Kachel berechnet wären es 6 + 9 = 15.
+	var block: Dictionary[Vector2i, bool] = {}
+	for x in range(3, 6):
+		for y in 5:
+			_set_cost(Vector2i(x, y), 3.0)
+			block[Vector2i(x, y)] = true
+	var entering := func(from: Vector3i, to: Vector3i) -> float:
+		var inside := func(position: Vector3i) -> bool: return block.has(Vector2i(position.x, position.y))
+		return 3.0 if inside.call(to) and not inside.call(from) else 0.0
+	var path := Pathfinder.find_path(Vector3i(1, 1, GROUND), Vector3i(7, 1, GROUND), _walkable_or_costly,
+			Callable(), Callable(), entering)
+	var expected: Array[Vector2i] = []
+	for x in range(1, 8):
+		expected.append(Vector2i(x, 1))
+	assert_eq(_tiles(path), expected, "Gerade durch den Block:")
+	var distances := Pathfinder.distances(Vector3i(1, 1, GROUND), _walkable_or_costly, INF, Callable(), Callable(),
+			entering)
+	assert_true(is_equal_approx(distances[Vector3i(7, 1, GROUND)], 9.0), "6 Schritte + einmal 3")
+
+
+func test_extra_cost_on_the_goal_counts() -> void:
+	_set_cost(Vector2i(2, 0), 4.0)
+	assert_true(is_equal_approx(_costly_distances(Vector2i(0, 0))[Vector3i(2, 0, GROUND)], 6.0), "2 Schritte + 4")
+
+
+func test_path_to_any_goal_takes_the_cheapest_one() -> void:
+	# Ziele links bei x = 0 und rechts bei x = 6; links liegt eine teure Kachel davor.
+	_set_cost(Vector2i(1, 3), 10.0)
+	for y in SIZE.y:
+		if y != 3:
+			_blocked[Vector2i(1, y)] = true
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 0 or position.x == 6
+	var path := Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _walkable_or_costly, Callable(),
+			Callable(), _extra_cost)
+	assert_eq(path.back(), Vector3i(6, 3, GROUND), "Das rechte Ziel, 4 statt 2 + 10:")
+	assert_eq(path.size(), 5, "Gerade hinüber:")
+	_costs[Vector2i(1, 3)] = 1.0
+	path = Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _walkable_or_costly, Callable(),
+			Callable(), _extra_cost)
+	assert_eq(path.back(), Vector3i(0, 3, GROUND), "Das linke Ziel, 2 + 1 statt 4:")
+	var none := func(_position: Vector3i) -> bool: return false
+	assert_eq(Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), none, _walkable).size(), 0, "Kein Ziel:")
+	assert_eq(Pathfinder.find_path_to_any(Vector3i(6, 3, GROUND), is_goal, _walkable), [Vector3i(6, 3, GROUND)] as Array[Vector3i],
+			"Schon am Ziel:")

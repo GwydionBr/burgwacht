@@ -31,9 +31,11 @@ extends RefCounted
 ## bleiben Bewohner (Wohnraum, Essen, Steuern), arbeiten aber nicht und gehen nie fort.
 ##
 ## Feinde (z. B. Räuber) erscheinen aus dem Szenario bei der Gründung oder per Debug-Befehl am
-## Kartenrand und laufen zum Bergfried; Soldaten in Sichtweite greifen sie an. Soldaten greifen
-## Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt. Die Regeln dafür stehen in
-## Combat; den Zustand hält weiter die Spielwelt.
+## Kartenrand und laufen zum Bergfried, den sie angreifen; Soldaten in Sichtweite greifen sie an.
+## Soldaten greifen Feinde auf Befehl an. Wer keine Lebenspunkte mehr hat, stirbt; fällt der
+## Bergfried, ist die Partie verloren (Niederlage). Die Regeln dafür stehen in
+## Combat; den Zustand hält weiter die Spielwelt. Ebenso kommen Wellen von Feinden nach dem
+## Wellenplan des Szenarios (Regeln: Waves).
 
 signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
@@ -42,6 +44,8 @@ signal deposit_changed(tile: Vector2i)
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
+## Die Lebenspunkte eines Gebäudes haben sich geändert.
+signal building_changed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
@@ -68,11 +72,16 @@ signal factors_changed()
 signal settings_changed()
 ## Eine Meldung für den Spieler, z. B. bei Nahrungsmangel.
 signal notice(text: String)
+## Der Bergfried ist gefallen: Die Partie ist verloren (is_defeated()).
+signal defeated()
+## Eine Ankündigung hat begonnen oder ist mit dem Erscheinen ihrer Welle vorbei
+## (get_announced_side()).
+signal announcement_changed()
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
 ## Formatversion des Spielstands; bei jeder inkompatiblen Änderung erhöhen.
-const SAVE_VERSION := 12
+const SAVE_VERSION := 16
 ## Zuschlag vor dem Abrunden gegen Rundungsfehler der Kommazahlen (5 × 0,6 darf nicht 2,999… ergeben).
 const ROUNDING_SLACK := 0.000001
 ## Gebäudetyp, mit dem die Burg gegründet wird.
@@ -81,6 +90,8 @@ const FOUNDING_TYPE := "keep"
 const NO_SITE := Vector2i(-1, -1)
 ## Grund für jeden anderen Befehl während der Gründung.
 const FOUNDING_FIRST := "Erst die Burg gründen: Bergfried setzen."
+## Grund für jeden Befehl nach der Niederlage.
+const DEFEATED := "Die Partie ist verloren: Der Bergfried ist gefallen."
 ## Schlüssel in den Baukosten für Gold aus dem Schatz (keine Ware).
 const GOLD := "gold"
 
@@ -115,6 +126,22 @@ var _start_enemies: Array[StartEnemy] = []
 ## Nach ID aufsteigend eingefügt; eigene IDs, getrennt von denen der Bewohner.
 var _enemies: Dictionary[int, Enemy] = {}
 var _next_enemy_id := 1
+## Der Wellenplan aus dem Szenario (Ablauf: Waves).
+var _wave_plan := WavePlan.new()
+## Nummer der nächsten Welle laut Plan (ab 1).
+var _next_wave := 1
+## So viele Wellen sind abgewehrt (keiner ihrer Feinde lebt mehr).
+var _repelled_waves := 0
+## Seite der laufenden Ankündigung der nächsten Welle (_next_wave), bei ihrem Beginn festgelegt;
+## leer, solange keine läuft.
+var _announced_side := ""
+## Die Wellen, deren Angriff auf den Bergfried schon gemeldet ist („Der Bergfried wird
+## angegriffen!“ höchstens einmal je Welle); eine abgewehrte fällt heraus. 0 steht für Feinde ohne
+## Welle (Startfeinde, Debug-Feinde): Bei ihnen wird jeder Angriff gemeldet, 0 fällt also heraus,
+## sobald keiner von ihnen den Bergfried mehr angreift.
+var _keep_alarmed_waves: Array[int] = []
+## Ist der Bergfried gefallen? Dann steht die Zeit, und Befehle werden abgelehnt.
+var _defeated := false
 ## Wie gern die Bewohner in der Burg leben, 0–100.
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
@@ -151,6 +178,7 @@ static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	world._start_goods = scenario.start_goods.duplicate()
 	world._start_residents = scenario.start_residents
 	world._start_enemies = scenario.start_enemies.duplicate()
+	world._wave_plan = WavePlan.from_data(scenario.wave_plan.to_data())
 	world._popularity = scenario.start_popularity
 	world._ration = Population.default_ration()
 	world._tax_rate = Population.default_tax_rate()
@@ -181,6 +209,12 @@ func to_data() -> Dictionary:
 		"start_enemies": _start_enemies.map(func(entry: StartEnemy) -> Dictionary: return entry.to_data()),
 		"next_enemy_id": _next_enemy_id,
 		"enemies": _enemies.values().map(func(enemy: Enemy) -> Dictionary: return enemy.to_data()),
+		"wave_plan": _wave_plan.to_data(),
+		"next_wave": _next_wave,
+		"repelled_waves": _repelled_waves,
+		"announced_side": _announced_side,
+		"keep_alarmed_waves": _keep_alarmed_waves.duplicate(),
+		"defeated": _defeated,
 		"popularity": _popularity,
 		"ration": _ration,
 		"tax_rate": _tax_rate,
@@ -234,6 +268,13 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for entry: Dictionary in data["enemies"]:
 		var enemy := Enemy.from_data(entry)
 		world._enemies[enemy.id] = enemy
+	world._wave_plan = WavePlan.from_data(data["wave_plan"])
+	world._next_wave = int(data["next_wave"])
+	world._repelled_waves = int(data["repelled_waves"])
+	world._announced_side = str(data["announced_side"])
+	for wave: Variant in data["keep_alarmed_waves"]:
+		world._keep_alarmed_waves.append(int(wave))
+	world._defeated = bool(data["defeated"])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._tax_rate = str(data["tax_rate"])
@@ -247,24 +288,30 @@ static func from_data(data: Dictionary) -> GameWorld:
 	return world
 
 
-## Genau ein Takt; in Gründung steht die Zeit still.
+## Genau ein Takt; in Gründung und nach der Niederlage steht die Zeit still. Fällt der
+## Bergfried, endet der Takt sofort.
 func step() -> void:
-	if _founding:
+	if _founding or _defeated:
 		return
 	_tick += 1
 	_spread_deposits()
 	_assign_workers()
 	_update_residents()
 	_combat().update_enemies()
+	if _defeated:
+		return
 	_migrate()
 	if _tick % TICKS_PER_DAY == 0:
 		_start_day()
 		day_started.emit(get_day())
+	_waves().update()
 
 
 ## Führt einen Befehl sofort aus. Leer bei Erfolg, sonst der Grund auf Deutsch;
-## ein abgelehnter Befehl ändert nichts.
+## ein abgelehnter Befehl ändert nichts. Nach der Niederlage wird jeder abgelehnt.
 func execute(command: Command) -> String:
+	if _defeated:
+		return DEFEATED
 	if command.kind == Command.Kind.FOUND:
 		return _found(command.origin)
 	if command.kind == Command.Kind.BUILD:
@@ -287,6 +334,8 @@ func execute(command: Command) -> String:
 		return _combat().attack(command.resident_ids, command.enemy_id)
 	if command.kind == Command.Kind.SPAWN_ENEMY:
 		return _combat().spawn_enemy(command.enemy_type)
+	if command.kind == Command.Kind.SPAWN_WAVE:
+		return _waves().spawn_next()
 	if _founding:
 		return FOUNDING_FIRST
 	return "Dieser Befehl wird noch nicht unterstützt."
@@ -294,6 +343,11 @@ func execute(command: Command) -> String:
 
 func is_founding() -> bool:
 	return _founding
+
+
+## Ist die Partie verloren (der Bergfried gefallen)? Der erreichte Tag ist dann get_day().
+func is_defeated() -> bool:
+	return _defeated
 
 
 ## Darf ein Gebäude vom Typ type_id mit diesem Ursprung stehen? Leer oder der Grund.
@@ -517,6 +571,28 @@ func _gold_error(amount: int, spent := 0) -> String:
 	return ""
 
 
+## Woher diese Ware kommt, als Hinweis für den Spieler, z. B. „Schmied (Eisen) oder Markt“:
+## die baubaren Gebäudetypen, die sie herstellen ("product", in Klammern ihr "input") oder aus
+## einem Vorkommen gewinnen ("deposit", dessen "yields"), in Datenreihenfolge, zuletzt der Markt,
+## wenn die Ware handelbar ist. Leer, wenn es keine Quelle gibt.
+static func supply_hint(good: String) -> String:
+	var defs := GameDefs.get_instance()
+	var sources: PackedStringArray = []
+	for type_id in buildable_types():
+		var def: Dictionary = defs.buildings[type_id]
+		var deposit: String = def.get("deposit", "")
+		var produces: bool = def.get("product", "") == good
+		if not produces and (deposit == "" or defs.deposits[deposit]["yields"] != good):
+			continue
+		var source := str(def["name"])
+		if def.has("input"):
+			source += " (%s)" % defs.goods[def["input"]]["name"]
+		sources.append(source)
+	if Market.is_tradable(good):
+		sources.append("Markt")
+	return " oder ".join(sources)
+
+
 ## Darf der Spieler diesen Gebäudetyp bauen? Baubar ist, was in den Daten eine Taste für
 ## die Bauleiste hat; Bauleiste und Befehl richten sich beide danach.
 static func is_buildable(type_id: String) -> bool:
@@ -630,7 +706,40 @@ func enemy_activity_of(enemy: Enemy) -> String:
 	var target := get_resident(enemy.target_id)
 	if target != null:
 		return "%s – %s" % [enemy_name, Combat.fight_text(enemy, target)]
+	var building := get_building(enemy.target_building_id)
+	if building != null:
+		return "%s – greift %s an" % [enemy_name, _building_name(building.type)]
 	return "%s – %s" % [enemy_name, "läuft zum Bergfried" if enemy.is_moving() else "wartet"]
+
+
+## Nummer der nächsten Welle laut Wellenplan (ab 1; die erste, die noch nicht erschienen ist).
+func get_next_wave() -> int:
+	return _next_wave
+
+
+## So viele Wellen sind abgewehrt: Keiner ihrer Feinde lebt mehr.
+func get_repelled_waves() -> int:
+	return _repelled_waves
+
+
+## Seite der laufenden Ankündigung der nächsten Welle (MapSide); leer, wenn keine läuft.
+func get_announced_side() -> String:
+	return _announced_side
+
+
+## Die Kachel, auf der die angekündigte Welle erscheinen wird (Combat.spawn_tile() ihrer Seite);
+## leer, wenn keine Ankündigung läuft oder die Seite keine freie Randkachel hat.
+func get_announced_tile() -> Array[Vector2i]:
+	if _announced_side == "":
+		return []
+	return _combat().spawn_tile(_announced_side)
+
+
+## So viele Takte noch bis zum Erscheinen der angekündigten Welle; 0, wenn keine Ankündigung läuft.
+func get_announced_ticks() -> int:
+	if _announced_side == "":
+		return 0
+	return _waves().appearance_tick(_waves().planned_wave(_next_wave)) - _tick
 
 
 ## Alle Bewohner nach ID aufsteigend – auch die gehenden, die nicht mehr mitzählen
@@ -1003,6 +1112,8 @@ func _found(origin: Vector2i) -> String:
 	_add_start_residents(campfire)
 	_combat().add_start_enemies(_start_enemies)
 	_founding = false
+	# Wellen für Tag 1 erscheinen gleich mit der Gründung.
+	_waves().update()
 	founded.emit()
 	return ""
 
@@ -1215,9 +1326,64 @@ func _combat() -> Combat:
 	return Combat.new(self)
 
 
-## Ein neuer Feind mit vollen Lebenspunkten (losschicken: Combat).
-func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
-	var enemy := Enemy.create(_next_enemy_id, type_id, tile)
+## Wellen (Waves); ohne eigenen Zustand, daher für jeden Aufruf neu.
+func _waves() -> Waves:
+	return Waves.new(self)
+
+
+## Der Bergfried ist gefallen: Die Partie ist verloren (Combat).
+func _lose() -> void:
+	_defeated = true
+	defeated.emit()
+
+
+## Merkt sich, dass der Angriff dieser Welle (0 = Feinde ohne Welle) auf den Bergfried gemeldet
+## ist. true, wenn er es noch nicht war, also jetzt zu melden ist (Combat).
+func _alarm_keep(wave: int) -> bool:
+	if _keep_alarmed_waves.has(wave):
+		return false
+	_keep_alarmed_waves.append(wave)
+	return true
+
+
+## Ist der Angriff dieser Welle auf den Bergfried schon gemeldet?
+func _is_keep_alarmed(wave: int) -> bool:
+	return _keep_alarmed_waves.has(wave)
+
+
+## Der Angriff dieser Welle auf den Bergfried ist vorbei; ein neuer würde wieder gemeldet.
+func _end_keep_alarm(wave: int) -> void:
+	_keep_alarmed_waves.erase(wave)
+
+
+## Die nächste Welle erscheint: Liefert ihre Nummer, danach ist die folgende die nächste (Waves).
+func _take_next_wave() -> int:
+	_next_wave += 1
+	return _next_wave - 1
+
+
+## Die Ankündigung der nächsten Welle beginnt mit dieser Seite (Waves).
+func _start_announcement(side: String) -> void:
+	_announced_side = side
+	announcement_changed.emit()
+
+
+## Die laufende Ankündigung endet (Waves).
+func _end_announcement() -> void:
+	_announced_side = ""
+	announcement_changed.emit()
+
+
+## Die Welle mit dieser Nummer ist abgewehrt (Waves).
+func _repel_wave(number: int) -> void:
+	_repelled_waves += 1
+	_end_keep_alarm(number)
+
+
+## Ein neuer Feind mit vollen Lebenspunkten, der zur Welle mit dieser Nummer gehört (0 = keiner;
+## losschicken: Combat).
+func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+	var enemy := Enemy.create(_next_enemy_id, type_id, tile, wave)
 	_next_enemy_id += 1
 	_enemies[enemy.id] = enemy
 	enemy_added.emit(enemy.id)
@@ -1228,6 +1394,7 @@ func _add_enemy(type_id: String, tile: Vector2i) -> Enemy:
 func _remove_enemy(enemy: Enemy) -> void:
 	_enemies.erase(enemy.id)
 	enemy_removed.emit(enemy.id)
+	_waves().enemy_removed(enemy)
 
 
 ## Ein Takt für einen Bewohner (siehe _update_residents()).
@@ -1574,7 +1741,12 @@ func _deliver(resident: Resident, workplace: Building) -> void:
 ## Plant den kürzesten Weg einer Figur zu goal und schickt ihn los; false (und nichts
 ## ändert sich), wenn es keinen Weg gibt. Mitten im Schritt geht er den erst zu Ende.
 func _route_to(figure: Figure, goal: Vector3i) -> bool:
-	var path := _find_path(figure.plan_start(), goal, _walker_of(figure))
+	return _follow(figure, _find_path(figure.plan_start(), goal, _walker_of(figure)))
+
+
+## Schickt die Figur einen geplanten Weg ab figure.plan_start() entlang (samt Start, wie
+## Pathfinder.find_path()); false (und nichts ändert sich), wenn er leer ist.
+func _follow(figure: Figure, path: Array[Vector3i]) -> bool:
 	if path.is_empty():
 		return false
 	if figure.step_progress == 0:
@@ -1836,11 +2008,37 @@ func _demolish(id: int) -> String:
 	if error != "":
 		return error
 	var building: Building = _buildings[id]
+	_remove_building(building, _leave_lost_wall_walk)
+	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
+	var cost := goods_cost_of(building.type)
+	var changed: Dictionary[int, bool] = {}
+	for good: String in cost:
+		@warning_ignore("integer_division")
+		_store_goods(good, cost[good] / 2, changed)
+	_emit_stock_changed(changed)
+	@warning_ignore("integer_division")
+	_change_treasury(gold_cost_of(building.type) / 2)
+	return ""
+
+
+## Zerstörung (0 Lebenspunkte, Combat): Das Gebäude verschwindet wie beim Abriss, aber ohne
+## Erstattung, und sein Lagerinhalt ist verloren. Wer auf seinem Wehrgang stand, landet auf dem
+## Boden (_land_from_lost_wall_walk()). Den Bergfried trifft das nie: Sein Fall ist die Niederlage.
+func _destroy(building: Building) -> void:
+	_remove_building(building, _land_from_lost_wall_walk)
+	notice.emit("%s zerstört" % _building_name(building.type))
+
+
+## Was Abriss und Zerstörung gemeinsam haben: Das Gebäude verschwindet, Figuren auf seinem
+## Wehrgang weichen aus (leave_wall_walk), Träger zu diesem Lager suchen ein anderes, Arbeiter
+## werden Untätige, fehlender Wohnraum schickt Bewohner fort und Feinde planen neu.
+func _remove_building(building: Building, leave_wall_walk: Callable) -> void:
+	var id := building.id
 	_buildings.erase(id)
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
 	_rebuild_index()
 	building_removed.emit(id)
-	_leave_lost_wall_walk()
+	leave_wall_walk.call()
 	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
 	for resident: Resident in _residents.values():
 		if resident.task in [Resident.Task.TO_STORAGE, Resident.Task.FETCHING] and resident.storage_id == id:
@@ -1854,16 +2052,41 @@ func _demolish(id: int) -> String:
 	# Mit einem Wohnhaus kann Wohnraum fehlen.
 	_send_away_surplus()
 	_combat().replan_enemies()
-	# Die Hälfte der Kosten je Ware (abgerundet) zurück; was nicht mehr passt, verfällt.
-	var cost := goods_cost_of(building.type)
-	var changed: Dictionary[int, bool] = {}
-	for good: String in cost:
-		@warning_ignore("integer_division")
-		_store_goods(good, cost[good] / 2, changed)
-	_emit_stock_changed(changed)
-	@warning_ignore("integer_division")
-	_change_treasury(gold_cost_of(building.type) / 2)
-	return ""
+
+
+## Nach einer Zerstörung: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, landet ohne
+## Schaden auf der nächsten freien Bodenkachel (_landing()) und bleibt dort – das ist sein neuer
+## Posten. Lag nur der Posten eines Soldaten dort, landet der Posten ebenso und der Soldat geht
+## dorthin. Die Posten anderer Soldaten sind tabu, auch die gerade vergebenen (nach ID aufsteigend).
+func _land_from_lost_wall_walk() -> void:
+	var taken := _posts_except({})
+	for resident: Resident in _residents.values():
+		if resident.level == Figure.Level.WALL_WALK and not is_walkable(resident.tile, resident.level):
+			taken.erase(resident.post)
+			var landing := _landing(resident.tile, taken)
+			resident.place_at(landing)
+			resident.post = landing
+			resident.timer = 0
+			taken[landing] = true
+			resident_changed.emit(resident.id)
+		elif resident.is_soldier() and not _is_walkable_position(resident.post):
+			taken.erase(resident.post)
+			resident.post = _landing(resident.post_tile(), taken)
+			taken[resident.post] = true
+			_report_change(resident, _send_to_post.bind(resident))
+
+
+## Die nächste freie Bodenkachel: tile selbst (meist ist dort nach der Zerstörung Boden) oder die
+## nächste drumherum (_search_outward()); frei heißt begehbar, ohne Gebäude und kein Posten in
+## taken. Gibt es keine, der Boden von tile.
+func _landing(tile: Vector2i, taken: Dictionary[Vector3i, bool]) -> Vector3i:
+	var is_free := func(candidate: Vector2i) -> bool:
+		return is_walkable(candidate, Figure.Level.GROUND) and get_building_at(candidate) == null \
+				and not taken.has(Figure.ground(candidate))
+	if is_free.call(tile):
+		return Figure.ground(tile)
+	var found := _search_outward(tile, is_free)
+	return Figure.ground(tile if found.is_empty() else found[0])
 
 
 ## Nach einem Abriss: Wer oben auf dem Wehrgang stand, den es nicht mehr gibt, weicht aus

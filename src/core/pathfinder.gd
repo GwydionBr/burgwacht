@@ -6,6 +6,10 @@ extends RefCounted
 ## (mit gemeinsamer Kante) begehbar sind – niemand schneidet Ecken von Hindernissen, eine
 ## diagonale Mauer ist dicht. Oben auf dem Wehrgang gilt diese Eckregel nicht, damit man auf
 ## diagonalen Mauern entlanggehen kann. Einzelne Schritte kann der Aufrufer verbieten (steppable).
+## Optional kostet ein Schritt zusätzlich (extra_cost, abhängig von Herkunft und Ziel), z. B. für
+## Feinde, die ein Gebäude erst durchbrechen müssen (ADR 0005). Eine Kachel, deren Betreten von hier
+## aus zusätzlich kostet, zählt für die Eckregel als Hindernis, sonst schlüpfte man kostenlos schräg
+## zwischen zwei Mauerkacheln hindurch.
 ## Deterministisch (ADR 0001): Nachbarn in fester Reihenfolge, bei gleicher Schätzung
 ## gewinnt die Kachel näher am Ziel, dann die früher gefundene.
 
@@ -23,40 +27,62 @@ const DIAGONAL_STEPS: Array[Vector3i] = [Vector3i(1, -1, 0), Vector3i(1, 1, 0), 
 ## Array[Vector3i] nennt die Positionen auf einer anderen Ebene, die man von einer Position aus
 ## mit einem geraden Schritt erreicht (leer gelassen: keine). steppable(Vector3i, Vector3i) -> bool
 ## sagt, ob man von einer begehbaren Position auf eine benachbarte treten darf (leer gelassen:
-## immer), z. B. einen Eingang nur von vorn.
+## immer), z. B. einen Eingang nur von vorn. extra_cost(Vector3i, Vector3i) -> float sind nicht
+## negative Zusatzkosten für den Schritt von der ersten auf die zweite Position (leer gelassen: keine).
 static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascents := Callable(),
-		steppable := Callable()) -> Array[Vector3i]:
+		steppable := Callable(), extra_cost := Callable()) -> Array[Vector3i]:
+	if start != goal and not walkable.call(goal):
+		var none: Array[Vector3i] = []
+		return none
+	return _search(start, func(position: Vector3i) -> bool: return position == goal,
+			_estimate.bind(goal), walkable, ascents, steppable, extra_cost)
+
+
+## Wie find_path(), aber zur nächsten Position (nach Kosten), für die is_goal(Vector3i) -> bool
+## gilt. estimate(Vector3i) -> float ist eine untere Schranke der restlichen Kosten bis zu einem
+## Ziel (leer gelassen: 0, dann sucht er gleichmäßig nach allen Seiten); bei gleichen Kosten
+## entscheidet die feste Reihenfolge der Suche.
+static func find_path_to_any(start: Vector3i, is_goal: Callable, walkable: Callable, ascents := Callable(),
+		steppable := Callable(), extra_cost := Callable(), estimate := Callable()) -> Array[Vector3i]:
+	var no_estimate := func(_position: Vector3i) -> float: return 0.0
+	return _search(start, is_goal, estimate if estimate.is_valid() else no_estimate, walkable, ascents,
+			steppable, extra_cost)
+
+
+## A* von start bis zur ersten Position, für die is_goal gilt; Weg samt beiden Enden, leer, wenn
+## es keine erreichbare gibt.
+static func _search(start: Vector3i, is_goal: Callable, estimate: Callable, walkable: Callable,
+		ascents: Callable, steppable: Callable, extra_cost: Callable) -> Array[Vector3i]:
 	var path: Array[Vector3i] = []
-	if start == goal:
-		path.append(start)
-		return path
-	if not walkable.call(goal):
-		return path
 	var open := _Heap.new()
 	var cost_so_far: Dictionary[Vector3i, float] = {start: 0.0}
 	var came_from: Dictionary[Vector3i, Vector3i] = {}
 	var closed: Dictionary[Vector3i, bool] = {}
-	open.push(_estimate(start, goal), _estimate(start, goal), start)
+	var start_rest: float = estimate.call(start)
+	open.push(start_rest, start_rest, start)
+	var found := false
+	var current := start
 	while not open.is_empty():
-		var current := open.pop()
-		if current == goal:
+		current = open.pop()
+		if is_goal.call(current):
+			found = true
 			break
 		if closed.has(current):
 			continue
 		closed[current] = true
-		for next in neighbors(current, walkable, ascents, steppable):
+		for next in neighbors(current, walkable, ascents, steppable, extra_cost):
 			if closed.has(next):
 				continue
-			var cost := cost_so_far[current] + step_cost(current, next)
+			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, current, next)
 			if cost_so_far.has(next) and cost_so_far[next] <= cost:
 				continue
 			cost_so_far[next] = cost
 			came_from[next] = current
-			var rest := _estimate(next, goal)
+			var rest: float = estimate.call(next)
 			open.push(cost + rest, rest, next)
-	if not came_from.has(goal):
+	if not found:
 		return path
-	var position := goal
+	var position := current
 	while position != start:
 		path.append(position)
 		position = came_from[position]
@@ -66,10 +92,10 @@ static func find_path(start: Vector3i, goal: Vector3i, walkable: Callable, ascen
 
 
 ## Weglänge von start zu jeder erreichbaren Position bis höchstens max_length (Dijkstra,
-## gleiche Schritte und Kosten wie find_path()); der Start selbst hat 0. Für die Suche nach
-## dem nächsten Vorkommen oder Lager.
+## gleiche Schritte und Kosten wie find_path(), samt Zusatzkosten); der Start selbst hat 0. Für
+## die Suche nach dem nächsten Vorkommen oder Lager.
 static func distances(start: Vector3i, walkable: Callable, max_length := INF,
-		ascents := Callable(), steppable := Callable()) -> Dictionary[Vector3i, float]:
+		ascents := Callable(), steppable := Callable(), extra_cost := Callable()) -> Dictionary[Vector3i, float]:
 	var result: Dictionary[Vector3i, float] = {}
 	var cost_so_far: Dictionary[Vector3i, float] = {start: 0.0}
 	var open := _Heap.new()
@@ -79,8 +105,8 @@ static func distances(start: Vector3i, walkable: Callable, max_length := INF,
 		if result.has(current):
 			continue
 		result[current] = cost_so_far[current]
-		for next in neighbors(current, walkable, ascents, steppable):
-			var cost := cost_so_far[current] + step_cost(current, next)
+		for next in neighbors(current, walkable, ascents, steppable, extra_cost):
+			var cost := cost_so_far[current] + step_cost(current, next) + _extra(extra_cost, current, next)
 			if result.has(next) or cost > max_length + LENGTH_EPSILON \
 					or (cost_so_far.has(next) and cost_so_far[next] <= cost):
 				continue
@@ -96,16 +122,19 @@ static func same_length(a: float, b: float) -> bool:
 
 
 ## Die begehbaren Nachbarn einer Position, die man von ihr aus betreten darf (steppable), in
-## fester Reihenfolge (gerade vor schräg, dann die Ebenenwechsel in ihrer Reihenfolge).
+## fester Reihenfolge (gerade vor schräg, dann die Ebenenwechsel in ihrer Reihenfolge). Schräg am
+## Boden nur, wenn beide Kacheln daneben frei sind: begehbar und von hier aus ohne Zusatzkosten
+## (extra_cost).
 static func neighbors(position: Vector3i, walkable: Callable, ascents := Callable(),
-		steppable := Callable()) -> Array[Vector3i]:
+		steppable := Callable(), extra_cost := Callable()) -> Array[Vector3i]:
 	var candidates: Array[Vector3i] = []
 	for step in STRAIGHT_STEPS:
 		if walkable.call(position + step):
 			candidates.append(position + step)
 	for step in DIAGONAL_STEPS:
 		if walkable.call(position + step) and (position.z != Figure.Level.GROUND
-				or walkable.call(position + Vector3i(step.x, 0, 0)) and walkable.call(position + Vector3i(0, step.y, 0))):
+				or _is_free(position, position + Vector3i(step.x, 0, 0), walkable, extra_cost)
+				and _is_free(position, position + Vector3i(0, step.y, 0), walkable, extra_cost)):
 			candidates.append(position + step)
 	if ascents.is_valid():
 		for next: Vector3i in ascents.call(position):
@@ -131,6 +160,17 @@ static func path_length(path: Array[Vector3i]) -> float:
 	for i in range(1, path.size()):
 		length += step_cost(path[i - 1], path[i])
 	return length
+
+
+## Zusatzkosten für den Schritt von from auf to (0 ohne extra_cost).
+static func _extra(extra_cost: Callable, from: Vector3i, to: Vector3i) -> float:
+	return extra_cost.call(from, to) if extra_cost.is_valid() else 0.0
+
+
+## Begehbar und von from aus ohne Zusatzkosten zu betreten? Nur solche Kacheln lassen eine Ecke
+## schräg passieren.
+static func _is_free(from: Vector3i, position: Vector3i, walkable: Callable, extra_cost: Callable) -> bool:
+	return walkable.call(position) and _extra(extra_cost, from, position) <= 0.0
 
 
 ## Untere Schranke der Weglänge ohne Hindernisse (Oktil-Abstand).

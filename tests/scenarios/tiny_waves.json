@@ -1,0 +1,14 @@
+{
+  "name": "Kleine Testkarte mit Wellen",
+  "map": { "width": 20, "height": 16 },
+  "seed": 7,
+  "start_goods": { "wood": 100, "stone": 50 },
+  "start_residents": 4,
+  "waves": {
+    "list": [
+      { "day": 2, "enemies": { "bandit": 1 }, "side": "east" },
+      { "day": 3, "enemies": { "bandit": 1 } },
+      { "day": 4, "enemies": { "bandit": 2 }, "side": "south" }
+    ]
+  }
+}

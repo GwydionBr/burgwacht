@@ -17,11 +17,18 @@ var _to := Vector2.ZERO
 var _elapsed := 0.0
 
 
-## Von der Kachel from zur Kachel to (Kachelkoordinaten).
-func setup(from: Vector2i, to: Vector2i) -> void:
-	_from = Iso.tile_to_world(from) - Vector2(0, LAUNCH_HEIGHT)
-	_to = Iso.tile_to_world(to) - Vector2(0, LAUNCH_HEIGHT)
+## Von der Position from zur Position to (Kachel + Ebene): Auf dem Wehrgang beginnt bzw. endet er
+## so viel höher, wie die Figur dort steht (FigureView.wall_walk_height()).
+func setup(from: Vector3i, to: Vector3i) -> void:
+	_from = _launch_point(from)
+	_to = _launch_point(to)
 	position = _point(0.0)
+
+
+## Brusthöhe einer Figur auf dieser Position, in Weltkoordinaten.
+static func _launch_point(at: Vector3i) -> Vector2:
+	var lift := LAUNCH_HEIGHT + FigureView.wall_walk_height() * at.z
+	return Iso.tile_to_world(Vector2i(at.x, at.y)) - Vector2(0, lift)
 
 
 func _process(delta: float) -> void:

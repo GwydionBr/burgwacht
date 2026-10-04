@@ -16,8 +16,12 @@
 		"args": ["--seed=1", "--days=1", "--demolish"]
 	},
 	"barracks": {
-		"name": "Kaserne mit Soldaten",
+		"name": "Kaserne mit Soldaten, ohne Waffen: Anwerben gesperrt mit Grund und Hinweis",
 		"args": ["--setup=barracks", "--barracks", "--select"]
+	},
+	"barracks_ready": {
+		"name": "Kaserne mit einem Schwert: Schwertkämpfer anwerbbar, Bogenschütze gesperrt",
+		"args": ["--setup=barracks_ready", "--barracks"]
 	},
 	"wall": {
 		"name": "Mauerlinie mit Soldaten auf dem Wehrgang",
@@ -34,5 +38,25 @@
 	"defense": {
 		"name": "Soldaten verteidigen sich an der Mauer",
 		"args": ["--setup=defense", "--focus=8,11"]
+	},
+	"keep_attack": {
+		"name": "Räuber greifen den Bergfried an, Lebensbalken",
+		"args": ["--setup=keep_attack", "--focus=4,4", "--hover=3,3"]
+	},
+	"siege": {
+		"name": "Räuber hacken an einer Mauer, Mauerstücke beschädigt",
+		"args": ["--setup=siege", "--focus=9,11", "--hover=7,11"]
+	},
+	"poacher": {
+		"name": "Wilderer beschießen Bogenschützen auf dem Wehrgang, Pfeile im Flug",
+		"args": ["--setup=poacher", "--ticks=15", "--focus=6,9", "--hover=8,10"]
+	},
+	"defeat": {
+		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",
+		"args": ["--setup=defeat", "--focus=4,4"]
+	},
+	"wave_announced": {
+		"name": "Angekündigte Welle: Countdown im HUD und Randmarkierung",
+		"args": ["--setup=wave_announced", "--focus=11,5"]
 	}
 }

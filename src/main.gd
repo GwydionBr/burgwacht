@@ -42,7 +42,10 @@ extends Node2D
 ## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
 ## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus Mauer, Tor oder Turm liegt –;
 ## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
-## einen Räuber am Rand nächst dem Bergfried erscheinen.
+## einen Räuber am Rand nächst dem Bergfried erscheinen, F7 die nächste Welle des Wellenplans.
+## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
+## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
+## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
@@ -78,6 +81,7 @@ var _right_pressed_on_map := false
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
 @onready var _objects: Node2D = $Objects
+@onready var _wave_marker: WaveMarker = $WaveMarker
 @onready var _highlight: TileHighlight = $Highlight
 @onready var _preview: PlacementPreview = $Preview
 @onready var _camera: CameraController = $Camera
@@ -102,6 +106,8 @@ func _ready() -> void:
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
+	_hud.new_game_requested.connect(func() -> void: _new_world(_scenario.resolve_seed(randi())))
+	_hud.quit_requested.connect(get_tree().quit)
 	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
 	if args.has("setup"):
 		var setup_path := Presets.setup_path(str(args["setup"]))
@@ -191,6 +197,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_announcement()
 	var tile := Iso.world_to_tile(get_global_mouse_position())
 	if tile != _hovered:
 		_hovered = tile
@@ -374,6 +381,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F8:
 			if OS.is_debug_build():
 				_execute_or_show(Command.spawn_enemy(FighterType.enemy_ids()[0]))
+		KEY_F7:
+			if OS.is_debug_build():
+				_execute_or_show(Command.spawn_wave())
 		KEY_ESCAPE:
 			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
 			# offen, schließt Esc nur sie.
@@ -427,6 +437,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.day_started.connect(_hud.show_day)
 	world.building_added.connect(_on_building_added)
 	world.building_removed.connect(_on_building_removed)
+	world.building_changed.connect(_on_building_changed)
 	world.stock_changed.connect(_on_stock_changed)
 	world.resident_added.connect(_on_resident_added)
 	world.resident_removed.connect(_on_resident_removed)
@@ -441,6 +452,8 @@ func _show_world(new_world: GameWorld) -> void:
 	world.settings_changed.connect(_update_popularity)
 	world.treasury_changed.connect(_update_treasury)
 	world.notice.connect(_hud.show_message)
+	world.defeated.connect(_on_defeated)
+	world.announcement_changed.connect(_update_wave_marker)
 	_clock.world = world
 	_build_type = ""
 	_demolishing = false
@@ -486,6 +499,27 @@ func _show_world(new_world: GameWorld) -> void:
 	_update_treasury()
 	_update_hover()
 	_update_preview()
+	_update_wave_marker()
+	_update_announcement()
+	if world.is_defeated():
+		_on_defeated()
+	else:
+		_hud.hide_defeat()
+
+
+## Der Bergfried ist gefallen: Werkzeuge und Ansichten schließen, Niederlage-Ansicht zeigen.
+func _on_defeated() -> void:
+	_select_build("")
+	_set_selection([])
+	_selecting = false
+	_drawing_line = false
+	_selection_box.visible = false
+	_barracks_id = 0
+	_hud.close_barracks()
+	_hud.close_administration()
+	_hud.close_market()
+	_hud.set_build_bar_enabled(false)
+	_hud.show_defeat(world.get_day(), world.get_repelled_waves())
 
 
 func _quick_save() -> void:
@@ -558,15 +592,39 @@ func _add_building_view(id: int) -> void:
 	_building_views[id] = view
 
 
+## Ankündigung samt Countdown in der Titelleiste (in jedem Bild, da der Countdown mit der Zeit läuft).
+func _update_announcement() -> void:
+	_hud.show_announcement(world.get_announced_side(), world.get_announced_ticks())
+
+
+## Die Randmarkierung auf die Erscheinungskachel der angekündigten Welle; Gebäude am Rand können
+## die Kachel verschieben.
+func _update_wave_marker() -> void:
+	var tile := world.get_announced_tile()
+	if tile.is_empty():
+		_wave_marker.visible = false
+	else:
+		_wave_marker.show_at(tile[0], world.get_announced_side())
+
+
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
+	_update_wave_marker()
 	_update_residents()
 	_update_stock()
 	_update_hover()
 	_update_preview()
 
 
+func _on_building_changed(id: int) -> void:
+	if _building_views.has(id):
+		_building_views[id].update_health()
+	if world.get_building_at(_hovered) == world.get_building(id):
+		_update_hover()
+
+
 func _on_building_removed(id: int) -> void:
+	_update_wave_marker()
 	if _building_views.has(id):
 		_building_views[id].queue_free()
 		_building_views.erase(id)
@@ -637,7 +695,7 @@ func _on_enemy_changed(_id: int) -> void:
 func _on_shot_fired(from: Vector3i, to: Vector3i) -> void:
 	var arrow := ArrowView.new()
 	arrow.z_index = 1
-	arrow.setup(Vector2i(from.x, from.y), Vector2i(to.x, to.y))
+	arrow.setup(from, to)
 	add_child(arrow)
 
 
@@ -801,8 +859,8 @@ func _open_barracks(id: int) -> void:
 	_update_barracks()
 
 
-## Kasernenansicht: Untätige, Waffen (die Waren der Anwerbekosten) und je Soldatentyp der
-## Grund, warum Anwerben gerade nicht geht.
+## Kasernenansicht: Untätige, Waffen (die Waren der Anwerbekosten), Gold und je Soldatentyp
+## der Grund, warum Anwerben gerade nicht geht.
 func _update_barracks() -> void:
 	if _barracks_id == 0:
 		return
@@ -812,7 +870,7 @@ func _update_barracks() -> void:
 		weapons[good] = world.get_stock(good)
 	for type_id in SoldierType.ids():
 		errors[type_id] = world.recruit_error(_barracks_id, type_id)
-	_hud.show_barracks(world.get_idle_count(), weapons, errors)
+	_hud.show_barracks(world.get_idle_count(), weapons, world.get_treasury(), errors)
 
 
 ## Anwerben aus der Kasernenansicht als Befehl abschicken.
@@ -873,6 +931,8 @@ func _update_hover() -> void:
 	var building := world.get_building_at(_hovered)
 	if building != null:
 		text += "  ·  %s" % building.def()["name"]
+		if building.is_destructible():
+			text += " (%d/%d LP)" % [building.hp, building.max_hp()]
 		if building.is_storage():
 			var stored: PackedStringArray = []
 			for good: String in building.contents:

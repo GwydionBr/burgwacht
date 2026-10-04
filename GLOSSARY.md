@@ -1,6 +1,6 @@
 # Burgwacht
 
-Burgenbau-Strategiespiel: Der Spieler baut auf einer zufällig erzeugten Karte eine Burg mit Wirtschaft auf und verteidigt sie gegen immer stärkere Angriffswellen.
+Burgenbau-Strategiespiel: Der Spieler baut auf einer zufällig erzeugten Karte eine Burg mit Wirtschaft auf und verteidigt sie gegen immer stärkere Wellen von Feinden.
 
 ## Sprache
 
@@ -23,7 +23,8 @@ Eine Absicht des Spielers, die an die Spielwelt übergeben wird, z. B. „Gebäu
 _Avoid_: Aktion, Kommando
 
 **Niederlage**:
-Das Ende einer Partie, weil der Bergfried zerstört wurde.
+Das Ende einer Partie, weil der Bergfried keine Lebenspunkte mehr hat: Die Zeit steht, Befehle werden abgelehnt.
+_Avoid_: Game Over, Verloren-Bildschirm
 
 **Ziel**:
 Eine prüfbare Bedingung, deren Erfüllung eine Partie gewinnt. Im freien Spiel gibt es keines.
@@ -311,13 +312,53 @@ _Avoid_: Einheit, Unit, Akteur
 Eine Figur mit Lebenspunkten, die angreift und angegriffen wird: Soldaten und Feinde.
 _Avoid_: Einheit, Krieger
 
+**Lebenspunkte**:
+Wie viel Schaden ein Kämpfer oder ein Gebäude noch verträgt; bei 0 stirbt der Kämpfer bzw. fällt das Gebäude. Gebäude ohne Lebenspunkte (Lagerfeuer) sind unzerstörbar und nie Ziel. Es gibt keine Heilung.
+_Avoid_: HP, Gesundheit, Trefferpunkte
+
 **Feind**:
-Ein angreifender Kämpfer, der nicht zur Burg gehört, z. B. der Räuber (Nahkampf).
+Ein angreifender Kämpfer, der nicht zur Burg gehört: der Räuber (Nahkampf) oder der Wilderer (Fernkampf). Unbewaffnete Bewohner sind nie sein Ziel.
 _Avoid_: Gegner, Angreifer, Mob
+
+**Wilderer**:
+Ein Feind im Fernkampf, etwas schwächer als der Bogenschütze. Er schießt aus der Entfernung auf Soldaten in Reichweite, auch auf dem Wehrgang, sonst auf das Hindernis auf seinem Weg, sonst auf den Bergfried; dafür läuft er nicht heran.
+_Avoid_: Bogenschütze (das ist der eigene Soldat), Jäger (das ist ein Arbeitsplatz)
+
+**Hindernis**:
+Das erste Gebäude auf dem geplanten Weg eines Feinds, auf dem er nicht stehen darf (Mauer, Tor, Turm und alle übrigen Gebäude außer Treppe, Lagerfeuer und Bergfried). Der Feind läuft heran und greift es an, wenn das schneller ist als ein offener Umweg (ADR 0005).
+_Avoid_: Blockade, Barriere
+
+**Zerstörung**:
+Das Verschwinden eines Gebäudes, dessen Lebenspunkte auf 0 fallen: wie beim Abriss, aber ohne Erstattung, und sein Lagerinhalt ist verloren. Beim Bergfried ist es die Niederlage.
+_Avoid_: Einsturz, Vernichtung, Abriss (das tut der Spieler)
 
 **Welle**:
 Eine Gruppe von Feinden, die gemeinsam zu einem bestimmten Zeitpunkt am Kartenrand erscheint.
 _Avoid_: Angriff, Invasion
 
 **Wellenplan**:
-Die Festlegung im Szenario, wann welche Wellen mit welchen Feinden von wo kommen.
+Die Festlegung im Szenario, wann welche Wellen mit welchen Feinden von wo kommen: zuerst eine feste Liste, danach endlos nach der Steigerungsformel.
+
+**Steigerungsformel**:
+Der Teil des Wellenplans, nach dem auf die feste Liste endlos weitere Wellen folgen: im Abstand von `every_days` Tagen, je Feindtyp abgerundet `base + growth × n` Feinde (n = Nummer der Formelwelle ab 0), jede von zufälliger Seite. Die erste Formelwelle kommt `every_days` nach der letzten Listenwelle.
+_Avoid_: Wachstumsformel, Endloswellen
+
+**Schonfrist**:
+Die Tage zu Beginn einer Partie ohne Welle, wenn die feste Liste leer ist (`grace_days`): Die erste Formelwelle kommt an Tag Schonfrist + 1. Im freien Spiel 10 Tage.
+_Avoid_: Friedenszeit, Aufbauphase
+
+**Seite**:
+Der Kartenrand, von dem eine Welle kommt: Norden, Osten, Süden oder Westen. Steht sie nicht im Wellenplan, wählt der Zufall der Spielwelt bei der Ankündigung eine, von der das Gelände den Bergfried erreicht.
+_Avoid_: Richtung, Himmelsrichtung, Rand
+
+**Ankündigung**:
+Die Vorwarnung vor der nächsten Welle: Sie beginnt eine Vorwarnzeit vor deren Erscheinen, legt ihre Seite fest und zeigt Seite, Erscheinungskachel und Countdown. Angekündigt wird immer nur die nächste Welle; mit ihrem Erscheinen endet die Ankündigung.
+_Avoid_: Warnung, Vorschau
+
+**Vorwarnzeit**:
+Wie lange vor dem Erscheinen einer Welle ihre Ankündigung beginnt; steht im Wellenplan, Standard 1 Tag.
+_Avoid_: Warnzeit, Vorlauf
+
+**Abgewehrt**:
+Eine Welle ist abgewehrt, sobald keiner ihrer Feinde mehr lebt. Die Spielwelt zählt abgewehrte Wellen.
+_Avoid_: besiegt, geschlagen

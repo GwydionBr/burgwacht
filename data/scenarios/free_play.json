@@ -5,5 +5,16 @@
   "start_goods": { "wood": 100, "stone": 50, "apples": 40 },
   "start_residents": 8,
   "start_popularity": 50,
-  "start_gold": 100
+  "start_gold": 100,
+  "waves": {
+    "grace_days": 10,
+    "warning_days": 1,
+    "formula": {
+      "every_days": 3,
+      "enemies": {
+        "bandit": { "base": 3, "growth": 1 },
+        "poacher": { "base": 0, "growth": 0.5 }
+      }
+    }
+  }
 }
