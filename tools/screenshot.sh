@@ -5,6 +5,8 @@
 # Baumodus im Bild: --build=woodcutter --hover=46,44 (Kachel unter der Maus); Abriss: --demolish --hover=40,40.
 # Laufende Arbeiter: --place=woodcutter@46,41 --ticks=25 (bauen, dann Takte laufen lassen).
 cd "$(dirname "$0")/.." || exit 1
+# Klassen-Cache auffrischen, sonst fehlen nach einem Pull neue class_name-Typen
+godot --headless --path . --import > /dev/null 2>&1
 OUT="${1:-/tmp/burgwacht.png}"
 case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac
 case "$2" in
