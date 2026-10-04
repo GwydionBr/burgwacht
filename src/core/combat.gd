@@ -14,7 +14,8 @@ extends RefCounted
 ## Hält keinen eigenen Zustand: Feinde und Bewohner gehören weiter der Spielwelt, sie bleibt die
 ## einzige Wurzel des Zustands (ADR 0002). Die Spielwelt legt für jeden Aufruf ein Combat an
 ## (GameWorld._combat()); als ihr Teil benutzt Combat ihre internen Hilfen (Wegfindung, Feinde
-## hinzufügen und entfernen).
+## hinzufügen und entfernen, Meldung am Bergfried, Niederlage), schreibt ihren Zustand aber nicht
+## selbst.
 
 ## Meldung beim ersten Treffer eines Angriffs auf den Bergfried.
 const KEEP_ATTACKED := "Der Bergfried wird angegriffen!"
@@ -144,13 +145,13 @@ func enemy_hit(enemy: Enemy) -> void:
 ## läuft er weiter zum Bergfried (_send_enemy_to_keep()).
 func update_enemies() -> void:
 	for enemy in _world.get_enemies():
-		if _world._defeated:
+		if _world.is_defeated():
 			return
 		if _world.get_enemy(enemy.id) != null:
 			_update_enemy(enemy)
-	if _world._keep_alarmed_waves.has(0) and not _is_keep_attacked_without_wave():
+	if _world._is_keep_alarmed(0) and not _is_keep_attacked_without_wave():
 		# Der Angriff der Feinde ohne Welle ist vorbei; der nächste wird wieder gemeldet.
-		_world._keep_alarmed_waves.erase(0)
+		_world._end_keep_alarm(0)
 
 
 ## Greift gerade ein Feind ohne Welle (Startfeind, Debug-Feind) den Bergfried an?
@@ -260,12 +261,10 @@ func _hit_building(figure: Figure, building: Building) -> void:
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
 	var wave := (figure as Enemy).wave if figure is Enemy else 0
-	if building == _world._keep() and not _world._keep_alarmed_waves.has(wave):
-		_world._keep_alarmed_waves.append(wave)
+	if building == _world._keep() and _world._alarm_keep(wave):
 		_world.notice.emit(KEEP_ATTACKED)
 	if building == _world._keep() and building.hp == 0:
-		_world._defeated = true
-		_world.defeated.emit()
+		_world._lose()
 	elif building.hp == 0:
 		_world._destroy(building)
 
@@ -423,24 +422,24 @@ func spawn_enemy(type_id: String) -> String:
 	var reason := _world.spawn_enemy_error(type_id)
 	if reason != "":
 		return reason
-	_add_enemy(type_id, spawn_tile()[0])
+	add_enemy(type_id, spawn_tile()[0])
 	return ""
 
 
 ## Die Randkachel, auf der ein Feind erscheint: die freie, die der Grundfläche des Bergfrieds am
-## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (_reaches_keep());
+## nächsten liegt und nicht durch das Gelände von ihm abgeschnitten ist (reaches_keep());
 ## bei Gleichstand die kleinere (zeilenweise). Gebäude zählen dabei nicht: Ist der Weg nur durch
 ## Gebäude versperrt, erscheint er trotzdem dort und wartet. Ist jeder Rand abgeschnitten, die
 ## nächste freie. Mit side (MapSide) nur Kacheln dieser Seite. Als [Kachel], leer, wenn es
 ## keine freie gibt.
 func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
-	var reaching := _reaches_keep()
+	var reaching := reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
 	var best_reaches := false
 	for tile in _edge_tiles(side):
-		if not _is_free_enemy_tile(tile):
+		if not is_free_enemy_tile(tile):
 			continue
 		var reaches := reaching.has(Figure.ground(tile))
 		var distance := _distance_to_building(tile, keep)
@@ -468,7 +467,7 @@ func _edge_tiles(side: String) -> Array[Vector2i]:
 ## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
 ## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground()). Je
 ## Zusammenhangsgebiet genügt eine Suche.
-func _reaches_keep() -> Dictionary[Vector3i, float]:
+func reaches_keep() -> Dictionary[Vector3i, float]:
 	var keep := _world._keep()
 	var result: Dictionary[Vector3i, float] = {}
 	for tile in Building.adjacent_tiles(keep.type, keep.origin):
@@ -479,7 +478,7 @@ func _reaches_keep() -> Dictionary[Vector3i, float]:
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).
-func _is_free_enemy_tile(tile: Vector2i) -> bool:
+func is_free_enemy_tile(tile: Vector2i) -> bool:
 	return _world.is_walkable(tile, Figure.Level.GROUND) and _world.get_building_at(tile) == null
 
 
@@ -488,15 +487,15 @@ func _is_free_enemy_tile(tile: Vector2i) -> bool:
 func add_start_enemies(start_enemies: Array[StartEnemy]) -> void:
 	for entry in start_enemies:
 		var found: Array[Vector2i] = [entry.tile]
-		if not _is_free_enemy_tile(entry.tile):
-			found = _world._search_outward(entry.tile, _is_free_enemy_tile)
+		if not is_free_enemy_tile(entry.tile):
+			found = _world._search_outward(entry.tile, is_free_enemy_tile)
 		if not found.is_empty():
-			_add_enemy(entry.type_id, found[0])
+			add_enemy(entry.type_id, found[0])
 
 
 ## Ein neuer Feind mit vollen Lebenspunkten (aus der Welle mit dieser Nummer, 0 = keiner); er
 ## läuft gleich zum Bergfried.
-func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
+func add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:
 	var enemy := _world._add_enemy(type_id, tile, wave)
 	_send_enemy_to_keep(enemy)
 	return enemy

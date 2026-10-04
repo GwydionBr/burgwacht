@@ -1318,6 +1318,55 @@ func _waves() -> Waves:
 	return Waves.new(self)
 
 
+## Der Bergfried ist gefallen: Die Partie ist verloren (Combat).
+func _lose() -> void:
+	_defeated = true
+	defeated.emit()
+
+
+## Merkt sich, dass der Angriff dieser Welle (0 = Feinde ohne Welle) auf den Bergfried gemeldet
+## ist. true, wenn er es noch nicht war, also jetzt zu melden ist (Combat).
+func _alarm_keep(wave: int) -> bool:
+	if _keep_alarmed_waves.has(wave):
+		return false
+	_keep_alarmed_waves.append(wave)
+	return true
+
+
+## Ist der Angriff dieser Welle auf den Bergfried schon gemeldet?
+func _is_keep_alarmed(wave: int) -> bool:
+	return _keep_alarmed_waves.has(wave)
+
+
+## Der Angriff dieser Welle auf den Bergfried ist vorbei; ein neuer würde wieder gemeldet.
+func _end_keep_alarm(wave: int) -> void:
+	_keep_alarmed_waves.erase(wave)
+
+
+## Die nächste Welle erscheint: Liefert ihre Nummer, danach ist die folgende die nächste (Waves).
+func _take_next_wave() -> int:
+	_next_wave += 1
+	return _next_wave - 1
+
+
+## Die Ankündigung der nächsten Welle beginnt mit dieser Seite (Waves).
+func _start_announcement(side: String) -> void:
+	_announced_side = side
+	announcement_changed.emit()
+
+
+## Die laufende Ankündigung endet (Waves).
+func _end_announcement() -> void:
+	_announced_side = ""
+	announcement_changed.emit()
+
+
+## Die Welle mit dieser Nummer ist abgewehrt (Waves).
+func _repel_wave(number: int) -> void:
+	_repelled_waves += 1
+	_end_keep_alarm(number)
+
+
 ## Ein neuer Feind mit vollen Lebenspunkten, der zur Welle mit dieser Nummer gehört (0 = keiner;
 ## losschicken: Combat).
 func _add_enemy(type_id: String, tile: Vector2i, wave := 0) -> Enemy:

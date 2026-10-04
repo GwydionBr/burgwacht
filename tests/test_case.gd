@@ -110,7 +110,7 @@ func add_deposit(world: GameWorld, tile: Vector2i, type_id: String) -> void:
 ## Testvorbereitung: Ein Feind dieses Typs (aus der Welle mit dieser Nummer, 0 = keiner) erscheint
 ## auf der Kachel (wie einer aus dem Szenario) und läuft gleich zum Bergfried.
 func add_enemy(world: GameWorld, type_id: String, tile: Vector2i, wave := 0) -> Enemy:
-	return world._combat()._add_enemy(type_id, tile, wave)
+	return world._combat().add_enemy(type_id, tile, wave)
 
 
 ## Testvorbereitung: Ein tödlicher Treffer für den Feind, als hätte ihn ein Soldat getroffen.
