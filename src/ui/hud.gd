@@ -11,7 +11,7 @@ extends CanvasLayer
 ## Untätige und Waffen und je Soldatentyp einen Knopf zum Anwerben. Verwaltung, Marktansicht und
 ## Kasernenansicht schließen sich gegenseitig. Nach der Niederlage liegt die Niederlage-Ansicht
 ## über allem: „Der Bergfried ist gefallen“, der erreichte Tag, der Seed der Karte und die Knöpfe
-## „Neue Partie“, „Zum Hauptmenü“ und „Beenden“.
+## „Neue Partie“, „Laden“, „Zum Hauptmenü“ und „Beenden“.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
@@ -27,6 +27,8 @@ signal trade_requested(good: String, buying: bool)
 signal recruit_requested(type_id: String)
 ## In der Niederlage-Ansicht wurde „Neue Partie“ gedrückt.
 signal new_game_requested()
+## In der Niederlage-Ansicht wurde „Laden“ gedrückt.
+signal load_requested()
 ## In der Niederlage-Ansicht wurde „Zum Hauptmenü“ gedrückt.
 signal main_menu_requested()
 ## In der Niederlage-Ansicht wurde „Beenden“ gedrückt.
@@ -894,6 +896,7 @@ func _make_defeat_panel() -> PanelContainer:
 	column.add_child(row)
 	var entries: Array[Array] = [
 		["Neue Partie", new_game_requested],
+		["Laden", load_requested],
 		["Zum Hauptmenü", main_menu_requested],
 		["Beenden", quit_requested],
 	]

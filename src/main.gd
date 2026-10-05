@@ -25,11 +25,15 @@ extends Node2D
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
 ##   --game_menu           Spielmenü geöffnet (für Screenshots)
+##   --save_view           Speichern-Ansicht geöffnet (für Screenshots)
+##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
+##   --load_view           Ladeansicht geöffnet (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --saves=demo         Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
-## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn.
+## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn; in der Gründung und nach der
+## Niederlage ist Speichern gesperrt.
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/G/H/B/J/O/P) ein Gebäude: Vorschau unter der Maus,
@@ -50,6 +54,8 @@ extends Node2D
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
 ## Ist nichts mehr davon offen (Auswahl, Ansichten, Werkzeug), öffnet Esc das Spielmenü: Die Zeit
 ## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
+## „Speichern“ öffnet die Speichern-Ansicht (Name vorbelegt, Rückfrage vor dem Überschreiben),
+## „Laden“ die Ladeansicht (auch aus der Niederlage-Ansicht); Esc oder „Zurück“ führt ins Spielmenü.
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag, die abgewehrten Wellen und den Seed;
 ## „Neue Partie“ öffnet die Szenarioauswahl mit demselben Szenario, „Zum Hauptmenü“ wechselt ins
 ## Hauptmenü, „Beenden“ schließt das Spiel. N (sofort eine neue Karte) wirkt nur im Debug-Build.
@@ -68,6 +74,8 @@ const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
 
 var _match := Match.new()
 var _game_menu := GameMenu.new()
+## „Speichern“ im Spielmenü; gesperrt, solange die Partie nicht speicherbar ist.
+var _save_entry: Button
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -120,6 +128,7 @@ func _ready() -> void:
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
 	_hud.new_game_requested.connect(func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id))
+	_hud.load_requested.connect(_open_load_view)
 	_hud.main_menu_requested.connect(func() -> void: MainMenu.show_in(get_tree()))
 	_hud.quit_requested.connect(get_tree().quit)
 	_match.saves = Presets.save_games()
@@ -164,6 +173,16 @@ func _ready() -> void:
 		_hud.toggle_market()
 	if args.has("game_menu"):
 		_open_game_menu()
+	if args.has("save_view") or args.has("save_as"):
+		_open_save_view()
+		var save_view := _game_menu.get_view() as SaveView
+		if save_view == null:
+			printerr("--save_view: ", _match.save_error())
+		elif args.has("save_as"):
+			save_view.set_name_text(str(args["save_as"]))
+			save_view.submit()
+	if args.has("load_view"):
+		_open_load_view()
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -555,10 +574,12 @@ func _on_defeated() -> void:
 	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
 
 
-## Einträge des Spielmenüs; Speichern, Laden und Einstellungen kommen hier dazu.
+## Einträge des Spielmenüs; Einstellungen kommen hier dazu.
 func _build_game_menu() -> void:
 	add_child(_game_menu)
 	_game_menu.add_entry("Fortsetzen", _close_game_menu)
+	_save_entry = _game_menu.add_entry("Speichern", _open_save_view)
+	_game_menu.add_entry("Laden", _open_load_view)
 	_game_menu.add_entry("Zum Hauptmenü", func() -> void: get_tree().change_scene_to_file(MAIN_MENU_SCENE))
 	_game_menu.add_entry("Beenden", get_tree().quit)
 
@@ -571,7 +592,59 @@ func _open_game_menu() -> void:
 	_update_preview()
 	_clock.hold()
 	_set_camera_active(false)
+	_save_entry.disabled = _match.save_error() != ""
+	_save_entry.tooltip_text = _match.save_error()
 	_game_menu.open(_match.scenario.title, world.get_seed())
+
+
+## Die Speichern-Ansicht an Stelle des Spielmenüs (nicht in der Gründung, nicht nach der Niederlage).
+func _open_save_view() -> void:
+	if _match.save_error() != "":
+		_hud.show_message(_match.save_error())
+		return
+	if not _game_menu.is_open():
+		_open_game_menu()
+	var view := SaveView.new(_match.saves, _match.suggested_save_name())
+	view.save_requested.connect(_save_named.bind(view))
+	view.back_requested.connect(_close_menu_view)
+	_game_menu.show_view(view)
+
+
+## Speichert unter dem Namen aus der Speichern-Ansicht; danach geht die Partie weiter.
+func _save_named(save_name: String, view: SaveView) -> void:
+	var error := _match.save(SaveGame.Kind.NAMED, save_name)
+	if error != "":
+		view.show_error(error)
+		return
+	_close_game_menu()
+	_hud.show_message("Gespeichert: „%s“" % save_name)
+
+
+## Die Ladeansicht an Stelle des Spielmenüs; aus der Niederlage-Ansicht öffnet sie es dafür.
+func _open_load_view() -> void:
+	if not _game_menu.is_open():
+		_open_game_menu()
+	_hud.hide_defeat()
+	var view := LoadView.new(_match.saves)
+	view.load_requested.connect(_load_chosen.bind(view))
+	view.back_requested.connect(_close_menu_view)
+	_game_menu.show_view(view)
+
+
+## Lädt den gewählten Spielstand; scheitert es, steht der Grund in der Ladeansicht.
+func _load_chosen(path: String, view: LoadView) -> void:
+	var error := _load_from(path)
+	if error != "":
+		view.show_error(error)
+
+
+## Zurück aus Speichern- oder Ladeansicht ins Spielmenü; nach der Niederlage zur Niederlage-Ansicht.
+func _close_menu_view() -> void:
+	if world.is_defeated():
+		_close_game_menu()
+		_on_defeated()
+	else:
+		_game_menu.close_view()
 
 
 ## Schließt das Spielmenü; die Zeit läuft mit der vorigen Geschwindigkeit weiter.

@@ -2,13 +2,16 @@ class_name MainMenu
 extends Node2D
 ## Einstiegspunkt des Spiels (Hauptszene): das Hauptmenü. Im Hintergrund liegt eine zufällige
 ## Karte des Standardszenarios (nur Kartenerzeugung und Geländeansicht, keine Spielwelt), über
-## die die Kamera langsam schwenkt. „Neue Partie“ öffnet die Szenarioauswahl; eine Partie
-## startet in der Partie-Szene (main.tscn) aus der Startbeschreibung, die sie liefert.
+## die die Kamera langsam schwenkt. „Fortsetzen“ lädt den neuesten ladbaren Spielstand (ausgegraut
+## ohne), „Neue Partie“ öffnet die Szenarioauswahl, „Laden“ die Ladeansicht; eine Partie startet in
+## der Partie-Szene (main.tscn) aus der Startbeschreibung, die sie liefern.
 ##
 ## Wird mit Startparametern gestartet (siehe main.gd), geht es ohne Hauptmenü gleich in die
 ## Partie, die die Parameter selbst liest (nur einmal, siehe MatchScene.args_used). Ausnahmen:
 ##   --menu                Hauptmenü trotzdem zeigen (Preset main_menu)
 ##   --scenario_select     gleich mit offener Szenarioauswahl (Preset scenario_select)
+##   --load_view           gleich mit offener Ladeansicht (mit --menu, Preset load_menu)
+##   --saves=demo          Spielstände aus einem Wegwerf-Ordner (siehe Presets.save_games_for())
 ##   --screenshot=pfad.png Bild des Hauptmenüs speichern und beenden (nur mit den beiden oben)
 
 const SCENE := "res://scenes/main_menu.tscn"
@@ -24,6 +27,7 @@ var scenario_choice := ""
 
 var _menu: MenuPanel
 var _scenario_select: ScenarioSelect
+var _load_view: LoadView
 var _pan_center := Vector2.ZERO
 var _pan_radius := Vector2.ZERO
 var _pan_time := 0.0
@@ -55,6 +59,8 @@ func _ready() -> void:
 	_build_menu()
 	if scenario_choice != "":
 		_open_scenario_select(scenario_choice)
+	elif args.has("load_view"):
+		_open_load_view()
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(str(args["screenshot"]))
 
@@ -82,7 +88,10 @@ func _show_background_map() -> void:
 
 func _build_menu() -> void:
 	_menu = MenuPanel.new("Burgwacht", "Baue deine Burg, verteidige sie gegen die Wellen")
+	var continue_entry := _menu.add_entry("Fortsetzen", _continue)
+	continue_entry.disabled = Presets.save_games().newest_loadable() == null
 	_menu.add_entry("Neue Partie", _open_scenario_select.bind(Scenario.DEFAULT))
+	_menu.add_entry("Laden", _open_load_view)
 	_menu.add_entry("Beenden", get_tree().quit)
 	_add_centered(_menu)
 
@@ -100,6 +109,40 @@ func _close_scenario_select() -> void:
 	_scenario_select.get_parent().queue_free()
 	_scenario_select = null
 	_menu.visible = true
+
+
+## Lädt den neuesten ladbaren Spielstand; scheitert es, steht der Grund unter dem Titel.
+func _continue() -> void:
+	var newest := Presets.save_games().newest_loadable()
+	if newest != null:
+		var error := _load(newest.path)
+		if error != "":
+			_menu.set_subtitle(error)
+
+
+## Die Ladeansicht statt des Menüs.
+func _open_load_view() -> void:
+	_load_view = LoadView.new(Presets.save_games())
+	_load_view.load_requested.connect(func(path: String) -> void: _load_view.show_error(_load(path)))
+	_load_view.back_requested.connect(_close_load_view)
+	_add_centered(_load_view)
+	_menu.visible = false
+
+
+## Zurück ins Menü; „Fortsetzen“ richtet sich nach dem, was jetzt noch zu laden ist.
+func _close_load_view() -> void:
+	_load_view.get_parent().queue_free()
+	_load_view = null
+	_menu.get_parent().queue_free()
+	_build_menu()
+
+
+## Wechselt in die Partie aus diesem Spielstand; liefert den Grund, wenn er sich nicht laden lässt.
+func _load(path: String) -> String:
+	var save := SaveGames.read(path)
+	if save.error == "":
+		_start_match(MatchStart.from_save(path))
+	return save.error
 
 
 ## Mittig über den ganzen Schirm; ein CenterContainer zentriert neu, sobald umbrochene Texte

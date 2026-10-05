@@ -11,6 +11,22 @@
 		"name": "Spielmenü (Esc) mit Szenario und Seed",
 		"args": ["--seed=1", "--days=1", "--game_menu"]
 	},
+	"save_view": {
+		"name": "Speichern-Ansicht mit vorbelegtem Namen",
+		"args": ["--seed=1", "--days=1", "--saves=demo", "--save_view"]
+	},
+	"save_overwrite": {
+		"name": "Rückfrage vor dem Überschreiben eines Spielstands",
+		"args": ["--seed=1", "--days=1", "--saves=demo", "--save_as=Freies Spiel – Tag 2"]
+	},
+	"load_view": {
+		"name": "Ladeansicht im Spielmenü: benannte, Schnell-, Auto- und veraltete Spielstände",
+		"args": ["--seed=1", "--days=1", "--saves=demo", "--load_view"]
+	},
+	"load_menu": {
+		"name": "Ladeansicht aus dem Hauptmenü",
+		"args": ["--menu", "--saves=demo", "--load_view"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]
