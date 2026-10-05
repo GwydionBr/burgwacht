@@ -61,10 +61,7 @@ func is_open() -> bool:
 func _make_speed_row() -> Control:
 	var row := VBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
-	_speed_label = Label.new()
-	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_speed_label.add_theme_color_override("font_color", UiStyle.TEXT_COLOR)
-	_speed_label.add_theme_font_size_override("font_size", MenuPanel.ENTRY_FONT_SIZE)
+	_speed_label = MenuPanel.make_label("", UiStyle.TEXT_COLOR, MenuPanel.ENTRY_FONT_SIZE)
 	row.add_child(_speed_label)
 	_speed_slider = HSlider.new()
 	_speed_slider.min_value = Settings.MIN_CAMERA_SPEED
