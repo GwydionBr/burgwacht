@@ -31,7 +31,7 @@ func _draw() -> void:
 		var animation: String = sample["animation"]
 		var settings: Dictionary = entry["animations"][animation]
 		var frame := FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"]))
-		var path := GameDefs.SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, int(sample["direction"]), frame]
+		var path := GameDefs.animation_path(entry, animation, int(sample["direction"]), frame)
 		if not _textures.has(path):
 			_textures[path] = load(path) as Texture2D
 		var texture: Texture2D = _textures[path]

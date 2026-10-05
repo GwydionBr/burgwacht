@@ -188,7 +188,7 @@ func _draw_sprite(canvas: CanvasItem, tint: Color) -> bool:
 		var settings: Dictionary = entry["animations"][animation]
 		var seconds := (_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND)
 		var frame := FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"]))
-		path = GameDefs.SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, facing, frame]
+		path = GameDefs.animation_path(entry, animation, facing, frame)
 	if not _textures.has(path):
 		_textures[path] = load(path) as Texture2D
 	var texture: Texture2D = _textures[path]

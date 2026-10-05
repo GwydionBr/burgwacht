@@ -67,10 +67,49 @@ Sprites werden selbst gerendert (ADR 0006); Spiel, Tests, Rauchtest und CI brauc
 - **Palette** `tools/render/palette.json`: Jede Fläche bekommt die nächste Palettenfarbe zu ihrer Farbe in der Textur (OKLab, Helligkeit zählt halb), danach `recolor` bzw. `color`; Flächen flach schattiert, Farben ohne Tonwertkurve (Ansicht „Standard“).
 - **Kamera und Licht**: orthografisch, 30° Neigung und 45° Drehung, sodass eine Bodenkachel genau eine 2:1-Raute von 128×64 Pixeln ergibt (doppelte Auflösung des Rasters 64×32). Feste Sonne von links oben, dazu Himmelslicht.
 - **Ausgabe**: `assets/sprites/<pfad>.png` und der Schlagschatten `<pfad>_shadow.png` (schwarz, halbtransparent; ein Schattenfänger am Boden, das Modell selbst unsichtbar), beide gleich groß, so groß, dass Modell und Schatten hineinpassen. Die Mitte der Grundfläche liegt genau in der Bildmitte.
-- **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Bisher hat nur das Wohnhaus eines.
+- **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Die Stilprobe verwendet Sprites für das Wohnhaus, Bäume, Wiese, Ufer und Bewohner; ihre Optik wartet noch auf die Freigabe in #138.
 - **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste zeigen weiter den gezeichneten Block. Typen ohne `"sprite"` sehen aus wie bisher.
 - **Vorkommen**: `DepositView` zeigt Baum-Sprites in vier Varianten; `sprite_variants` nennt die Anzahl. Variante 0 verwendet `<sprite>.png`, weitere Varianten `<sprite>_1.png` usw., mit jeweiligem `_shadow.png`. Die gespeicherte `Deposit.variant` wird modulo Variantenanzahl gewählt; nach dem Laden bleibt das Bild gleich. Die Schatten liegen auch im Hauptmenü unter allen Objekten und verschwinden beim Abbau mit dem Baum. Felsen, Eisen, Wild und Typen ohne Sprite bleiben gezeichnet, die Sortierung bleibt am Kachelmittelpunkt. Neu rendern: `tools/render.sh deposits/tree deposits/tree_1 deposits/tree_2 deposits/tree_3`.
 - **Galerie**: Das Preset `gallery` (`tests/setups/gallery.gd`, Szenario `tests/scenarios/gallery.json`) zeigt jeden Gebäudetyp nebeneinander, mit Sprite oder gezeichnet; neue Typen kommen von selbst dazu. Vor der Burg stehen außerdem alle Vorkommen mit jeder Sprite-Variante.
+
+### Gelände-Sprites der Stilprobe
+
+`terrain.json` nennt für Wiese und Ufer `sprite` und `sprite_variants: 4`; Wiese nennt
+zusätzlich `sprite_transition: "sand"`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
+`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, nicht aus dem Zufall oder
+Spielstand. `transition_mask()` prüft die vier Kantennachbarn (Norden, Osten, Süden, Westen,
+Bits 1/2/4/8); diagonale Nachbarn und der Kartenrand zählen nicht. Jede Wiesenvariante enthält
+16 Bilder nebeneinander, je 128×64 Pixel; Ufer hat je Variante eine einzelne Kachel.
+Die Ansicht zeichnet weiterhin nur nach einer Kartenänderung neu und hält geladene Texturen
+im Speicher. Eine deckende Raute hinter den transparenten Bildrändern schließt feine Nähte.
+
+`tools/render.sh terrain/grass terrain/sand` rendert die vier Varianten und alle Kantenmasken
+mit `terrain.py`, gemeinsamer Kamera, Licht und Palette. Das Kenney-Modell `ground_grass.glb`
+wird auf eine flache Kachel normiert, damit keine Seitenflächen zwischen Nachbarn entstehen.
+Eine räumliche Materialtextur variiert den Farbton und mischt am Ufer weich zur Sandfarbe;
+der Schatten bleibt leer, weil Gelände selbst in der Bodenebene liegt. Die PNGs samt
+Mipmaps-Import sind eingecheckt. `gallery` zeigt einen Uferstreifen mit Ecke oberhalb der
+Gebäudereihen. Die Auswahl wird ohne Grafik getestet; den Look prüft der Screenshot.
+
+### Animierte Figuren
+
+`tools/render.sh units/resident` rendert mit Blender 5.2 die originalen glTF-Skelettanimationen
+`Idle` und `Walking_A` des CC0-KayKit-Modells. Das Figurenrezept nennt die Animationen,
+Bildanzahl, feste Leinwand und ausgeblendete Ausrüstung; `render_figures.py` verwendet Kamera,
+Palette und Licht der gemeinsamen Pipeline. Alle Einzelbilder teilen denselben Fußpunkt,
+werden doppelt aufgelöst eingecheckt und mit Faktor 0,5 dargestellt. Der Bodenschatten bleibt
+für die Stilprobe gezeichnet, der kompatible Schattenplatzhalter ist transparent.
+
+Figurentypen in `units.json` dürfen `sprite` und `animations` mit `frames` und `fps` für `idle`
+und `walk` enthalten. GameDefs prüft jedes Einzelbild in allen acht Richtungen. FigureAnimation
+bestimmt Richtung aus der Kachelbewegung und Bild aus Spielsekunden (Takt plus Uhrbruchteil);
+Pause und Spielmenü halten diese Zeit an, Zeitraffer beschleunigt sie. Der zuletzt gezeigte
+Blick bleibt beim Stehen erhalten. FigureView benutzt das aktuelle Bild auch für die Silhouette;
+Klickfläche, Auswahlring und Lebensbalken bleiben gleich. Soldaten ohne Sprite benutzen weiter
+die gezeichnete Figur. Bündel und Wippen beim Abbau bleiben gezeichnet.
+
+Testaufbauten können optional `decorate(scene, clock)` bereitstellen, um reine Ansichtsproben
+anzufügen. Die Galerie zeigt damit jeden Figurentyp mit Sprite stehend und gehend in acht Richtungen.
 
 ## Spielwelt und Takt (ab Meilenstein 2)
 
@@ -127,25 +166,6 @@ Neues Zustandsstück:
 2. Ist alter Spielstand damit nicht mehr ladbar, `SAVE_VERSION` erhöhen.
 3. In `tests/test_save_load.gd` prüfen: speichern → laden → gleicher Zustand und nach N weiteren Takten derselbe Verlauf; dafür das Stück in `world_snapshot()` (`tests/test_case.gd`) aufnehmen.
 
-### Gelände-Sprites der Stilprobe
-
-`terrain.json` nennt für Wiese und Ufer `sprite` und `sprite_variants: 4`; Wiese nennt
-zusätzlich `sprite_transition: "sand"`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
-`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, nicht aus dem Zufall oder
-Spielstand. `transition_mask()` prüft die vier Kantennachbarn (Norden, Osten, Süden, Westen,
-Bits 1/2/4/8); diagonale Nachbarn und der Kartenrand zählen nicht. Jede Wiesenvariante enthält
-16 Bilder nebeneinander, je 128×64 Pixel; Ufer hat je Variante eine einzelne Kachel.
-Die Ansicht zeichnet weiterhin nur nach einer Kartenänderung neu und hält geladene Texturen
-im Speicher. Eine deckende Raute hinter den transparenten Bildrändern schließt feine Nähte.
-
-`tools/render.sh terrain/grass terrain/sand` rendert die vier Varianten und alle Kantenmasken
-mit `terrain.py`, gemeinsamer Kamera, Licht und Palette. Das Kenney-Modell `ground_grass.glb`
-wird auf eine flache Kachel normiert, damit keine Seitenflächen zwischen Nachbarn entstehen.
-Eine räumliche Materialtextur variiert den Farbton und mischt am Ufer weich zur Sandfarbe;
-der Schatten bleibt leer, weil Gelände selbst in der Bodenebene liegt. Die PNGs samt
-Mipmaps-Import sind eingecheckt. `gallery` zeigt einen Uferstreifen mit Ecke oberhalb der
-Gebäudereihen. Die Auswahl wird ohne Grafik getestet; den Look prüft der Screenshot.
-
 ## Tests
 
 - Einzeltests für reine Logik (z. B. `Iso`, Kartengenerator).
@@ -169,23 +189,3 @@ Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere W
 - `*.json` steht im Export-Filter für Nicht-Ressourcen, weil Daten, Szenarien und `tools/presets.json` per Dateizugriff gelesen werden.
 - Für die Architektur universal muss „Import ETC2 ASTC“ (`rendering/textures/vram_compression/import_etc2_astc`) in `project.godot` an sein.
 - Debug-Tasten (N, F7, F8) und `--spawn` wirken nur im Debug-Build (`OS.is_debug_build()`), also nicht in der exportierten App.
-
-### Animierte Figuren
-
-`tools/render.sh units/resident` rendert mit Blender 5.2 die originalen glTF-Skelettanimationen
-`Idle` und `Walking_A` des CC0-KayKit-Modells. Das Figurenrezept nennt die Animationen,
-Bildanzahl, feste Leinwand und ausgeblendete Ausrüstung; `render_figures.py` verwendet Kamera,
-Palette und Licht der gemeinsamen Pipeline. Alle Einzelbilder teilen denselben Fußpunkt,
-werden doppelt aufgelöst eingecheckt und mit Faktor 0,5 dargestellt. Der Bodenschatten bleibt
-für die Stilprobe gezeichnet, der kompatible Schattenplatzhalter ist transparent.
-
-Figurentypen in `units.json` dürfen `sprite` und `animations` mit `frames` und `fps` für `idle`
-und `walk` enthalten. GameDefs prüft jedes Einzelbild in allen acht Richtungen. FigureAnimation
-bestimmt Richtung aus der Kachelbewegung und Bild aus Spielsekunden (Takt plus Uhrbruchteil);
-Pause und Spielmenü halten diese Zeit an, Zeitraffer beschleunigt sie. Der zuletzt gezeigte
-Blick bleibt beim Stehen erhalten. FigureView benutzt das aktuelle Bild auch für die Silhouette;
-Klickfläche, Auswahlring und Lebensbalken bleiben gleich. Soldaten ohne Sprite benutzen weiter
-die gezeichnete Figur. Bündel und Wippen beim Abbau bleiben gezeichnet.
-
-Testaufbauten können optional `decorate(scene, clock)` bereitstellen, um reine Ansichtsproben
-anzufügen. Die Galerie zeigt damit jeden Figurentyp mit Sprite stehend und gehend in acht Richtungen.
