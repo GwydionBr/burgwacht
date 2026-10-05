@@ -17,7 +17,8 @@ extends Node2D
 ## Ein Gebäude mit "sprite" in den Daten zeigt statt des Blocks sein gerendertes Bild (halbe Größe,
 ## Mitte der Grundfläche in der Bildmitte, ohne Namen); seinen Schatten legt es in die Bodenebene,
 ## die main bei setup() übergibt (unter allen Objekten, über dem Gelände). Verdecken und Lebensbalken
-## richten sich dann nach dem Umriss des Bilds.
+## richten sich dann nach dem Umriss des Bilds. Fehlt die Bilddatei (Datenfehler, den GameDefs schon
+## meldet), erscheint der Block wie bei einem Typ ohne Sprite; fehlt nur der Schatten, bleibt er weg.
 
 const INSET := 3.0
 const DOOR_COLOR := Color("#2a1d12")
@@ -75,7 +76,12 @@ func setup(building: Building, shadows: Node2D = null) -> void:
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	_outlines.clear()
-	if GameDefs.sprite_path(def) != "":
+	for old: Sprite2D in [_sprite, _shadow]:
+		if is_instance_valid(old):
+			old.queue_free()
+	_sprite = null
+	_shadow = null
+	if ResourceLoader.exists(GameDefs.sprite_path(def)):
 		_show_sprite(def, shadows)
 	elif not _campfire:
 		_outlines.append(_block_outline())
@@ -103,7 +109,7 @@ func _show_sprite(def: Dictionary, shadows: Node2D) -> void:
 	_sprite.position = center - position
 	_sprite.show_behind_parent = true
 	add_child(_sprite)
-	if shadows != null:
+	if shadows != null and ResourceLoader.exists(GameDefs.shadow_path(def)):
 		_shadow = _make_sprite(GameDefs.shadow_path(def))
 		_shadow.position = center - shadows.global_position
 		shadows.add_child(_shadow)

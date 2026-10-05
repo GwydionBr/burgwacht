@@ -1,6 +1,6 @@
 # Sprites aus CC0-3D-Modellen, selbst gerendert
 
-Die Grafik soll vollständig (Gelände, Vorkommen, alle Gebäude, Figuren mit Animationen in 8 Richtungen), in sich einheitlich und frei von Lizenzpflichten sein. Kein freier 2D-Satz leistet das. Deshalb rendern wir die Sprites selbst mit einem Blender-Skript und einer orthografischen Isokamera (genau 2:1) aus CC0-3D-Modellen (KayKit, Quaternius, Kenney). Fehlende Typen setzen wir aus deren Einzelteilen zusammen. Dafür nehmen wir einen stilisierten Low-Poly-Look in Kauf, statt realistisch auszusehen wie Stronghold. Modelle, Szenen und die gerenderten PNGs liegen im Repo, und die Quellen stehen in `CREDITS.md`.
+Die Grafik soll vollständig (Gelände, Vorkommen, alle Gebäude, Figuren mit Animationen in 8 Richtungen), in sich einheitlich und frei von Lizenzpflichten sein. Kein freier 2D-Satz leistet das. Deshalb rendern wir die Sprites selbst mit einem Blender-Skript und einer orthografischen Isokamera (genau 2:1) aus CC0-3D-Modellen (KayKit, Quaternius, Kenney). Fehlende Typen setzen wir aus deren Einzelteilen zusammen. Dafür nehmen wir einen stilisierten Low-Poly-Look in Kauf, statt realistisch auszusehen wie Stronghold. Jeder Typ ist als Textrezept beschrieben (JSON in `tools/render/recipes/`); eine `.blend`-Szene gibt es nur, wo echtes Modellieren nötig ist. Rezepte, Modelle, Szenen und die gerenderten PNGs liegen im Repo, und die Quellen stehen in `CREDITS.md`.
 
 ## Considered Options
 
@@ -12,4 +12,5 @@ Die Grafik soll vollständig (Gelände, Vorkommen, alle Gebäude, Figuren mit An
 ## Consequences
 
 - Blender muss installiert sein, um Sprites neu zu rendern. Spiel, Tests und CI brauchen es nicht, weil die PNGs eingecheckt sind.
+- Das Render-Skript verlangt genau Blender 5.2 LTS (Haupt- und Unterversion) und bricht sonst ab, damit die Bilder nicht von Version zu Version leicht abweichen.
 - Typen ohne Sprite zeichnet die Ansicht weiter prozedural. Neue Typen bleiben damit allein über `data/*.json` möglich, auch bevor es ein Bild gibt.

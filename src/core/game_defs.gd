@@ -10,8 +10,6 @@ const DATA_DIR := "res://data/"
 ## liegt daneben mit SHADOW_SUFFIX (gerendert mit tools/render.sh).
 const SPRITE_DIR := "res://assets/sprites/"
 const SHADOW_SUFFIX := "_shadow"
-## Datendateien, deren Einträge ein Feld "sprite" haben dürfen.
-const SPRITE_FILES: Array[String] = ["terrain.json", "deposits.json", "buildings.json", "units.json"]
 const SPRITE_TYPE_ERROR := "„sprite“ muss der Pfad eines Bilds sein (Text, ohne .png)"
 
 static var _instance: GameDefs
@@ -51,12 +49,17 @@ static func get_instance() -> GameDefs:
 
 ## Pfad des Bilds eines Eintrags (Gelände, Vorkommen, Gebäude, Einheit); leer ohne "sprite".
 static func sprite_path(entry: Dictionary) -> String:
-	return SPRITE_DIR + str(entry["sprite"]) + ".png" if entry.has("sprite") else ""
+	return _sprite_file(entry, "")
 
 
 ## Pfad des Schattenbilds eines Eintrags; leer ohne "sprite".
 static func shadow_path(entry: Dictionary) -> String:
-	return SPRITE_DIR + str(entry["sprite"]) + SHADOW_SUFFIX + ".png" if entry.has("sprite") else ""
+	return _sprite_file(entry, SHADOW_SUFFIX)
+
+
+## Pfad zu "sprite" eines Eintrags mit angehängtem Suffix und Endung; leer ohne "sprite".
+static func _sprite_file(entry: Dictionary, suffix: String) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + suffix + ".png" if entry.has("sprite") else ""
 
 
 ## Prüft das Feld "sprite" aller Einträge (ID → Dictionary) einer Datendatei: ein Text ohne Endung,
@@ -84,10 +87,17 @@ static func _sprite_error(entry: Dictionary) -> String:
 	return ""
 
 
+## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
+## der erste Fehler gewinnt.
 func _sprites_error() -> String:
-	var sections := [terrain, deposits, buildings, units]
-	for i in SPRITE_FILES.size():
-		var reason := sprites_error(SPRITE_FILES[i], sections[i])
+	var sections: Dictionary[String, Dictionary] = {
+		"terrain.json": terrain,
+		"deposits.json": deposits,
+		"buildings.json": buildings,
+		"units.json": units,
+	}
+	for file_name: String in sections:
+		var reason := sprites_error(file_name, sections[file_name])
 		if reason != "":
 			return reason
 	return ""
