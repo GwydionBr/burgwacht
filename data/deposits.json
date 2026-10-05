@@ -1,5 +1,5 @@
 {
-  "tree":  { "name": "Baum",           "yields": "wood",  "amount": 40, "walkable": false, "exclusive": true,
+  "tree":  { "sprite": "deposits/tree", "sprite_variants": 4, "name": "Baum",           "yields": "wood",  "amount": 40, "walkable": false, "exclusive": true,
              "spread": { "interval_ticks": 240, "chance": 0.0 } },
   "stone": { "name": "Felsen",         "yields": "stone", "amount": 120, "walkable": false, "exclusive": false },
   "iron":  { "name": "Eisenvorkommen", "yields": "iron",  "amount": 80, "walkable": false, "exclusive": false },

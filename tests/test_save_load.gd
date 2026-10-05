@@ -115,3 +115,19 @@ func test_unknown_format_version_is_rejected_in_german() -> void:
 func test_data_without_version_is_rejected() -> void:
 	assert_eq(GameWorld.data_error({"foo": 1}), "Das ist kein Spielstand (Formatversion fehlt).", "Fehler:")
 	assert_eq(GameWorld.from_data({}), null, "Spielwelt aus leeren Daten:")
+
+
+func test_save_and_load_keeps_tree_sprite_variants() -> void:
+	var world := run_scenario_with_seed("tiny", 0, 42)
+	var loaded := _reload(world)
+	var found := false
+	for tile: Vector2i in world.map.deposits:
+		var before: Deposit = world.map.deposits[tile]
+		if before.type != "tree":
+			continue
+		found = true
+		var after: Deposit = loaded.map.deposits[tile]
+		assert_eq(after.variant, before.variant, "Gespeicherte Baumvariante:")
+		var def: Dictionary = GameDefs.get_instance().deposits["tree"]
+		assert_eq(GameDefs.sprite_path(def, after.variant), GameDefs.sprite_path(def, before.variant), "Baumbild nach Laden:")
+	assert_true(found, "Testkarte hat Bäume")

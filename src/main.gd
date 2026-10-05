@@ -786,7 +786,7 @@ func _load_from(path: String) -> String:
 
 func _add_deposit_view(tile: Vector2i) -> void:
 	var view := DepositView.new()
-	view.setup(tile, world.map.deposits[tile])
+	view.setup(tile, world.map.deposits[tile], _shadows)
 	_objects.add_child(view)
 	_deposit_views[tile] = view
 

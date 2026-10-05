@@ -47,12 +47,12 @@ static func get_instance() -> GameDefs:
 	return _instance
 
 
-## Pfad des Bilds eines Eintrags (Gelände, Vorkommen, Gebäude, Einheit); leer ohne "sprite".
+## Pfad des Bilds eines Eintrags; leer ohne "sprite". Die Variante wird modulo "sprite_variants" gewählt.
 static func sprite_path(entry: Dictionary, variant: int = 0) -> String:
 	return _sprite_file(entry, "", variant)
 
 
-## Pfad des Schattenbilds eines Eintrags; leer ohne "sprite".
+## Pfad des Schattenbilds derselben Variante; leer ohne "sprite".
 static func shadow_path(entry: Dictionary, variant: int = 0) -> String:
 	return _sprite_file(entry, SHADOW_SUFFIX, variant)
 
