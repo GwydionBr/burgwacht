@@ -136,3 +136,19 @@ func test_rejected_command_wishes_rejection_sound() -> void:
 	director.command_executed(Command.set_ration("half"), "Unbekannte Ration")
 	director.command_executed(Command.trade("wood", true), "Kein Markt gebaut")
 	assert_eq(_occasions(), ["command_rejected", "command_rejected", "command_rejected"] as Array[String], "Anlässe:")
+
+
+## Wellen und Niederlage: Horn, Trommeln, Fanfare und Niederlage-Geräusch, überall gleich laut –
+## ohne Ort, ohne Panorama.
+func test_wave_and_defeat_events_wish_their_sound_everywhere_alike() -> void:
+	var director := _director()
+	var events: Array[Callable] = [director.wave_announced, director.wave_spawned,
+			director.wave_repelled, director.defeated]
+	var expected: Array[String] = ["wave_announced", "wave_spawned", "wave_repelled", "defeat"]
+	for event in events:
+		event.call()
+	assert_eq(_occasions(), expected, "Anlässe:")
+	for wish in _wishes:
+		assert_false(_data.sound(wish.occasion).positional, "%s ist nicht ortsabhängig" % wish.occasion)
+		assert_eq(wish.volume, _data.sound(wish.occasion).volume, "Lautstärkefaktor zu %s:" % wish.occasion)
+		assert_eq(wish.pan, 0.0, "Panorama zu %s:" % wish.occasion)
