@@ -21,7 +21,7 @@ Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 | Zoomen | Pinch auf dem Trackpad, Mausrad |
 | Pause / weiter | Leertaste |
 | Geschwindigkeit 1× / 2× / 4× | 1 / 2 / 3 |
-| Neue Karte | N |
+| Neue Karte (nur Debug-Build) | N |
 | Schnell speichern / laden | F5 / F9 |
 | Vollbild | F (im Vollbild auch Scrollen am Bildschirmrand) |
 

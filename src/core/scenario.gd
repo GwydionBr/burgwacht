@@ -2,7 +2,7 @@ class_name Scenario
 extends RefCounted
 ## Ein Szenario: die Datenbeschreibung, aus der eine Partie startet (res://data/scenarios/<id>.json).
 ## Felder bisher: "name", "map" ({"width", "height"}), "seed" (Zahl oder "random")
-## und optional "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
+## und optional "description" (Text für die Szenarioauswahl) und "start_goods" (Ware → Menge, liegt nach der Gründung im ersten Lager ihrer Lagerart)
 ## sowie "start_residents" (so viele Bewohner stehen nach der Gründung am Lagerfeuer) und
 ## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
 ## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0) und "enemies" (Feinde, die bei der Gründung
@@ -20,6 +20,8 @@ const DEFAULT_POPULARITY := 50
 var id: String
 ## Anzeigename, z. B. "Freies Spiel".
 var title: String
+## Beschreibung für die Szenarioauswahl; leer, wenn das Szenario keine hat.
+var description := ""
 var map_size: Vector2i
 var random_seed: bool
 var fixed_seed: int
@@ -35,6 +37,19 @@ var start_enemies: Array[StartEnemy] = []
 ## Der Wellenplan (Feld "waves", siehe WavePlan); ohne das Feld leer, dann kommen keine Wellen.
 var wave_plan := WavePlan.new()
 var error := ""
+
+
+## Die IDs aller Szenarien in dir (jede .json-Datei), alphabetisch; leer, wenn der Ordner fehlt.
+## Ohne dir die Szenarien der Spieldaten, nicht die Testszenarien.
+static func list_ids(dir := DIR) -> PackedStringArray:
+	var ids: PackedStringArray = []
+	if not DirAccess.dir_exists_absolute(dir):
+		return ids
+	for file in DirAccess.get_files_at(dir):
+		if file.get_extension() == "json":
+			ids.append(file.get_basename())
+	ids.sort()
+	return ids
 
 
 static func load_named(scenario_id: String, dir := DIR) -> Scenario:
@@ -60,6 +75,12 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		scenario.title = title_value
 	else:
 		problems.append("„name“ fehlt oder ist kein Text")
+
+	var description_value: Variant = data.get("description", "")
+	if description_value is String:
+		scenario.description = description_value
+	else:
+		problems.append("„description“ muss ein Text sein")
 
 	var map_value: Variant = data.get("map")
 	var map_dict: Dictionary = map_value if map_value is Dictionary else {}

@@ -7,8 +7,15 @@ extends RefCounted
 
 const PATH := "res://tools/presets.json"
 const SETUP_DIR := "res://tests/setups/"
+## Füllt den Wegwerf-Ordner für --saves=demo mit Spielständen.
+const DEMO_SAVES_PATH := "res://tests/preset_saves.gd"
 ## Umgebungsvariable, über die der Editor dem gestarteten Spiel den Testzustand nennt.
 const ENV := "BURGWACHT_PRESET"
+
+## Die Spielstände dieses Spiels (siehe save_games()); Hauptmenü und Partie teilen sie.
+static var _save_games: SaveGames
+## Wegwerf-Ordner; sie leben bis zum Ende des Spiels und werden dann samt Inhalt gelöscht.
+static var _temp_dirs: Array[DirAccess] = []
 
 
 ## Alle Presets in der Reihenfolge der Datei; bei Fehlern leer (Grund über error()).
@@ -50,3 +57,71 @@ static func args_of(id: String) -> PackedStringArray:
 ## Pfad des Aufbau-Skripts für --setup=name.
 static func setup_path(setup_name: String) -> String:
 	return SETUP_DIR + setup_name + ".gd"
+
+
+## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
+## Umgebungsvariable ENV) zuerst, eigene Parameter überschreiben sie.
+static func user_args() -> Dictionary:
+	var own := _args_to_dict(OS.get_cmdline_user_args())
+	var preset := str(own.get("preset", OS.get_environment(ENV)))
+	if preset == "":
+		return own
+	var args := {}
+	if error() != "":
+		printerr("--preset: ", error())
+	elif not load_all().has(preset):
+		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(load_all().keys()), ")")
+	else:
+		args = _args_to_dict(args_of(preset))
+	args.merge(own, true)
+	# Auch ein Preset aus dem Editor (ENV) gilt als Preset, siehe save_games_for().
+	args["preset"] = preset
+	return args
+
+
+## Die Spielstände dieses Spiels nach den Startparametern (siehe save_games_for()), einmal je Lauf.
+static func save_games() -> SaveGames:
+	if _save_games == null:
+		_save_games = save_games_for(user_args())
+	return _save_games
+
+
+## Wo gespeichert wird: im Nutzerordner (user://saves/), mit --saves=demo in einem Wegwerf-Ordner
+## mit Spielständen der Testzustände, mit --saves=empty in einem leeren. Presets und Screenshots
+## ohne --saves bekommen einen leeren, damit auch ihr Autospielstand (Tagesbeginn, etwa bei
+## --days) nicht im Nutzerordner landet. So schreiben Presets, Rauchtest und Screenshots nichts
+## in den Nutzerordner.
+static func save_games_for(args: Dictionary) -> SaveGames:
+	if not args.has("saves"):
+		if not args.has("preset") and not args.has("screenshot"):
+			return SaveGames.new()
+		args = args.merged({"saves": "empty"})
+	var temp := DirAccess.create_temp("burgwacht_saves", false)
+	_temp_dirs.append(temp)
+	var saves := SaveGames.new(temp.get_current_dir())
+	match str(args["saves"]):
+		"demo":
+			var demo: GDScript = load(DEMO_SAVES_PATH)
+			demo.call("fill", saves)
+		"empty":
+			pass
+		_:
+			printerr("--saves: demo oder empty, nicht „%s“" % args["saves"])
+	return saves
+
+
+## Speichert nach ein paar Bildern (damit alles gezeichnet ist) ein Bild des Fensters von node
+## und beendet das Spiel (--screenshot=pfad.png in Hauptmenü und Partie).
+static func save_screenshot_and_quit(node: Node, path: String) -> void:
+	for i in 3:
+		await RenderingServer.frame_post_draw
+	node.get_viewport().get_texture().get_image().save_png(path)
+	node.get_tree().quit()
+
+
+static func _args_to_dict(list: PackedStringArray) -> Dictionary:
+	var args := {}
+	for arg in list:
+		var parts := arg.trim_prefix("--").split("=", true, 1)
+		args[parts[0]] = parts[1] if parts.size() > 1 else ""
+	return args

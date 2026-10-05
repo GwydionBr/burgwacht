@@ -1,8 +1,10 @@
+class_name MatchScene
 extends Node2D
-## Einstiegspunkt: erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe.
-## Enthält keine Spiellogik – die lebt in der Spielwelt (src/core/).
+## Einstiegspunkt der Partie-Szene: startet die Partie (Match) aus der Startbeschreibung und
+## verbindet ihre Spielwelt mit Darstellung und Eingabe. Enthält keine Spiellogik – die lebt in
+## der Spielwelt (src/core/).
 ##
-## Startparameter (nach "--"):
+## Startparameter (nach "--"; jeder davon überspringt das Hauptmenü):
 ##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
@@ -15,17 +17,25 @@ extends Node2D
 ##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
-##   --load=pfad.sav       Spielstand laden statt neuer Partie (für Screenshots)
+##   --load=pfad.sav       Spielstand (Datei von SaveGames) laden statt neuer Partie (für Screenshots)
 ##   --setup=name          Spielwelt aus tests/setups/name.gd statt neuer Partie (für Testzustände)
 ##   --preset=id           Startparameter des Testzustands aus tools/presets.json (eigene gehen vor)
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
+##   --game_menu           Spielmenü geöffnet (für Screenshots)
+##   --save_view           Speichern-Ansicht geöffnet (für Screenshots)
+##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
+##   --load_view           Ladeansicht geöffnet (für Screenshots)
+##   --settings            Einstellungen aus dem Spielmenü geöffnet (für Screenshots)
+##   --leave               „Zum Hauptmenü“ gewählt: Rückfrage bei ungespeichertem Fortschritt (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
+##   --saves=demo          Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
-## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
+## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn; in der Gründung und nach der
+## Niederlage ist Speichern gesperrt.
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/G/H/B/J/O/P) ein Gebäude: Vorschau unter der Maus,
@@ -44,14 +54,33 @@ extends Node2D
 ## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
 ## einen Räuber am Rand nächst dem Bergfried erscheinen, F7 die nächste Welle des Wellenplans.
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
-## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
-## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
+## Ist nichts mehr davon offen (Auswahl, Ansichten, Werkzeug), öffnet Esc das Spielmenü: Die Zeit
+## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
+## „Speichern“ öffnet die Speichern-Ansicht (Name vorbelegt, Rückfrage vor dem Überschreiben),
+## „Laden“ die Ladeansicht (auch aus der Niederlage-Ansicht); Esc oder „Zurück“ führt ins Spielmenü.
+## „Einstellungen“ öffnet darüber die Einstellungen; Esc oder „Zurück“ führt ins Spielmenü zurück.
+## F wechselt zwischen Vollbild und Fenster, und zwar über dieselbe Einstellung (Settings).
+## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag, die abgewehrten Wellen und den Seed;
+## „Neue Partie“ öffnet die Szenarioauswahl mit demselben Szenario, „Zum Hauptmenü“ wechselt ins
+## Hauptmenü, „Beenden“ schließt das Spiel. N (sofort eine neue Karte) wirkt nur im Debug-Build.
 
-const QUICKSAVE_PATH := "user://quicksave.sav"
 
+## Die Startparameter sind gelesen; das Hauptmenü wertet sie danach nicht mehr aus.
+static var args_used := false
+
+## Woraus die Partie startet; das Hauptmenü setzt sie vor dem Betreten des Baums, sonst gelten
+## die Startparameter.
+var start: MatchStart
+## Die Spielwelt der Partie (_match.world), hier kurz für Darstellung und Eingabe.
 var world: GameWorld
 
-var _scenario: Scenario
+var _match := Match.new()
+var _game_menu := GameMenu.new()
+## „Speichern“ im Spielmenü; gesperrt, solange die Partie nicht speicherbar ist.
+var _save_entry: Button
+var _settings_view := SettingsView.new(Settings.shared(), true)
+## Rückfrage, bevor die Partie mit ungespeichertem Fortschritt verlassen wird.
+var _leave_dialog := ConfirmDialog.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -90,14 +119,11 @@ var _right_pressed_on_map := false
 
 
 func _ready() -> void:
-	var args := _parse_user_args()
-	_scenario = Scenario.load_named(args.get("scenario", Scenario.DEFAULT))
-	if _scenario.error != "":
-		printerr("Fehler: ", _scenario.error)
-		set_process(false)
-		set_process_unhandled_key_input(false)
-		get_tree().quit(1)
-		return
+	# Ohne Startbeschreibung (aus dem Hauptmenü) gelten die Startparameter.
+	var args := Presets.user_args() if start == null else {}
+	if start == null:
+		start = MatchStart.from_args(args)
+		args_used = true
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
@@ -106,23 +132,32 @@ func _ready() -> void:
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
-	_hud.new_game_requested.connect(func() -> void: _new_world(_scenario.resolve_seed(randi())))
-	_hud.quit_requested.connect(get_tree().quit)
-	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
-	if args.has("setup"):
-		var setup_path := Presets.setup_path(str(args["setup"]))
-		if ResourceLoader.exists(setup_path):
-			var setup: GDScript = load(setup_path)
-			_show_world(setup.call("create"))
-		else:
-			printerr("--setup: ", setup_path, " fehlt")
-	if args.has("load"):
-		var load_error := _load_from(str(args["load"]))
-		if load_error != "":
-			printerr("--load: ", load_error)
+	_hud.new_game_requested.connect(_leave_match.bind("Neue Partie beginnen?",
+			func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id)))
+	_hud.load_requested.connect(_open_load_view)
+	_hud.main_menu_requested.connect(_leave_to_main_menu)
+	_hud.quit_requested.connect(_quit)
+	# ⌘Q und das Schließen des Fensters kommen als NOTIFICATION_WM_CLOSE_REQUEST an.
+	get_tree().set_auto_accept_quit(false)
+	_match.saves = Presets.save_games()
+	_match.world_changed.connect(_show_world)
+	_build_game_menu()
+	Settings.shared().follow_window(get_window())
+	Settings.shared().changed.connect(_apply_camera_speed)
+	_apply_camera_speed()
+	var error := _start(start)
+	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
+		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
+		error = _start(MatchStart.from_scenario(Scenario.DEFAULT))
+	if error != "":
+		printerr("Fehler: ", error)
+		set_process(false)
+		set_process_unhandled_key_input(false)
+		get_tree().quit(1)
+		return
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
-		world.execute(Command.found(world.find_founding_site()))
+		_match.execute(Command.found(world.find_founding_site()))
 	for i in days * GameWorld.TICKS_PER_DAY:
 		world.step()
 	if args.has("place"):
@@ -130,11 +165,11 @@ func _ready() -> void:
 		var xy := place[1].split(",") if place.size() == 2 else PackedStringArray()
 		var reason := "Format: --place=typ@x,y"
 		if xy.size() == 2:
-			reason = world.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
+			reason = _match.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
 		if reason != "":
 			printerr("--place: ", reason)
 	if args.has("spawn") and OS.is_debug_build():
-		var spawn_reason := world.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
+		var spawn_reason := _match.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
 		if spawn_reason != "":
 			printerr("--spawn: ", spawn_reason)
 	for i in int(args.get("ticks", 0)):
@@ -147,6 +182,25 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
+	if args.has("game_menu") or args.has("settings"):
+		_open_game_menu()
+	if args.has("save_view") or args.has("save_as"):
+		_open_save_view()
+		var save_view := _game_menu.get_view() as SaveView
+		if save_view == null:
+			printerr("--save_view: ", _match.save_error())
+		elif args.has("save_as"):
+			save_view.set_name_text(str(args["save_as"]))
+			save_view.submit()
+	if args.has("load_view"):
+		_open_load_view()
+	if args.has("settings"):
+		_open_settings()
+	if args.has("leave"):
+		_open_game_menu()
+		_leave_to_main_menu()
+		if not _leave_dialog.is_open():
+			printerr("--leave: kein ungespeicherter Fortschritt")
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -193,7 +247,38 @@ func _ready() -> void:
 		_update_hover()
 		_update_preview()
 	if args.has("screenshot"):
-		_save_screenshot_and_quit(args["screenshot"])
+		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
+
+
+func _exit_tree() -> void:
+	get_tree().set_auto_accept_quit(true)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_quit()
+
+
+## „Zum Hauptmenü“ aus Spielmenü und Niederlage-Ansicht, mit Rückfrage bei ungespeichertem Fortschritt.
+func _leave_to_main_menu() -> void:
+	_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+
+
+## „Beenden“ aus Spielmenü und Niederlage-Ansicht, ebenso ⌘Q und das Schließen des Fensters.
+func _quit() -> void:
+	_leave_match("Burgwacht beenden?", get_tree().quit)
+
+
+## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es
+## ungespeicherten Fortschritt, erst nach der Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür
+## öffnet sie das Spielmenü, damit die Zeit steht.
+func _leave_match(question: String, leave: Callable) -> void:
+	if not _match.has_unsaved_progress():
+		leave.call()
+		return
+	if not _game_menu.is_open() and not _settings_view.is_open():
+		_open_game_menu()
+	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", leave)
 
 
 func _process(_delta: float) -> void:
@@ -283,17 +368,17 @@ func _target_under_mouse() -> Vector3i:
 func _left_click() -> void:
 	var reason := ""
 	if world.is_founding():
-		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
+		reason = _match.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
 	elif GameWorld.is_line_type(_build_type):
 		_drawing_line = true
 		_line_start = _hovered
 		_update_preview()
 	elif _build_type != "":
-		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
+		reason = _match.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
 	elif _demolishing:
 		var building := world.get_building_at(_hovered)
 		if building != null:
-			reason = world.execute(Command.demolish(building.id))
+			reason = _match.execute(Command.demolish(building.id))
 	else:
 		_selecting = true
 		_left_press = get_viewport().get_mouse_position()
@@ -366,10 +451,20 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
+	# Bei offenem Spielmenü wirkt nur Esc (schließt es); aus den Einstellungen geht es zurück ins Spielmenü.
+	if _settings_view.is_open():
+		if key.keycode == KEY_ESCAPE:
+			_settings_view.close()
+		return
+	if _game_menu.is_open():
+		if key.keycode == KEY_ESCAPE:
+			_close_game_menu()
+		return
 	match key.keycode:
 		KEY_N:
-			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed.
-			_new_world(randi())
+			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed (nur zum Entwickeln).
+			if OS.is_debug_build():
+				_start(MatchStart.from_scenario_with_seed(_match.scenario.id, randi()))
 		KEY_SPACE:
 			_clock.toggle_pause()
 		KEY_1, KEY_2, KEY_3:
@@ -386,7 +481,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_execute_or_show(Command.spawn_wave())
 		KEY_ESCAPE:
 			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
-			# offen, schließt Esc nur sie.
+			# offen, schließt Esc nur sie, dann das Werkzeug. Erst danach öffnet es das Spielmenü
+			# (nicht nach der Niederlage, da gilt die Niederlage-Ansicht).
 			if not _selected.is_empty():
 				_set_selection([])
 			elif _hud.is_administration_open():
@@ -395,8 +491,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_hud.close_market()
 			elif _hud.is_barracks_open():
 				_hud.close_barracks()
-			else:
+			elif _build_type != "" or _demolishing:
 				_select_build("")
+			elif not world.is_defeated():
+				_open_game_menu()
 		KEY_V:
 			_hud.toggle_administration()
 		KEY_M:
@@ -416,21 +514,26 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_X:
 			_select_demolish()
 		KEY_F:
-			var window := get_window()
-			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+			Settings.shared().set_fullscreen(not Settings.shared().is_fullscreen())
 		_:
 			for type_id in GameWorld.buildable_types():
 				if OS.find_keycode_from_string(str(GameDefs.get_instance().buildings[type_id]["hotkey"])) == key.keycode:
 					_select_build(type_id)
 
 
-func _new_world(world_seed: int) -> void:
-	_show_world(GameWorld.create(_scenario, world_seed))
+## Startet die Partie aus der Beschreibung; Fehler als Meldung und als Rückgabe ("" = gestartet).
+func _start(description: MatchStart) -> String:
+	var error := _match.start(description)
+	if error != "":
+		_hud.show_message(error)
+	elif description.kind == MatchStart.Kind.SAVE:
+		_hud.show_message("Geladen (Tag %d)" % world.get_day())
+	return error
 
 
-## Verbindet eine Spielwelt mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
-func _show_world(new_world: GameWorld) -> void:
-	world = new_world
+## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
+func _show_world() -> void:
+	world = _match.world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.deposit_changed.connect(_on_deposit_changed)
@@ -455,6 +558,7 @@ func _show_world(new_world: GameWorld) -> void:
 	world.defeated.connect(_on_defeated)
 	world.announcement_changed.connect(_update_wave_marker)
 	_clock.world = world
+	_close_game_menu()
 	_build_type = ""
 	_demolishing = false
 	_hud.show_tool("", false)
@@ -519,44 +623,130 @@ func _on_defeated() -> void:
 	_hud.close_administration()
 	_hud.close_market()
 	_hud.set_build_bar_enabled(false)
-	_hud.show_defeat(world.get_day(), world.get_repelled_waves())
+	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
+
+
+## Einträge des Spielmenüs.
+func _build_game_menu() -> void:
+	add_child(_game_menu)
+	_game_menu.add_entry("Fortsetzen", _close_game_menu)
+	_save_entry = _game_menu.add_entry("Speichern", _open_save_view)
+	_game_menu.add_entry("Laden", _open_load_view)
+	_game_menu.add_entry("Einstellungen", _open_settings)
+	add_child(_settings_view)
+	_settings_view.closed.connect(_show_game_menu)
+	_game_menu.add_entry("Zum Hauptmenü", _leave_to_main_menu)
+	_game_menu.add_entry("Beenden", _quit)
+	add_child(_leave_dialog)
+
+
+## Öffnet das Spielmenü: Zeit anhalten, laufende Auswahl oder Mauerlinie verwerfen, Kamera ruhen lassen.
+func _open_game_menu() -> void:
+	_selecting = false
+	_drawing_line = false
+	_selection_box.visible = false
+	_update_preview()
+	_clock.hold()
+	_set_camera_active(false)
+	_save_entry.disabled = _match.save_error() != ""
+	_save_entry.tooltip_text = _match.save_error()
+	_show_game_menu()
+
+
+## Die Speichern-Ansicht an Stelle des Spielmenüs (nicht in der Gründung, nicht nach der Niederlage).
+func _open_save_view() -> void:
+	if _match.save_error() != "":
+		_hud.show_message(_match.save_error())
+		return
+	if not _game_menu.is_open():
+		_open_game_menu()
+	var view := SaveView.new(_match.saves, _match.suggested_save_name())
+	view.save_requested.connect(_save_named.bind(view))
+	view.back_requested.connect(_close_menu_view)
+	_game_menu.show_view(view)
+
+
+## Speichert unter dem Namen aus der Speichern-Ansicht; danach geht die Partie weiter.
+func _save_named(save_name: String, view: SaveView) -> void:
+	var error := _match.save(SaveGame.Kind.NAMED, save_name)
+	if error != "":
+		view.show_error(error)
+		return
+	_close_game_menu()
+	_hud.show_message("Gespeichert: „%s“" % save_name)
+
+
+## Die Ladeansicht an Stelle des Spielmenüs; aus der Niederlage-Ansicht öffnet sie es dafür.
+func _open_load_view() -> void:
+	if not _game_menu.is_open():
+		_open_game_menu()
+	_hud.hide_defeat()
+	var view := LoadView.new(_match.saves)
+	view.load_requested.connect(_load_chosen.bind(view))
+	view.back_requested.connect(_close_menu_view)
+	_game_menu.show_view(view)
+
+
+## Lädt den gewählten Spielstand; scheitert es, steht der Grund in der Ladeansicht.
+func _load_chosen(path: String, view: LoadView) -> void:
+	_leave_match("Spielstand laden?", func() -> void:
+		var error := _load_from(path)
+		if error != "":
+			view.show_error(error))
+
+
+## Zurück aus Speichern- oder Ladeansicht ins Spielmenü; nach der Niederlage zur Niederlage-Ansicht.
+func _close_menu_view() -> void:
+	if world.is_defeated():
+		_close_game_menu()
+		_on_defeated()
+	else:
+		_game_menu.close_view()
+
+
+func _show_game_menu() -> void:
+	_game_menu.open(_match.scenario.title, world.get_seed())
+
+
+## Die Einstellungen ersetzen das Spielmenü, bis „Zurück“ es wieder zeigt; die Zeit steht weiter.
+func _open_settings() -> void:
+	_game_menu.close()
+	_settings_view.open()
+
+
+## Übernimmt die Kamerageschwindigkeit: beim Start und nach jeder Änderung (das Fenster stellt
+## Settings.follow_window() selbst ein).
+func _apply_camera_speed() -> void:
+	_camera.speed_factor = Settings.shared().get_camera_speed()
+
+
+## Schließt das Spielmenü; die Zeit läuft mit der vorigen Geschwindigkeit weiter.
+func _close_game_menu() -> void:
+	_game_menu.close()
+	_clock.release()
+	_set_camera_active(true)
+
+
+func _set_camera_active(active: bool) -> void:
+	_camera.set_process(active)
+	_camera.set_process_unhandled_input(active)
 
 
 func _quick_save() -> void:
-	var file := FileAccess.open(QUICKSAVE_PATH, FileAccess.WRITE)
-	if file == null:
-		_hud.show_message("Speichern fehlgeschlagen: %s" % error_string(FileAccess.get_open_error()))
-		return
-	file.store_var(world.to_data())
-	file.close()
-	_hud.show_message("Gespeichert (Tag %d)" % world.get_day())
+	var error := _match.save(SaveGame.Kind.QUICK)
+	_hud.show_message(error if error != "" else "Gespeichert (Tag %d)" % world.get_day())
 
 
 func _quick_load() -> void:
-	if not FileAccess.file_exists(QUICKSAVE_PATH):
-		_hud.show_message("Noch kein Spielstand – erst mit F5 speichern")
+	if not _match.saves.has(SaveGame.Kind.QUICK):
+		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
-	_load_from(QUICKSAVE_PATH)
+	_leave_match("Schnellspielstand laden?", _load_from.bind(_match.saves.path_for(SaveGame.Kind.QUICK)))
 
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
 func _load_from(path: String) -> String:
-	var file := FileAccess.open(path, FileAccess.READ)
-	var data: Variant = file.get_var() if file != null else null
-	var error := "Spielstand ist beschädigt"
-	if data is Dictionary:
-		error = GameWorld.data_error(data)
-	if error != "":
-		_hud.show_message(error)
-		return error
-	var loaded := GameWorld.from_data(data)
-	# Neue Karte (N) danach im Szenario des Spielstands.
-	var scenario := Scenario.load_named(loaded.get_scenario_id())
-	if scenario.error == "":
-		_scenario = scenario
-	_show_world(loaded)
-	_hud.show_message("Geladen (Tag %d)" % world.get_day())
-	return ""
+	return _start(MatchStart.from_save(path))
 
 
 func _add_deposit_view(tile: Vector2i) -> void:
@@ -893,7 +1083,7 @@ static func _stepped(levels: Array[String], current: String, delta: int) -> Stri
 
 
 func _execute_or_show(command: Command) -> void:
-	var reason := world.execute(command)
+	var reason := _match.execute(command)
 	if reason != "":
 		_hud.show_message(reason)
 
@@ -971,37 +1161,3 @@ func _update_hover() -> void:
 ## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
 static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
-
-
-## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
-## Umgebungsvariable Presets.ENV) zuerst, eigene Parameter überschreiben sie.
-func _parse_user_args() -> Dictionary:
-	var own := _args_to_dict(OS.get_cmdline_user_args())
-	var preset := str(own.get("preset", OS.get_environment(Presets.ENV)))
-	if preset == "":
-		return own
-	var args := {}
-	var presets_error := Presets.error()
-	if presets_error != "":
-		printerr("--preset: ", presets_error)
-	elif not Presets.load_all().has(preset):
-		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(Presets.load_all().keys()), ")")
-	else:
-		args = _args_to_dict(Presets.args_of(preset))
-	args.merge(own, true)
-	return args
-
-
-static func _args_to_dict(list: PackedStringArray) -> Dictionary:
-	var args := {}
-	for arg in list:
-		var parts := arg.trim_prefix("--").split("=", true, 1)
-		args[parts[0]] = parts[1] if parts.size() > 1 else ""
-	return args
-
-
-func _save_screenshot_and_quit(path: String) -> void:
-	for i in 3:
-		await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path)
-	get_tree().quit()

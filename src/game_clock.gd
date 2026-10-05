@@ -2,7 +2,8 @@ class_name GameClock
 extends Node
 ## Treibt die Spielwelt an: sammelt die verstrichene Zeit und ruft passend oft step() auf.
 ## Spielgeschwindigkeit und Pause gehören hierher, nicht in die Spielwelt.
-## Während der Gründung steht die Uhr und lässt sich nicht starten.
+## Während der Gründung steht die Uhr und lässt sich nicht starten. Das Spielmenü hält sie
+## an (hold()); danach gilt wieder die vorige Geschwindigkeit bzw. Pause.
 
 signal speed_changed(speed: int, paused: bool)
 
@@ -27,6 +28,7 @@ var world: GameWorld:
 var _speed := 1
 var _paused := false
 var _pending_ticks := 0.0
+var _held := false
 
 
 func _process(delta: float) -> void:
@@ -38,7 +40,7 @@ func _process(delta: float) -> void:
 
 ## Verbucht delta Sekunden und gibt zurück, wie viele Takte jetzt fällig sind.
 func advance(delta: float) -> int:
-	if _paused:
+	if _paused or _held:
 		return 0
 	_pending_ticks += delta * TICKS_PER_SECOND * _speed
 	var ticks := floori(_pending_ticks + EPSILON)
@@ -57,7 +59,7 @@ func tick_fraction() -> float:
 
 func set_speed(speed: int) -> void:
 	assert(speed in SPEEDS, "Unbekannte Geschwindigkeit %d" % speed)
-	if _is_founding():
+	if _is_founding() or _held:
 		return
 	_speed = speed
 	_paused = false
@@ -65,10 +67,21 @@ func set_speed(speed: int) -> void:
 
 
 func toggle_pause() -> void:
-	if _is_founding():
+	if _is_founding() or _held:
 		return
 	_paused = not _paused
 	speed_changed.emit(_speed, _paused)
+
+
+## Hält die Zeit an, ohne Geschwindigkeit und Pause zu ändern; bis release() wirken auch
+## set_speed() und toggle_pause() nicht.
+func hold() -> void:
+	_held = true
+
+
+## Hebt hold() auf: Es gilt wieder die vorige Geschwindigkeit bzw. Pause.
+func release() -> void:
+	_held = false
 
 
 func get_speed() -> int:
