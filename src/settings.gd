@@ -3,8 +3,9 @@ extends RefCounted
 ## Die Einstellungen des Spiels: Vollbild/Fenster, Kamerageschwindigkeit und die drei Lautstärken
 ## (Gesamt, Musik, Geräusche). Getrennt von den Spielständen in einer JSON-Datei (im Spiel
 ## user://settings.cfg, in Tests ein vorgegebener Pfad). Jede Änderung wird sofort geschrieben und
-## mit `changed` gemeldet; wer sie anwendet (Fenster, Kamera, Audio-Busse), hört darauf. Fehlt die Datei oder ist sie kaputt, gelten die Standardwerte;
-## ein Wert mit falschem Typ ergibt seinen Standardwert.
+## mit `changed` gemeldet; wer sie anwendet (Fenster, Kamera, Audio-Busse), hört darauf. Fehlt
+## die Datei oder ist sie kaputt, gelten die Standardwerte; ein Wert mit falschem Typ ergibt
+## seinen Standardwert.
 
 signal changed
 
