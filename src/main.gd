@@ -537,6 +537,8 @@ func _start(description: MatchStart) -> String:
 ## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
 func _show_world() -> void:
 	world = _match.world
+	# Die Musikrolle folgt dieser Spielwelt, auch gleich nach dem Laden.
+	SoundOutput.shared().director.world = world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.deposit_changed.connect(_on_deposit_changed)
