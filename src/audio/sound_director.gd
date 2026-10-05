@@ -10,9 +10,20 @@ extends RefCounted
 ## Ein Geräusch soll erklingen.
 signal wished(wish: SoundWish)
 
+## Musikrollen (music_role()); die ersten drei sind die Rollen der Geräuschdatei.
+const MUSIC_MENU := "menu"
+const MUSIC_PEACEFUL := "peaceful"
+const MUSIC_BATTLE := "battle"
+## Keine Musik (nach der Niederlage); braucht keine Musikstücke.
+const MUSIC_SILENCE := "silence"
+
 ## Steht die Zeit (Pause, Spielmenü, Gründung, keine Partie)? Dann entstehen keine
 ## Spielgeräusche, Bediengeräusche schon. Wird von außen gesetzt.
 var time_stands := false
+
+## Die Spielwelt der laufenden Partie, aus der sich die Musikrolle ergibt; null = Hauptmenü.
+## Wird von außen gesetzt, auch nach dem Laden eines Spielstands.
+var world: GameWorld
 
 var _data: SoundData
 var _rng := RandomNumberGenerator.new()
@@ -45,6 +56,19 @@ func command_executed(command: Command, error: String) -> void:
 			_wish("recruit")
 		Command.Kind.TRADE:
 			_wish("trade")
+
+
+## Welche Musik gerade laufen soll (MUSIC_*): Menü ohne Partie, Stille nach der Niederlage, Kampf,
+## solange mindestens ein Feind lebt, sonst friedlich. Ergibt sich allein aus dem Zustand der
+## Spielwelt, gilt also auch gleich nach dem Laden.
+func music_role() -> String:
+	if world == null:
+		return MUSIC_MENU
+	if world.is_defeated():
+		return MUSIC_SILENCE
+	if not world.get_enemies().is_empty():
+		return MUSIC_BATTLE
+	return MUSIC_PEACEFUL
 
 
 ## Wünscht ein Geräusch dieses Anlasses.

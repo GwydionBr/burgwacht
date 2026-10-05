@@ -136,3 +136,57 @@ func test_rejected_command_wishes_rejection_sound() -> void:
 	director.command_executed(Command.set_ration("half"), "Unbekannte Ration")
 	director.command_executed(Command.trade("wood", true), "Kein Markt gebaut")
 	assert_eq(_occasions(), ["command_rejected", "command_rejected", "command_rejected"] as Array[String], "Anlässe:")
+
+
+func test_music_role_is_menu_without_world_and_peaceful_in_founding_and_quiet_match() -> void:
+	var director := _director()
+	assert_eq(director.music_role(), "menu", "Hauptmenü (keine Spielwelt):")
+	var world := empty_world()
+	director.world = world
+	assert_eq(director.music_role(), "peaceful", "Gründung:")
+	found_castle(world)
+	for i in 50:
+		world.step()
+	assert_eq(director.music_role(), "peaceful", "Partie ohne Feinde:")
+	director.world = null
+	assert_eq(director.music_role(), "menu", "zurück im Hauptmenü:")
+
+
+func test_music_role_is_battle_while_any_enemy_lives_even_with_overlapping_waves() -> void:
+	var director := _director()
+	var world := found_castle(empty_world())
+	director.world = world
+	var first := add_enemy(world, "bandit", Vector2i(1, 1), 1)
+	assert_eq(director.music_role(), "battle", "Welle 1 erschienen:")
+	var second := add_enemy(world, "bandit", Vector2i(1, 2), 2)
+	kill_enemy(world, first)
+	assert_eq(director.music_role(), "battle", "Welle 1 abgewehrt, Welle 2 lebt noch:")
+	kill_enemy(world, second)
+	assert_eq(director.music_role(), "peaceful", "nach der Abwehr des letzten Feinds:")
+
+
+func test_music_role_is_battle_for_debug_enemy() -> void:
+	var director := _director()
+	var world := found_castle(empty_world())
+	director.world = world
+	assert_eq(world.execute(Command.spawn_enemy("bandit")), "", "Debug-Feind:")
+	assert_eq(director.music_role(), "battle", "Debug-Feind lebt:")
+
+
+## Nach der Niederlage leben die Feinde oft noch; trotzdem verstummt die Musik.
+func test_music_role_is_silence_after_defeat() -> void:
+	var director := _director()
+	var setup: GDScript = load(Presets.setup_path("defeat"))
+	var world: GameWorld = setup.call("create")
+	assert_true(world.is_defeated(), "Testaufbau sollte verloren sein")
+	director.world = world
+	assert_eq(director.music_role(), "silence", "nach der Niederlage:")
+
+
+func test_music_role_is_battle_right_after_loading_with_living_enemies() -> void:
+	var world := found_castle(empty_world())
+	add_enemy(world, "bandit", Vector2i(1, 1), 1)
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	var director := _director()
+	director.world = loaded
+	assert_eq(director.music_role(), "battle", "gleich nach dem Laden:")
