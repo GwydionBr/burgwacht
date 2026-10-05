@@ -53,6 +53,8 @@ func _ready() -> void:
 	if not args.is_empty() and not args.has("menu") and not args.has("scenario_select"):
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
+	Settings.shared().changed.connect(_apply_settings)
+	_apply_settings()
 	if args.has("scenario_select"):
 		scenario_choice = Scenario.DEFAULT
 	_show_background_map()
@@ -92,6 +94,7 @@ func _build_menu() -> void:
 	continue_entry.disabled = Presets.save_games().newest_loadable() == null
 	_menu.add_entry("Neue Partie", _open_scenario_select.bind(Scenario.DEFAULT))
 	_menu.add_entry("Laden", _open_load_view)
+	_menu.add_entry("Einstellungen", _open_settings)
 	_menu.add_entry("Beenden", get_tree().quit)
 	_add_centered(_menu)
 
@@ -153,6 +156,22 @@ func _add_centered(panel: Control) -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(panel)
 	_ui.add_child(center)
+
+
+## Die Einstellungen statt des Menüs, bis „Zurück“ es wieder zeigt.
+func _open_settings() -> void:
+	var view := SettingsView.new(Settings.shared(), false)
+	add_child(view)
+	view.closed.connect(func() -> void:
+		view.queue_free()
+		_menu.visible = true)
+	_menu.visible = false
+	view.open()
+
+
+## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
+func _apply_settings() -> void:
+	Settings.shared().apply_to_window(get_window())
 
 
 ## Wechselt in die Partie-Szene, die aus dieser Startbeschreibung beginnt.

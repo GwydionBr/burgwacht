@@ -28,6 +28,7 @@ extends Node2D
 ##   --save_view           Speichern-Ansicht geöffnet (für Screenshots)
 ##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
 ##   --load_view           Ladeansicht geöffnet (für Screenshots)
+##   --settings            Einstellungen aus dem Spielmenü geöffnet (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --saves=demo         Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
@@ -56,6 +57,8 @@ extends Node2D
 ## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
 ## „Speichern“ öffnet die Speichern-Ansicht (Name vorbelegt, Rückfrage vor dem Überschreiben),
 ## „Laden“ die Ladeansicht (auch aus der Niederlage-Ansicht); Esc oder „Zurück“ führt ins Spielmenü.
+## „Einstellungen“ öffnet darüber die Einstellungen; Esc oder „Zurück“ führt ins Spielmenü zurück.
+## F wechselt zwischen Vollbild und Fenster, und zwar über dieselbe Einstellung (Settings).
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag, die abgewehrten Wellen und den Seed;
 ## „Neue Partie“ öffnet die Szenarioauswahl mit demselben Szenario, „Zum Hauptmenü“ wechselt ins
 ## Hauptmenü, „Beenden“ schließt das Spiel. N (sofort eine neue Karte) wirkt nur im Debug-Build.
@@ -76,6 +79,7 @@ var _match := Match.new()
 var _game_menu := GameMenu.new()
 ## „Speichern“ im Spielmenü; gesperrt, solange die Partie nicht speicherbar ist.
 var _save_entry: Button
+var _settings_view := SettingsView.new(Settings.shared(), true)
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -134,6 +138,8 @@ func _ready() -> void:
 	_match.saves = Presets.save_games()
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
+	Settings.shared().changed.connect(_apply_settings)
+	_apply_settings()
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -171,7 +177,7 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
-	if args.has("game_menu"):
+	if args.has("game_menu") or args.has("settings"):
 		_open_game_menu()
 	if args.has("save_view") or args.has("save_as"):
 		_open_save_view()
@@ -183,6 +189,8 @@ func _ready() -> void:
 			save_view.submit()
 	if args.has("load_view"):
 		_open_load_view()
+	if args.has("settings"):
+		_open_settings()
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -402,7 +410,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
-	# Bei offenem Spielmenü wirkt nur Esc (schließt es).
+	# Bei offenem Spielmenü wirkt nur Esc (schließt es); aus den Einstellungen geht es zurück ins Spielmenü.
+	if _settings_view.is_open():
+		if key.keycode == KEY_ESCAPE:
+			_settings_view.close()
+		return
 	if _game_menu.is_open():
 		if key.keycode == KEY_ESCAPE:
 			_close_game_menu()
@@ -461,8 +473,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_X:
 			_select_demolish()
 		KEY_F:
-			var window := get_window()
-			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+			Settings.shared().set_fullscreen(not Settings.shared().is_fullscreen())
 		_:
 			for type_id in GameWorld.buildable_types():
 				if OS.find_keycode_from_string(str(GameDefs.get_instance().buildings[type_id]["hotkey"])) == key.keycode:
@@ -574,12 +585,15 @@ func _on_defeated() -> void:
 	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
 
 
-## Einträge des Spielmenüs; Einstellungen kommen hier dazu.
+## Einträge des Spielmenüs.
 func _build_game_menu() -> void:
 	add_child(_game_menu)
 	_game_menu.add_entry("Fortsetzen", _close_game_menu)
 	_save_entry = _game_menu.add_entry("Speichern", _open_save_view)
 	_game_menu.add_entry("Laden", _open_load_view)
+	_game_menu.add_entry("Einstellungen", _open_settings)
+	add_child(_settings_view)
+	_settings_view.closed.connect(_show_game_menu)
 	_game_menu.add_entry("Zum Hauptmenü", func() -> void: get_tree().change_scene_to_file(MAIN_MENU_SCENE))
 	_game_menu.add_entry("Beenden", get_tree().quit)
 
@@ -594,7 +608,7 @@ func _open_game_menu() -> void:
 	_set_camera_active(false)
 	_save_entry.disabled = _match.save_error() != ""
 	_save_entry.tooltip_text = _match.save_error()
-	_game_menu.open(_match.scenario.title, world.get_seed())
+	_show_game_menu()
 
 
 ## Die Speichern-Ansicht an Stelle des Spielmenüs (nicht in der Gründung, nicht nach der Niederlage).
@@ -645,6 +659,22 @@ func _close_menu_view() -> void:
 		_on_defeated()
 	else:
 		_game_menu.close_view()
+
+
+func _show_game_menu() -> void:
+	_game_menu.open(_match.scenario.title, world.get_seed())
+
+
+## Die Einstellungen ersetzen das Spielmenü, bis „Zurück“ es wieder zeigt; die Zeit steht weiter.
+func _open_settings() -> void:
+	_game_menu.close()
+	_settings_view.open()
+
+
+## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
+func _apply_settings() -> void:
+	Settings.shared().apply_to_window(get_window())
+	_camera.speed_factor = Settings.shared().get_camera_speed()
 
 
 ## Schließt das Spielmenü; die Zeit läuft mit der vorigen Geschwindigkeit weiter.
