@@ -1,8 +1,9 @@
 extends Node2D
-## Einstiegspunkt: erzeugt die Spielwelt und verbindet sie mit Darstellung und Eingabe.
-## Enthält keine Spiellogik – die lebt in der Spielwelt (src/core/).
+## Einstiegspunkt der Partie-Szene: startet die Partie (Match) aus der Startbeschreibung und
+## verbindet ihre Spielwelt mit Darstellung und Eingabe. Enthält keine Spiellogik – die lebt in
+## der Spielwelt (src/core/).
 ##
-## Startparameter (nach "--"):
+## Startparameter (nach "--"; jeder davon überspringt das Hauptmenü):
 ##   --scenario=name       Szenario aus data/scenarios/ (Standard: free_play)
 ##   --seed=123            feste Karte, überschreibt den Seed des Szenarios
 ##   --found               Burg gleich an der Stelle nächst der Kartenmitte gründen
@@ -49,9 +50,13 @@ extends Node2D
 
 const QUICKSAVE_PATH := "user://quicksave.sav"
 
+## Woraus die Partie startet; das Hauptmenü setzt sie vor dem Betreten des Baums, sonst gelten
+## die Startparameter.
+var start: MatchStart
+## Die Spielwelt der Partie (_match.world), hier kurz für Darstellung und Eingabe.
 var world: GameWorld
 
-var _scenario: Scenario
+var _match := Match.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -90,14 +95,10 @@ var _right_pressed_on_map := false
 
 
 func _ready() -> void:
-	var args := _parse_user_args()
-	_scenario = Scenario.load_named(args.get("scenario", Scenario.DEFAULT))
-	if _scenario.error != "":
-		printerr("Fehler: ", _scenario.error)
-		set_process(false)
-		set_process_unhandled_key_input(false)
-		get_tree().quit(1)
-		return
+	# Ohne Startbeschreibung (aus dem Hauptmenü) gelten die Startparameter.
+	var args := Presets.user_args() if start == null else {}
+	if start == null:
+		start = MatchStart.from_args(args)
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
@@ -106,20 +107,19 @@ func _ready() -> void:
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
-	_hud.new_game_requested.connect(func() -> void: _new_world(_scenario.resolve_seed(randi())))
+	_hud.new_game_requested.connect(func() -> void: _start(MatchStart.from_scenario(_match.scenario.id)))
 	_hud.quit_requested.connect(get_tree().quit)
-	_new_world(int(args["seed"]) if args.has("seed") else _scenario.resolve_seed(randi()))
-	if args.has("setup"):
-		var setup_path := Presets.setup_path(str(args["setup"]))
-		if ResourceLoader.exists(setup_path):
-			var setup: GDScript = load(setup_path)
-			_show_world(setup.call("create"))
-		else:
-			printerr("--setup: ", setup_path, " fehlt")
-	if args.has("load"):
-		var load_error := _load_from(str(args["load"]))
-		if load_error != "":
-			printerr("--load: ", load_error)
+	_match.world_changed.connect(_show_world)
+	var error := _start(start)
+	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
+		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
+		error = _start(MatchStart.from_scenario(Scenario.DEFAULT))
+	if error != "":
+		printerr("Fehler: ", error)
+		set_process(false)
+		set_process_unhandled_key_input(false)
+		get_tree().quit(1)
+		return
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		world.execute(Command.found(world.find_founding_site()))
@@ -369,7 +369,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_N:
 			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed.
-			_new_world(randi())
+			_start(MatchStart.from_scenario_with_seed(_match.scenario.id, randi()))
 		KEY_SPACE:
 			_clock.toggle_pause()
 		KEY_1, KEY_2, KEY_3:
@@ -424,13 +424,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 					_select_build(type_id)
 
 
-func _new_world(world_seed: int) -> void:
-	_show_world(GameWorld.create(_scenario, world_seed))
+## Startet die Partie aus der Beschreibung; Fehler als Meldung und als Rückgabe ("" = gestartet).
+func _start(description: MatchStart) -> String:
+	var error := _match.start(description)
+	if error != "":
+		_hud.show_message(error)
+	elif description.kind == MatchStart.Kind.SAVE:
+		_hud.show_message("Geladen (Tag %d)" % world.get_day())
+	return error
 
 
-## Verbindet eine Spielwelt mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
-func _show_world(new_world: GameWorld) -> void:
-	world = new_world
+## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
+func _show_world() -> void:
+	world = _match.world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.deposit_changed.connect(_on_deposit_changed)
@@ -541,22 +547,7 @@ func _quick_load() -> void:
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
 func _load_from(path: String) -> String:
-	var file := FileAccess.open(path, FileAccess.READ)
-	var data: Variant = file.get_var() if file != null else null
-	var error := "Spielstand ist beschädigt"
-	if data is Dictionary:
-		error = GameWorld.data_error(data)
-	if error != "":
-		_hud.show_message(error)
-		return error
-	var loaded := GameWorld.from_data(data)
-	# Neue Karte (N) danach im Szenario des Spielstands.
-	var scenario := Scenario.load_named(loaded.get_scenario_id())
-	if scenario.error == "":
-		_scenario = scenario
-	_show_world(loaded)
-	_hud.show_message("Geladen (Tag %d)" % world.get_day())
-	return ""
+	return _start(MatchStart.from_save(path))
 
 
 func _add_deposit_view(tile: Vector2i) -> void:
@@ -971,33 +962,6 @@ func _update_hover() -> void:
 ## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
 static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
-
-
-## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
-## Umgebungsvariable Presets.ENV) zuerst, eigene Parameter überschreiben sie.
-func _parse_user_args() -> Dictionary:
-	var own := _args_to_dict(OS.get_cmdline_user_args())
-	var preset := str(own.get("preset", OS.get_environment(Presets.ENV)))
-	if preset == "":
-		return own
-	var args := {}
-	var presets_error := Presets.error()
-	if presets_error != "":
-		printerr("--preset: ", presets_error)
-	elif not Presets.load_all().has(preset):
-		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(Presets.load_all().keys()), ")")
-	else:
-		args = _args_to_dict(Presets.args_of(preset))
-	args.merge(own, true)
-	return args
-
-
-static func _args_to_dict(list: PackedStringArray) -> Dictionary:
-	var args := {}
-	for arg in list:
-		var parts := arg.trim_prefix("--").split("=", true, 1)
-		args[parts[0]] = parts[1] if parts.size() > 1 else ""
-	return args
 
 
 func _save_screenshot_and_quit(path: String) -> void:
