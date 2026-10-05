@@ -136,3 +136,86 @@ func test_rejected_command_wishes_rejection_sound() -> void:
 	director.command_executed(Command.set_ration("half"), "Unbekannte Ration")
 	director.command_executed(Command.trade("wood", true), "Kein Markt gebaut")
 	assert_eq(_occasions(), ["command_rejected", "command_rejected", "command_rejected"] as Array[String], "Anlässe:")
+
+
+## Ein sichtbarer Ausschnitt (Weltkoordinaten) der Breite 400 um die Mitte der Kachel tile,
+## um offset verschoben.
+func _area_around(tile: Vector2i, offset := Vector2.ZERO) -> Rect2:
+	return Rect2(Iso.tile_to_world(tile) + offset - Vector2(200, 150), Vector2(400, 300))
+
+
+func test_arrow_in_view_is_fully_audible_and_fades_outside() -> void:
+	var director := _director()
+	var shooter := Vector3i(10, 4, 0)
+	var tile := Vector2i(10, 4)
+	var base := _data.sound("arrow_shot").volume
+	director.visible_area = _area_around(tile)
+	director.arrow_shot(shooter, Vector3i(12, 4, 0))
+	assert_eq(_occasions(), ["arrow_shot"] as Array[String], "Pfeil im Ausschnitt:")
+	assert_eq(_wishes[0].volume, base, "im Ausschnitt voll hörbar:")
+	# Der Ausschnitt endet links vom Schützen, halb so weit weg wie die feste Entfernung.
+	director.visible_area = _area_around(tile, Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE / 2.0, 0))
+	director.arrow_shot(shooter, Vector3i(12, 4, 0))
+	assert_eq(_wishes.size(), 2, "Pfeil außerhalb, aber nah genug:")
+	assert_true(_wishes[1].volume > 0.0 and _wishes[1].volume < base, "außerhalb leiser: %f" % _wishes[1].volume)
+	# Ab der festen Entfernung entfällt er.
+	director.visible_area = _area_around(tile, Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE - 1.0, 0))
+	director.arrow_shot(shooter, Vector3i(12, 4, 0))
+	assert_eq(_wishes.size(), 2, "Pfeil jenseits der festen Entfernung:")
+
+
+func test_arrow_pans_by_its_horizontal_place_in_view() -> void:
+	var director := _director()
+	var tile := Vector2i(10, 4)
+	for offset: Vector2 in [Vector2(150, 0), Vector2(0, 0), Vector2(-150, 0), Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE / 2.0, 0)]:
+		director.visible_area = _area_around(tile, offset)
+		director.arrow_shot(Vector3i(tile.x, tile.y, 0), Vector3i(12, 4, 0))
+	assert_eq(_wishes.size(), 4, "Wünsche:")
+	assert_true(_wishes[0].pan < -0.5, "links im Bild → Panorama links: %f" % _wishes[0].pan)
+	assert_eq(_wishes[1].pan, 0.0, "Mitte des Bilds → Panorama Mitte:")
+	assert_true(_wishes[2].pan > 0.5, "rechts im Bild → Panorama rechts: %f" % _wishes[2].pan)
+	assert_eq(_wishes[3].pan, 1.0, "rechts außerhalb → ganz rechts:")
+
+
+func test_fifth_simultaneous_wish_of_an_occasion_is_dropped() -> void:
+	var director := _director()
+	var tile := Vector2i(10, 4)
+	director.visible_area = _area_around(tile)
+	for i in 5:
+		director.arrow_shot(Vector3i(tile.x, tile.y, 0), Vector3i(12, 4, 0))
+	assert_eq(_wishes.size(), 4, "Wünsche bei 5 gleichzeitigen Pfeilen:")
+	director.button_pressed()
+	assert_eq(_wishes.size(), 5, "Ein anderer Anlass klingt trotzdem:")
+	director.sound_finished(_wishes[0])
+	director.arrow_shot(Vector3i(tile.x, tile.y, 0), Vector3i(12, 4, 0))
+	director.arrow_shot(Vector3i(tile.x, tile.y, 0), Vector3i(12, 4, 0))
+	assert_eq(_occasions(), ["arrow_shot", "arrow_shot", "arrow_shot", "arrow_shot", "button", "arrow_shot"] as Array[String], "nach einem ausgeklungenen Pfeil wieder einer:")
+
+
+func test_building_hit_only_when_its_hit_points_changed() -> void:
+	var director := _director()
+	var building := Building.create(3, "tower", Vector2i(10, 4))
+	director.visible_area = _area_around(Vector2i(10, 4))
+	director.building_changed(building)
+	assert_eq(_occasions(), [] as Array[String], "volle Lebenspunkte, kein Treffer:")
+	building.hp -= 10
+	director.building_changed(building)
+	assert_eq(_occasions(), ["building_hit"] as Array[String], "Lebenspunkte gesunken:")
+	assert_eq(_wishes[0].volume, _data.sound("building_hit").volume, "im Ausschnitt voll hörbar:")
+	director.building_changed(building)
+	assert_eq(_occasions(), ["building_hit"] as Array[String], "dieselben Lebenspunkte noch einmal gemeldet:")
+	var other := Building.create(4, "tower", Vector2i(20, 4))
+	other.hp -= 10
+	director.building_changed(other)
+	assert_eq(_occasions(), ["building_hit", "building_hit"] as Array[String], "ein anderes Gebäude getroffen:")
+
+
+func test_standing_time_silences_combat_sounds() -> void:
+	var director := _director()
+	var building := Building.create(3, "tower", Vector2i(10, 4))
+	director.visible_area = _area_around(Vector2i(10, 4))
+	director.time_stands = true
+	director.arrow_shot(Vector3i(10, 4, 0), Vector3i(12, 4, 0))
+	building.hp -= 10
+	director.building_changed(building)
+	assert_eq(_occasions(), [] as Array[String], "Anlässe bei stehender Zeit:")
