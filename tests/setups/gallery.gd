@@ -60,3 +60,11 @@ static func _add_deposits(world: GameWorld) -> void:
 			deposit.variant = variant
 			world.map.deposits[Vector2i(x, 40 - x)] = deposit
 			x += 3
+
+
+## Ergänzt die Galerie um reine Ansichtsproben, ohne sie der Spielwelt hinzuzufügen.
+static func decorate(scene: Node2D, clock: GameClock) -> void:
+	var script: GDScript = load("res://tests/setups/gallery_figures.gd")
+	var figures: Node2D = script.new()
+	figures.call("setup", clock)
+	scene.add_child(figures)

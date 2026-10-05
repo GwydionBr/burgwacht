@@ -58,3 +58,13 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 | `kenney-fantasy-town/` | Kenney „Fantasy Town Kit“ 2.0 (GLB-Fassung) – <https://kenney.nl/assets/fantasy-town-kit> | Kenney (kenney.nl) | CC0 | `wall.glb`, `wall-door.glb`, `wall-window-shutters.glb`, `roof-high-gable.glb`, `roof-high-gable-end.glb`, dazu die gemeinsame Farbtextur `Textures/colormap.png` und `License.txt`; unverändert |
 
 | `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `tree_default.glb`, `tree_detailed.glb`, `tree_pineRoundA.glb`, `tree_pineRoundB.glb` und `License.txt`; unverändert, die Modelle enthalten ihre Materialien ohne externe Texturen |
+
+
+### Bewohner – KayKit Adventurers Character Pack 1.0
+
+- Modell: `tools/render/models/kaykit-adventurers/Rogue.glb`, ohne Waffen und Umhang;
+  die originalen Skelettanimationen `Idle` und `Walking_A` werden in acht Richtungen gerendert.
+- Urheber: Kay Lousberg / KayKit
+- Quelle: https://kaylousberg.itch.io/kaykit-adventurers
+- Lizenz: CC0, beigefügt als `tools/render/models/kaykit-adventurers/LICENSE.txt`
+- Umfärbung auf die gemeinsame Palette und Renderrezept: Burgwacht.

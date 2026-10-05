@@ -150,3 +150,23 @@ Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere W
 - `*.json` steht im Export-Filter für Nicht-Ressourcen, weil Daten, Szenarien und `tools/presets.json` per Dateizugriff gelesen werden.
 - Für die Architektur universal muss „Import ETC2 ASTC“ (`rendering/textures/vram_compression/import_etc2_astc`) in `project.godot` an sein.
 - Debug-Tasten (N, F7, F8) und `--spawn` wirken nur im Debug-Build (`OS.is_debug_build()`), also nicht in der exportierten App.
+
+### Animierte Figuren
+
+`tools/render.sh units/resident` rendert mit Blender 5.2 die originalen glTF-Skelettanimationen
+`Idle` und `Walking_A` des CC0-KayKit-Modells. Das Figurenrezept nennt die Animationen,
+Bildanzahl, feste Leinwand und ausgeblendete Ausrüstung; `render_figures.py` verwendet Kamera,
+Palette und Licht der gemeinsamen Pipeline. Alle Einzelbilder teilen denselben Fußpunkt,
+werden doppelt aufgelöst eingecheckt und mit Faktor 0,5 dargestellt. Der Bodenschatten bleibt
+für die Stilprobe gezeichnet, der kompatible Schattenplatzhalter ist transparent.
+
+Figurentypen in `units.json` dürfen `sprite` und `animations` mit `frames` und `fps` für `idle`
+und `walk` enthalten. GameDefs prüft jedes Einzelbild in allen acht Richtungen. FigureAnimation
+bestimmt Richtung aus der Kachelbewegung und Bild aus Spielsekunden (Takt plus Uhrbruchteil);
+Pause und Spielmenü halten diese Zeit an, Zeitraffer beschleunigt sie. Der zuletzt gezeigte
+Blick bleibt beim Stehen erhalten. FigureView benutzt das aktuelle Bild auch für die Silhouette;
+Klickfläche, Auswahlring und Lebensbalken bleiben gleich. Soldaten ohne Sprite benutzen weiter
+die gezeichnete Figur. Bündel und Wippen beim Abbau bleiben gezeichnet.
+
+Testaufbauten können optional `decorate(scene, clock)` bereitstellen, um reine Ansichtsproben
+anzufügen. Die Galerie zeigt damit jeden Figurentyp mit Sprite stehend und gehend in acht Richtungen.

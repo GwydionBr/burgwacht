@@ -1,6 +1,6 @@
 class_name FigureView
 extends Node2D
-## Zeichnet eine Figur (Bewohner oder Feind) als einfache Platzhalter-Figur.
+## Zeichnet eine Figur (Bewohner oder Feind) mit Sprite oder als gezeichnete Platzhalter-Figur.
 ## Liegt im y-sortierten Objekt-Container; die Position liest sie jeden Frame aus dem Zustand
 ## und interpoliert mit dem Bruchteil der Uhr zwischen zwei Takten. Ausgewählte stehen in einem
 ## Ring; Kämpfer zeigen einen Lebensbalken, wenn sie verletzt oder ausgewählt sind. Auf dem
@@ -41,6 +41,8 @@ var occluders: Dictionary[int, BuildingView] = {}
 ## Verdeckt sie gerade ein Gebäude? Dann zeigt sie ihre Silhouette.
 var covered := false
 
+var facing := 0
+var _textures: Dictionary[String, Texture2D] = {}
 var _figure: Figure
 var _clock: GameClock
 ## Um so viel ist die Figur über ihrem Sortierpunkt gezeichnet (auf dem Wehrgang).
@@ -87,6 +89,9 @@ func _update_position() -> void:
 	var level := _figure.level_point(fraction)
 	position = Iso.point_to_world(_figure.tile_point(fraction)) + Vector2(0, WALL_WALK_SORT * level)
 	_lift = (WALL_WALK_SORT + wall_walk_height()) * level
+	if _figure.is_moving():
+		var next: Vector3i = _figure.path[0]
+		facing = FigureAnimation.direction(Vector2i(next.x, next.y) - _figure.tile, facing)
 	covered = _is_covered()
 	_silhouette.visible = covered
 	queue_redraw()
@@ -122,7 +127,8 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 7.0, SHADOW_COLOR)
 	_draw_ring(self)
 	draw_set_transform(Vector2(0, -_bob() - _lift))
-	_draw_body(self, _body_color(), SKIN_COLOR, LEG_COLOR, OUTLINE_COLOR)
+	if not _draw_sprite(self, Color.WHITE):
+		_draw_body(self, _body_color(), SKIN_COLOR, LEG_COLOR, OUTLINE_COLOR)
 	_draw_extras()
 	_draw_health(self)
 
@@ -134,7 +140,8 @@ func _draw_silhouette() -> void:
 	_silhouette.draw_set_transform(Vector2(0, -_bob() - _lift))
 	var fill := _body_color()
 	fill.a = SILHOUETTE_ALPHA
-	_draw_body(_silhouette, fill, fill, fill, SILHOUETTE_OUTLINE_COLOR)
+	if not _draw_sprite(_silhouette, fill):
+		_draw_body(_silhouette, fill, fill, fill, SILHOUETTE_OUTLINE_COLOR)
 	_draw_health(_silhouette)
 
 
@@ -164,3 +171,26 @@ func _draw_health(canvas: CanvasItem) -> void:
 	canvas.draw_rect(HEALTH_RECT.grow(1.0), HEALTH_BACK_COLOR)
 	var filled := Rect2(HEALTH_RECT.position, Vector2(HEALTH_RECT.size.x * share, HEALTH_RECT.size.y))
 	canvas.draw_rect(filled, HEALTH_LOW_COLOR.lerp(HEALTH_HIGH_COLOR, share))
+
+
+## Spieldaten des Figurentyps; Unterklassen wählen sie auch nach einem Berufswechsel neu.
+func _sprite_entry() -> Dictionary:
+	return {}
+
+
+func _draw_sprite(canvas: CanvasItem, tint: Color) -> bool:
+	var entry := _sprite_entry()
+	if not entry.has("sprite"):
+		return false
+	var path := GameDefs.sprite_path(entry)
+	if entry.has("animations"):
+		var animation := "walk" if _figure.is_moving() else "idle"
+		var settings: Dictionary = entry["animations"][animation]
+		var seconds := (_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND)
+		var frame := FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"]))
+		path = GameDefs.SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, facing, frame]
+	if not _textures.has(path):
+		_textures[path] = load(path) as Texture2D
+	var texture: Texture2D = _textures[path]
+	canvas.draw_texture_rect(texture, Rect2(-texture.get_size() * 0.25, texture.get_size() * 0.5), false, tint)
+	return true

@@ -90,7 +90,7 @@ static func _sprite_error(entry: Dictionary) -> String:
 			return "Bild %s fehlt" % sprite_path(entry, variant)
 		if not ResourceLoader.exists(shadow_path(entry, variant)):
 			return "Schatten %s fehlt" % shadow_path(entry, variant)
-	return ""
+	return _animation_error(entry)
 
 
 ## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
@@ -114,3 +114,28 @@ static func _load_json(file_name: String) -> Dictionary:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	assert(parsed is Dictionary, "Ungültige Datendatei: %s" % path)
 	return parsed
+
+
+## Beide Bewegungszustände mit acht Richtungen und sämtlichen Einzelbildern müssen vorhanden sein.
+static func _animation_error(entry: Dictionary) -> String:
+	if not entry.has("animations"):
+		return ""
+	var animations: Variant = entry["animations"]
+	if not animations is Dictionary:
+		return "„animations“ muss Stehen und Gehen beschreiben"
+	for animation: String in ["idle", "walk"]:
+		var settings: Variant = animations.get(animation)
+		if not settings is Dictionary:
+			return "Animation „%s“ fehlt" % animation
+		var frames: Variant = settings.get("frames")
+		var fps: Variant = settings.get("fps")
+		if not (frames is int or frames is float) or float(frames) < 1 or float(frames) != floorf(float(frames)):
+			return "Animation „%s“ braucht eine positive ganze Bildanzahl" % animation
+		if not (fps is int or fps is float) or float(fps) <= 0:
+			return "Animation „%s“ braucht eine positive Bildrate" % animation
+		for direction in 8:
+			for frame in int(frames):
+				var path := SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, direction, frame]
+				if not ResourceLoader.exists(path):
+					return "Animationsbild %s fehlt" % path
+	return ""
