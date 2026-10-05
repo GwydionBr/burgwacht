@@ -56,3 +56,5 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 | Ordner | Quelle | Urheber | Lizenz | Dateien |
 |---|---|---|---|---|
 | `kenney-fantasy-town/` | Kenney „Fantasy Town Kit“ 2.0 (GLB-Fassung) – <https://kenney.nl/assets/fantasy-town-kit> | Kenney (kenney.nl) | CC0 | `wall.glb`, `wall-door.glb`, `wall-window-shutters.glb`, `roof-high-gable.glb`, `roof-high-gable-end.glb`, dazu die gemeinsame Farbtextur `Textures/colormap.png` und `License.txt`; unverändert |
+
+| `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `ground_grass.glb` und `License.txt`; Modell beim Rendern flach auf eine Kachel normiert und mit der gemeinsamen Palette sowie einer weichen Ufer-Materialtextur versehen |

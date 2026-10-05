@@ -67,3 +67,9 @@ func test_sprite_paths_choose_variant_and_wrap_seed() -> void:
 	var entry := {"sprite": "deposits/tree", "sprite_variants": 4}
 	assert_eq(GameDefs.sprite_path(entry, 5), "res://assets/sprites/deposits/tree_1.png", "Variante:")
 	assert_eq(GameDefs.shadow_path(entry, 7), "res://assets/sprites/deposits/tree_3_shadow.png", "Schatten:")
+
+
+func test_terrain_transition_requires_a_known_neighbor_type() -> void:
+	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_transition": "missing"}}
+	assert_eq(GameDefs.sprites_error("terrain.json", entries),
+			"terrain.json, „grass“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen", "Fehler:")

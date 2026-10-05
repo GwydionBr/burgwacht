@@ -73,6 +73,8 @@ def main() -> None:
     check_version()
     names = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     recipes = [recipe_path(name) for name in names] if names else all_recipes()
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, RENDER_DIR)
     palette = load_palette()
     for path in recipes:
         render_recipe(path, palette)
@@ -123,6 +125,10 @@ def render_recipe(path: str, palette: dict) -> None:
     name = os.path.splitext(os.path.relpath(path, RECIPE_DIR))[0]
     with open(path, encoding="utf-8") as file:
         recipe = json.load(file)
+    if "terrain" in recipe:
+        from terrain import render_terrain
+        render_terrain(name, recipe["terrain"], palette, sys.modules[__name__])
+        return
     reset_scene()
     materials = {}
     objects = []

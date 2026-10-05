@@ -36,6 +36,11 @@ static func create() -> GameWorld:
 		# Mitte der Grundfläche auf der Reihe: x + y + size = row_sum.
 		helper.place(world, type_id, Vector2i(x, row_sum - size - x))
 		x += size + GAP
+	# Uferstreifen oberhalb der Gebäudereihen, mit geraden Kanten und einer Ecke.
+	for terrain_y: int in range(20, 25):
+		for terrain_x: int in range(20, 27):
+			if terrain_x >= 23 or terrain_y >= 23:
+				world.map.set_terrain(Vector2i(terrain_x, terrain_y), "sand")
 	return world
 
 

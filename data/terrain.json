@@ -1,7 +1,37 @@
 {
-  "grass":  { "name": "Wiese",       "color": "#5d8a3c", "walkable": true,  "buildable": true },
-  "meadow": { "name": "Blumenwiese", "color": "#6f9a45", "walkable": true,  "buildable": true },
-  "dirt":   { "name": "Erde",        "color": "#7d6a45", "walkable": true,  "buildable": true },
-  "sand":   { "name": "Ufer",        "color": "#b8a674", "walkable": true,  "buildable": false },
-  "water":  { "name": "Wasser",      "color": "#3b6c9e", "walkable": false, "buildable": false }
+  "grass": {
+    "name": "Wiese",
+    "color": "#5d8a3c",
+    "walkable": true,
+    "buildable": true,
+    "sprite": "terrain/grass",
+    "sprite_variants": 4,
+    "sprite_transition": "sand"
+  },
+  "meadow": {
+    "name": "Blumenwiese",
+    "color": "#6f9a45",
+    "walkable": true,
+    "buildable": true
+  },
+  "dirt": {
+    "name": "Erde",
+    "color": "#7d6a45",
+    "walkable": true,
+    "buildable": true
+  },
+  "sand": {
+    "name": "Ufer",
+    "color": "#b8a674",
+    "walkable": true,
+    "buildable": false,
+    "sprite": "terrain/sand",
+    "sprite_variants": 4
+  },
+  "water": {
+    "name": "Wasser",
+    "color": "#3b6c9e",
+    "walkable": false,
+    "buildable": false
+  }
 }
