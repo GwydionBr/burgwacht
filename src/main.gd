@@ -24,6 +24,7 @@ extends Node2D
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
+##   --zoom=f              Kamera mit diesem Zoom starten (1 = Normalgröße, für Screenshots)
 ##   --game_menu           Spielmenü geöffnet (für Screenshots)
 ##   --save_view           Speichern-Ansicht geöffnet (für Screenshots)
 ##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
@@ -113,6 +114,8 @@ var _right_pressed_on_map := false
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
+## Schattenschicht für die Schatten der Sprites: über dem Gelände, unter allen Objekten.
+@onready var _shadows: Node2D = $Shadows
 @onready var _objects: Node2D = $Objects
 @onready var _wave_marker: WaveMarker = $WaveMarker
 @onready var _highlight: TileHighlight = $Highlight
@@ -224,6 +227,12 @@ func _ready() -> void:
 		_set_selection(_soldier_views())
 		if _selected.is_empty():
 			printerr("--select: keine Soldaten")
+	if args.has("zoom"):
+		var level := str(args["zoom"])
+		if level.is_valid_float() and float(level) > 0.0:
+			_camera.set_zoom_level(float(level))
+		else:
+			printerr("--zoom: Format: --zoom=0.5")
 	if args.has("focus"):
 		var focus := str(args["focus"]).split(",")
 		if focus.size() == 2:
@@ -803,7 +812,7 @@ func _on_deposit_changed(tile: Vector2i) -> void:
 
 func _add_building_view(id: int) -> void:
 	var view := BuildingView.new()
-	view.setup(world.get_building(id))
+	view.setup(world.get_building(id), _shadows)
 	_objects.add_child(view)
 	_building_views[id] = view
 

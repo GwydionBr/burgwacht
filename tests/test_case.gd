@@ -98,6 +98,15 @@ func build(world: GameWorld, type_id: String, origin: Vector2i) -> int:
 	return world.get_building_at(origin).id
 
 
+## Testvorbereitung: stellt ein Gebäude ohne Befehl, Bauregeln und Kosten hin (die Grundfläche muss
+## frei sein) und liefert seine ID. Umgeht mit `_add_building()` bewusst `execute()` – nur für
+## Testaufbauten und Presets (etwa die Galerie), nie für Spiellogik.
+func place(world: GameWorld, type_id: String, origin: Vector2i) -> int:
+	var reason := world.placement_error(type_id, origin)
+	assert(reason == "", "Platz für %s bei %s: %s" % [type_id, str(origin), reason])
+	return world._add_building(type_id, origin).id
+
+
 ## Testvorbereitung: legt eine Menge einer Ware direkt in ein Lager (0 = entfernen),
 ## ohne Befehl – solange es noch keine Arbeiter gibt, die Waren bringen.
 func put_goods(world: GameWorld, building_id: int, good: String, amount: int) -> void:

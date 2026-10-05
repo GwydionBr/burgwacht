@@ -107,6 +107,10 @@
 		"name": "Ton: Bergfried fällt zwei Sekunden nach dem Start (Niederlage)",
 		"args": ["--setup=keep_falling", "--focus=4,4"]
 	},
+	"gallery": {
+		"name": "Galerie: jeder Gebäudetyp nebeneinander, mit Sprite oder gezeichnet",
+		"args": ["--setup=gallery", "--focus=30,26", "--zoom=0.7"]
+	},
 	"milestone7": {
 		"name": "Vorführung Meilenstein 7: Verteidigung",
 		"args": ["--setup=milestone7", "--focus=17,10"]

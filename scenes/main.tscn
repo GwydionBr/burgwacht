@@ -19,6 +19,8 @@ script = ExtResource("6_clock")
 [node name="Terrain" type="Node2D" parent="."]
 script = ExtResource("2_terrain")
 
+[node name="Shadows" type="Node2D" parent="."]
+
 [node name="Objects" type="Node2D" parent="."]
 y_sort_enabled = true
 

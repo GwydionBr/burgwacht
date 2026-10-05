@@ -1,4 +1,8 @@
-# Tondateien: Quellen und Lizenzen
+# Quellen und Lizenzen
+
+Fremdes Material im Repo: die Tondateien (`assets/audio/`) und die 3D-Modelle, aus denen die Sprites gerendert werden (`tools/render/models/`, siehe unten). Alles steht unter CC0.
+
+## Tondateien
 
 Alle Geräusche und die Musik unter `assets/audio/` stammen aus fremden Quellen und stehen unter **CC0 1.0** (Public Domain Dedication, <https://creativecommons.org/publicdomain/zero/1.0/>). Eine Namensnennung ist deshalb nicht vorgeschrieben, wir geben die Urheber trotzdem an. Material unter CC-BY ist nicht dabei; eine Ansicht „Mitwirkende“ ist darum nicht nötig.
 
@@ -6,7 +10,7 @@ Die Lizenz ist für jede Datei auf der Quellseite geprüft (Stand 2026-10-05). B
 
 **Bearbeitung bei allen Dateien:** in Ogg Vorbis umgewandelt (Qualität 4). Bei Geräuschen ist außerdem die Stille am Anfang entfernt, der leise Nachlauf gekürzt und kurz ausgeblendet. Der Pegel ist auf eine einheitliche Lautheit normalisiert, die ortsabhängigen Kampfgeräusche sind mono. In der Tabelle steht nur, was darüber hinaus geändert wurde.
 
-## Geräusche (`assets/audio/sounds/<anlass>/`)
+### Geräusche (`assets/audio/sounds/<anlass>/`)
 
 | Datei | Quelle | Urheber | Lizenz | Bearbeitung |
 |---|---|---|---|---|
@@ -31,7 +35,7 @@ Die Lizenz ist für jede Datei auf der Quellseite geprüft (Stand 2026-10-05). B
 | `building_destroyed/building_destroyed_2.ogg` | „Fall debris (crash)“ – <https://freesound.org/people/xkeril/sounds/703248/> | xkeril | CC0 | – |
 | `building_destroyed/building_destroyed_3.ogg` | „Big falling debris (crash)“ – <https://freesound.org/people/xkeril/sounds/703247/> | xkeril | CC0 | – |
 
-## Musik (`assets/audio/music/<rolle>/`)
+### Musik (`assets/audio/music/<rolle>/`)
 
 Alle Musikstücke sind von RandomMind (<https://opengameart.org/users/randommind>), Lizenz CC0. Jedes Stück lässt sich nahtlos in Schleife abspielen; bei geschnittenen Schleifen springt die Wiedergabe an den Einsprungpunkt `loop_offset` (in der `.import`-Datei), nicht an den Anfang. Der Pegel aller Stücke ist gleich normalisiert.
 
@@ -44,3 +48,11 @@ Alle Musikstücke sind von RandomMind (<https://opengameart.org/users/randommind
 | `peaceful/rejoicing.ogg` | „Medieval: Rejoicing“ (`Loop_Rejoicing.wav`) – <https://opengameart.org/content/medieval-rejoicing> | Loop-Fassung des Urhebers |
 | `peaceful/harvest_season.ogg` | „Medieval: Harvest Season“ (`harvestseason.wav`) – <https://opengameart.org/content/medieval-harvest-season> | Stille am Anfang entfernt; Schleife selbst geschnitten (2 s Überblendung zum Einsprungpunkt), Schluss weggelassen |
 | `battle/battle.ogg` | „Medieval: Battle“ (`battle_1.wav`) – <https://opengameart.org/content/medieval-battle> | Schleife selbst geschnitten (1,5 s Überblendung zum Einsprungpunkt), Ausklang weggelassen |
+
+## 3D-Modelle (`tools/render/models/`)
+
+Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen Modellen (ADR 0006); dabei werden sie auf die Palette `tools/render/palette.json` umgefärbt und nach den Rezepten in `tools/render/recipes/` zusammengesetzt, gedreht und gestreckt. Die gerenderten Bilder sind eigene Arbeit auf Grundlage dieser Modelle. Die Lizenz ist auf der Quellseite und in der Lizenzdatei des Pakets geprüft (Stand 2026-10-05); diese liegt jeweils mit im Ordner.
+
+| Ordner | Quelle | Urheber | Lizenz | Dateien |
+|---|---|---|---|---|
+| `kenney-fantasy-town/` | Kenney „Fantasy Town Kit“ 2.0 (GLB-Fassung) – <https://kenney.nl/assets/fantasy-town-kit> | Kenney (kenney.nl) | CC0 | `wall.glb`, `wall-door.glb`, `wall-window-shutters.glb`, `roof-high-gable.glb`, `roof-high-gable-end.glb`, dazu die gemeinsame Farbtextur `Textures/colormap.png` und `License.txt`; unverändert |

@@ -14,6 +14,11 @@ extends Node2D
 ## Wehrgang (Tor) zeigt auf beiden sichtbaren Wänden einen dunklen Durchgang. Ein beschädigtes
 ## Gebäude trägt über dem Dach einen Lebensbalken wie die Kämpfer (FigureView); nach einem Treffer
 ## ruft main update_health() auf.
+## Ein Gebäude mit "sprite" in den Daten zeigt statt des Blocks sein gerendertes Bild (halbe Größe,
+## Mitte der Grundfläche in der Bildmitte, ohne Namen); seinen Schatten legt es in die Schattenschicht,
+## die main bei setup() übergibt (unter allen Objekten, über dem Gelände). Verdecken und Lebensbalken
+## richten sich dann nach dem Umriss des Bilds. Fehlt die Bilddatei (Datenfehler, den GameDefs schon
+## meldet), erscheint der Block wie bei einem Typ ohne Sprite; fehlt nur der Schatten, bleibt er weg.
 
 const INSET := 3.0
 const DOOR_COLOR := Color("#2a1d12")
@@ -33,6 +38,16 @@ const STALK_COLOR := Color("#a8862c")
 const EAR_COLOR := Color("#ecd27a")
 ## Lebensbalken über dem Dach, relativ zu dessen Mitte (über dem Namen).
 const HEALTH_RECT := Rect2(-20, -20, 40, 5)
+## Sprites sind in doppelter Auflösung gerendert (ADR 0006).
+const SPRITE_SCALE := 0.5
+## Ab dieser Deckkraft zählt ein Pixel des Bilds zum Umriss (covers_figure()).
+const OUTLINE_ALPHA := 0.5
+## Genauigkeit des Umrisses in Bildpixeln.
+const OUTLINE_EPSILON := 2.0
+
+## Umrisse der Bilder (Pfad → Array[PackedVector2Array], relativ zur Bildmitte in Weltpixeln),
+## einmal je Bild berechnet.
+static var _sprite_outlines: Dictionary[String, Array] = {}
 
 var _building: Building
 var _type: String
@@ -41,12 +56,16 @@ var _campfire := false
 var _walkway := false
 ## Begehbar mit Wehrgang (Tor): Durchgang auf beiden Wänden.
 var _passage := false
-## Umriss des Blocks (Welt) und sein umschließendes Rechteck, für covers_figure().
-var _outline := PackedVector2Array()
+## Umrisse des Blocks bzw. des Bilds (Welt) und ihr umschließendes Rechteck, für covers_figure().
+var _outlines: Array[PackedVector2Array] = []
 var _bounds := Rect2()
+## Bild und Schatten, wenn der Typ ein Sprite hat; sonst null.
+var _sprite: Sprite2D
+var _shadow: Sprite2D
 
 
-func setup(building: Building) -> void:
+## Zeigt dieses Gebäude; shadows ist die Schattenschicht für den Schatten eines Sprites (ohne: kein Schatten).
+func setup(building: Building, shadows: Node2D = null) -> void:
 	_building = building
 	_type = building.type
 	_origin = building.origin
@@ -55,11 +74,83 @@ func setup(building: Building) -> void:
 	_passage = _walkway and building.is_walkable()
 	var size := Building.size_of(_type)
 	position = Iso.tile_to_world(_origin + Vector2i(mini(size.x, size.y) - 1, 0))
-	_outline = PackedVector2Array() if _campfire else _block_outline()
+	var def: Dictionary = GameDefs.get_instance().buildings[_type]
+	_outlines.clear()
+	for old: Sprite2D in [_sprite, _shadow]:
+		if is_instance_valid(old):
+			old.queue_free()
+	_sprite = null
+	_shadow = null
+	if ResourceLoader.exists(GameDefs.sprite_path(def)):
+		_show_sprite(def, shadows)
+	elif not _campfire:
+		_outlines.append(_block_outline())
 	_bounds = Rect2(position, Vector2.ZERO)
-	for corner in _outline:
-		_bounds = _bounds.expand(corner)
+	for outline in _outlines:
+		for corner in outline:
+			_bounds = _bounds.expand(corner)
 	queue_redraw()
+
+
+## Das Bild des Gebäudes (null ohne Sprite).
+func get_sprite() -> Sprite2D:
+	return _sprite
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_shadow):
+		_shadow.queue_free()
+
+
+## Bild mittig über der Grundfläche, hinter dem Gezeichneten (Lebensbalken); Schatten in shadows.
+func _show_sprite(def: Dictionary, shadows: Node2D) -> void:
+	var center := _footprint_center()
+	_sprite = _make_sprite(GameDefs.sprite_path(def))
+	_sprite.position = center - position
+	_sprite.show_behind_parent = true
+	add_child(_sprite)
+	if shadows != null and ResourceLoader.exists(GameDefs.shadow_path(def)):
+		_shadow = _make_sprite(GameDefs.shadow_path(def))
+		_shadow.position = center - shadows.global_position
+		shadows.add_child(_shadow)
+	for outline: PackedVector2Array in _sprite_outline(_sprite.texture):
+		var placed := PackedVector2Array()
+		for point in outline:
+			placed.append(point + center)
+		_outlines.append(placed)
+
+
+static func _make_sprite(path: String) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = load(path)
+	sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return sprite
+
+
+## Umriss der deckenden Pixel eines Bilds, relativ zur Bildmitte in Weltpixeln.
+static func _sprite_outline(texture: Texture2D) -> Array:
+	var path := texture.resource_path
+	if not _sprite_outlines.has(path):
+		var image := texture.get_image()
+		if image.is_compressed():
+			image.decompress()
+		var bitmap := BitMap.new()
+		bitmap.create_from_image_alpha(image, OUTLINE_ALPHA)
+		var half := Vector2(image.get_size()) * 0.5
+		var outlines: Array[PackedVector2Array] = []
+		for polygon in bitmap.opaque_to_polygons(Rect2i(Vector2i.ZERO, image.get_size()), OUTLINE_EPSILON):
+			var scaled := PackedVector2Array()
+			for point in polygon:
+				scaled.append((point - half) * SPRITE_SCALE)
+			outlines.append(scaled)
+		_sprite_outlines[path] = outlines
+	return _sprite_outlines[path]
+
+
+## Mitte der Grundfläche (Welt): zwischen den Mitten der ersten und der letzten Kachel.
+func _footprint_center() -> Vector2:
+	return (Iso.tile_to_world(_origin) + Iso.tile_to_world(Building.last_tile_of(_type, _origin))) * 0.5
 
 
 ## Die Lebenspunkte haben sich geändert: Balken neu zeichnen.
@@ -67,14 +158,17 @@ func update_health() -> void:
 	queue_redraw()
 
 
-## Verdeckt der Block eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe foot_y
-## liegt? Nur, wenn er nach ihr gezeichnet wird (Sortierpunkt tiefer) und sein Umriss die
-## Fläche schneidet. Das Lagerfeuer verdeckt nichts.
+## Verdeckt das Gebäude eine Figur mit der Fläche rect (Welt), deren Fußpunkt auf Höhe foot_y
+## liegt? Nur, wenn es nach ihr gezeichnet wird (Sortierpunkt tiefer) und sein Umriss (Block bzw.
+## Bild) die Fläche schneidet. Das Lagerfeuer verdeckt nichts.
 func covers_figure(rect: Rect2, foot_y: float) -> bool:
-	if _outline.is_empty() or position.y <= foot_y or not _bounds.intersects(rect):
+	if _outlines.is_empty() or position.y <= foot_y or not _bounds.intersects(rect):
 		return false
 	var area := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
-	return not Geometry2D.intersect_polygons(_outline, area).is_empty()
+	for outline in _outlines:
+		if not Geometry2D.intersect_polygons(outline, area).is_empty():
+			return true
+	return false
 
 
 ## Umriss des Blocks in Weltkoordinaten: Dach oben, links und rechts, Wände unten.
@@ -88,6 +182,10 @@ func _block_outline() -> PackedVector2Array:
 func _draw() -> void:
 	if _campfire:
 		_draw_campfire()
+		return
+	if _sprite != null:
+		# Über der höchsten deckenden Stelle des Bilds, mittig über der Grundfläche.
+		_draw_health(Vector2(_footprint_center().x, _bounds.position.y) - position)
 		return
 	var def: Dictionary = GameDefs.get_instance().buildings[_type]
 	var color := Color(str(def["color"]))
