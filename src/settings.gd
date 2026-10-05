@@ -13,6 +13,11 @@ const PATH := "user://settings.cfg"
 const DEFAULT_CAMERA_SPEED := 1.0
 const MIN_CAMERA_SPEED := 0.5
 const MAX_CAMERA_SPEED := 2.5
+## Lautstärken in Prozent (0 = stumm, 100 = voll).
+const MAX_VOLUME := 100
+const DEFAULT_MASTER_VOLUME := 80
+const DEFAULT_MUSIC_VOLUME := 60
+const DEFAULT_SOUND_VOLUME := 80
 
 ## Die Einstellungen, die Hauptmenü und Partie gemeinsam anwenden und ändern (siehe shared()).
 static var _shared: Settings
@@ -20,6 +25,9 @@ static var _shared: Settings
 var _path: String
 var _fullscreen := false
 var _camera_speed := DEFAULT_CAMERA_SPEED
+var _master_volume := DEFAULT_MASTER_VOLUME
+var _music_volume := DEFAULT_MUSIC_VOLUME
+var _sound_volume := DEFAULT_SOUND_VOLUME
 ## Das Fenster, das follow_window() nach jeder Änderung einstellt.
 var _window: Window
 
@@ -41,6 +49,17 @@ func _init(path := PATH) -> void:
 	var speed: Variant = data.get("camera_speed", DEFAULT_CAMERA_SPEED)
 	if speed is float or speed is int:
 		_camera_speed = clampf(float(speed), MIN_CAMERA_SPEED, MAX_CAMERA_SPEED)
+	_master_volume = _read_volume(data, "master_volume", DEFAULT_MASTER_VOLUME)
+	_music_volume = _read_volume(data, "music_volume", DEFAULT_MUSIC_VOLUME)
+	_sound_volume = _read_volume(data, "sound_volume", DEFAULT_SOUND_VOLUME)
+
+
+## Die Lautstärke unter key, gerundet und begrenzt; fehlt sie oder ist sie keine Zahl, fallback.
+static func _read_volume(data: Dictionary, key: String, fallback: int) -> int:
+	var volume: Variant = data.get(key, fallback)
+	if volume is float or volume is int:
+		return clampi(roundi(float(volume)), 0, MAX_VOLUME)
+	return fallback
 
 
 ## Die Einstellungen des laufenden Spiels, beim ersten Aufruf gelesen. Mit Startparametern
@@ -72,6 +91,35 @@ func set_camera_speed(speed: float) -> void:
 	_store()
 
 
+## Gesamtlautstärke in Prozent; sie gilt zusätzlich zu Musik und Geräuschen.
+func get_master_volume() -> int:
+	return _master_volume
+
+
+## Begrenzt auf 0 bis MAX_VOLUME, wie alle Lautstärken.
+func set_master_volume(volume: int) -> void:
+	_master_volume = clampi(volume, 0, MAX_VOLUME)
+	_store()
+
+
+func get_music_volume() -> int:
+	return _music_volume
+
+
+func set_music_volume(volume: int) -> void:
+	_music_volume = clampi(volume, 0, MAX_VOLUME)
+	_store()
+
+
+func get_sound_volume() -> int:
+	return _sound_volume
+
+
+func set_sound_volume(volume: int) -> void:
+	_sound_volume = clampi(volume, 0, MAX_VOLUME)
+	_store()
+
+
 ## Stellt das Fenster auf Vollbild oder Fenster, wie eingestellt.
 func apply_to_window(window: Window) -> void:
 	var mode := Window.MODE_FULLSCREEN if _fullscreen else Window.MODE_WINDOWED
@@ -99,6 +147,12 @@ func _store() -> void:
 		if file == null:
 			push_warning("Einstellungen nicht gespeichert: %s" % error_string(FileAccess.get_open_error()))
 		else:
-			file.store_string(JSON.stringify({"fullscreen": _fullscreen, "camera_speed": _camera_speed}, "\t"))
+			file.store_string(JSON.stringify({
+				"fullscreen": _fullscreen,
+				"camera_speed": _camera_speed,
+				"master_volume": _master_volume,
+				"music_volume": _music_volume,
+				"sound_volume": _sound_volume,
+			}, "\t"))
 			file.close()
 	changed.emit()
