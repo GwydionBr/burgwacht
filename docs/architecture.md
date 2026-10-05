@@ -96,6 +96,10 @@ Neues Zustandsstück:
 
 Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Szenarien mit Zielen und Aufträgen sind später möglich.
 
-## Export (später)
+## Export
 
-`*.json` muss im Export-Filter für Nicht-Ressourcen stehen.
+`tools/export.sh` baut mit der eingecheckten Vorlage „macOS“ (`export_presets.cfg`: App „Burgwacht“, Bundle-ID `de.gwydion.burgwacht`, Version 0.9, universal, ad-hoc signiert, ohne Notarisierung, Icon aus dem Projekticon) eine Release-App nach `export/Burgwacht.app` (nicht eingecheckt). Drei Schritte: Export-Templates für genau die installierte Godot-Version prüfen (fehlen sie, Abbruch mit Anleitung, kein Download), als Release exportieren, die App einmal headless mit dem Testzustand `workers` starten und bei Fehlern im Log scheitern. Läuft nicht in der CI.
+
+- `*.json` steht im Export-Filter für Nicht-Ressourcen, weil Daten, Szenarien und `tools/presets.json` per Dateizugriff gelesen werden.
+- Für die Architektur universal muss „Import ETC2 ASTC“ (`rendering/textures/vram_compression/import_etc2_astc`) in `project.godot` an sein.
+- Debug-Tasten (N, F7, F8) und `--spawn` wirken nur im Debug-Build (`OS.is_debug_build()`), also nicht in der exportierten App.
