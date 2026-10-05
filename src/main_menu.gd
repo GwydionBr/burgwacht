@@ -53,8 +53,7 @@ func _ready() -> void:
 	if not args.is_empty() and not args.has("menu") and not args.has("scenario_select"):
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
-	Settings.shared().changed.connect(_apply_settings)
-	_apply_settings()
+	Settings.shared().follow_window(get_window())
 	if args.has("scenario_select"):
 		scenario_choice = Scenario.DEFAULT
 	_show_background_map()
@@ -64,7 +63,7 @@ func _ready() -> void:
 	elif args.has("load_view"):
 		_open_load_view()
 	if args.has("screenshot"):
-		_save_screenshot_and_quit(str(args["screenshot"]))
+		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
 
 
 func _process(delta: float) -> void:
@@ -169,21 +168,9 @@ func _open_settings() -> void:
 	view.open()
 
 
-## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
-func _apply_settings() -> void:
-	Settings.shared().apply_to_window(get_window())
-
-
 ## Wechselt in die Partie-Szene, die aus dieser Startbeschreibung beginnt.
 func _start_match(start: MatchStart) -> void:
 	var scene: PackedScene = load(MATCH_SCENE)
 	var game: MatchScene = scene.instantiate()
 	game.start = start
 	get_tree().change_scene_to_node(game)
-
-
-func _save_screenshot_and_quit(path: String) -> void:
-	for i in 3:
-		await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path)
-	get_tree().quit()

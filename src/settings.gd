@@ -20,6 +20,8 @@ static var _shared: Settings
 var _path: String
 var _fullscreen := false
 var _camera_speed := DEFAULT_CAMERA_SPEED
+## Das Fenster, das follow_window() nach jeder Änderung einstellt.
+var _window: Window
 
 
 ## Liest die Einstellungen aus path; ein leerer Pfad hält sie nur im Speicher (nichts wird
@@ -75,6 +77,20 @@ func apply_to_window(window: Window) -> void:
 	var mode := Window.MODE_FULLSCREEN if _fullscreen else Window.MODE_WINDOWED
 	if window.mode != mode:
 		window.mode = mode
+
+
+## Stellt das Fenster sofort und nach jeder Änderung ein (Hauptmenü und Partie beim Start); ein
+## zweiter Aufruf ersetzt das Fenster, statt doppelt zu hören.
+func follow_window(window: Window) -> void:
+	if _window == null:
+		changed.connect(_apply_to_followed_window)
+	_window = window
+	apply_to_window(window)
+
+
+func _apply_to_followed_window() -> void:
+	if is_instance_valid(_window):
+		apply_to_window(_window)
 
 
 func _store() -> void:

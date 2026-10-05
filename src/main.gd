@@ -142,8 +142,9 @@ func _ready() -> void:
 	_match.saves = Presets.save_games()
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
-	Settings.shared().changed.connect(_apply_settings)
-	_apply_settings()
+	Settings.shared().follow_window(get_window())
+	Settings.shared().changed.connect(_apply_camera_speed)
+	_apply_camera_speed()
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -246,7 +247,7 @@ func _ready() -> void:
 		_update_hover()
 		_update_preview()
 	if args.has("screenshot"):
-		_save_screenshot_and_quit(args["screenshot"])
+		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
 
 
 func _exit_tree() -> void:
@@ -713,9 +714,9 @@ func _open_settings() -> void:
 	_settings_view.open()
 
 
-## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
-func _apply_settings() -> void:
-	Settings.shared().apply_to_window(get_window())
+## Übernimmt die Kamerageschwindigkeit: beim Start und nach jeder Änderung (das Fenster stellt
+## Settings.follow_window() selbst ein).
+func _apply_camera_speed() -> void:
 	_camera.speed_factor = Settings.shared().get_camera_speed()
 
 
@@ -1160,10 +1161,3 @@ func _update_hover() -> void:
 ## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
 static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
-
-
-func _save_screenshot_and_quit(path: String) -> void:
-	for i in 3:
-		await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path)
-	get_tree().quit()

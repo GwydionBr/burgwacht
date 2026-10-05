@@ -46,3 +46,19 @@ func test_values_of_wrong_type_or_out_of_range_give_defaults_or_limits() -> void
 	var settings := Settings.new(path)
 	assert_false(settings.is_fullscreen(), "Vollbild bei falschem Typ:")
 	assert_eq(settings.get_camera_speed(), Settings.MAX_CAMERA_SPEED, "Kamerageschwindigkeit begrenzt:")
+
+
+func test_followed_window_switches_with_every_change() -> void:
+	var settings := Settings.new("")
+	var window := Window.new()
+	settings.set_fullscreen(true)
+	settings.follow_window(window)
+	assert_eq(window.mode, Window.MODE_FULLSCREEN, "Gleich beim Folgen:")
+	settings.set_fullscreen(false)
+	assert_eq(window.mode, Window.MODE_WINDOWED, "Nach der Änderung:")
+	var other := Window.new()
+	settings.follow_window(other)
+	settings.set_fullscreen(true)
+	assert_eq([window.mode, other.mode], [Window.MODE_WINDOWED, Window.MODE_FULLSCREEN], "Nur das neue Fenster folgt:")
+	window.free()
+	other.free()
