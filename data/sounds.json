@@ -1,0 +1,100 @@
+{
+  "pitch_variation": 0.05,
+  "sounds": {
+    "button": {
+      "files": ["sounds/button/button_1.ogg", "sounds/button/button_2.ogg", "sounds/button/button_3.ogg"],
+      "volume": 0.5,
+      "positional": false,
+      "group": "control"
+    },
+    "building_placed": {
+      "files": ["sounds/building_placed/building_placed_1.ogg", "sounds/building_placed/building_placed_2.ogg", "sounds/building_placed/building_placed_3.ogg", "sounds/building_placed/building_placed_4.ogg"],
+      "volume": 0.8,
+      "positional": false,
+      "group": "control"
+    },
+    "demolish": {
+      "files": ["sounds/demolish/demolish_1.ogg", "sounds/demolish/demolish_2.ogg", "sounds/demolish/demolish_3.ogg"],
+      "volume": 0.8,
+      "positional": false,
+      "group": "control"
+    },
+    "command_rejected": {
+      "files": ["sounds/command_rejected/command_rejected_1.ogg", "sounds/command_rejected/command_rejected_2.ogg", "sounds/command_rejected/command_rejected_3.ogg", "sounds/command_rejected/command_rejected_4.ogg"],
+      "volume": 0.7,
+      "positional": false,
+      "group": "control"
+    },
+    "recruit": {
+      "files": ["sounds/recruit/recruit_1.ogg", "sounds/recruit/recruit_2.ogg", "sounds/recruit/recruit_3.ogg", "sounds/recruit/recruit_4.ogg"],
+      "volume": 0.8,
+      "positional": false,
+      "group": "control"
+    },
+    "trade": {
+      "files": ["sounds/trade/trade_1.ogg", "sounds/trade/trade_2.ogg", "sounds/trade/trade_3.ogg"],
+      "volume": 0.8,
+      "positional": false,
+      "group": "control"
+    },
+    "wave_announced": {
+      "files": ["sounds/wave_announced/wave_announced_1.ogg", "sounds/wave_announced/wave_announced_2.ogg"],
+      "volume": 1.0,
+      "positional": false,
+      "group": "game"
+    },
+    "wave_spawned": {
+      "files": ["sounds/wave_spawned/wave_spawned_1.ogg", "sounds/wave_spawned/wave_spawned_2.ogg", "sounds/wave_spawned/wave_spawned_3.ogg"],
+      "volume": 1.0,
+      "positional": false,
+      "group": "game"
+    },
+    "wave_repelled": {
+      "files": ["sounds/wave_repelled/wave_repelled_1.ogg", "sounds/wave_repelled/wave_repelled_2.ogg"],
+      "volume": 1.0,
+      "positional": false,
+      "group": "game"
+    },
+    "defeat": {
+      "files": ["sounds/defeat/defeat_1.ogg", "sounds/defeat/defeat_2.ogg"],
+      "volume": 1.0,
+      "positional": false,
+      "group": "game"
+    },
+    "sword_hit": {
+      "files": ["sounds/sword_hit/sword_hit_1.ogg", "sounds/sword_hit/sword_hit_2.ogg", "sounds/sword_hit/sword_hit_3.ogg", "sounds/sword_hit/sword_hit_4.ogg"],
+      "volume": 1.0,
+      "positional": true,
+      "group": "game"
+    },
+    "arrow_shot": {
+      "files": ["sounds/arrow_shot/arrow_shot_1.ogg", "sounds/arrow_shot/arrow_shot_2.ogg", "sounds/arrow_shot/arrow_shot_3.ogg", "sounds/arrow_shot/arrow_shot_4.ogg"],
+      "volume": 0.7,
+      "positional": true,
+      "group": "game"
+    },
+    "building_hit": {
+      "files": ["sounds/building_hit/building_hit_1.ogg", "sounds/building_hit/building_hit_2.ogg", "sounds/building_hit/building_hit_3.ogg", "sounds/building_hit/building_hit_4.ogg"],
+      "volume": 0.8,
+      "positional": true,
+      "group": "game"
+    },
+    "fighter_died": {
+      "files": ["sounds/fighter_died/fighter_died_1.ogg", "sounds/fighter_died/fighter_died_2.ogg", "sounds/fighter_died/fighter_died_3.ogg", "sounds/fighter_died/fighter_died_4.ogg"],
+      "volume": 0.8,
+      "positional": true,
+      "group": "game"
+    },
+    "building_destroyed": {
+      "files": ["sounds/building_destroyed/building_destroyed_1.ogg", "sounds/building_destroyed/building_destroyed_2.ogg", "sounds/building_destroyed/building_destroyed_3.ogg"],
+      "volume": 1.0,
+      "positional": true,
+      "group": "game"
+    }
+  },
+  "music": {
+    "menu": ["music/menu/exploration.ogg"],
+    "peaceful": ["music/peaceful/bards_tale.ogg", "music/peaceful/harvest_season.ogg", "music/peaceful/market_day.ogg", "music/peaceful/minstrel_dance.ogg", "music/peaceful/rejoicing.ogg"],
+    "battle": ["music/battle/battle.ogg"]
+  }
+}
