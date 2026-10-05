@@ -81,6 +81,8 @@ var _save_entry: Button
 var _settings_view := SettingsView.new(Settings.shared(), true)
 ## Rückfrage, bevor die Partie mit ungespeichertem Fortschritt verlassen wird.
 var _leave_dialog := ConfirmDialog.new()
+## Erreichen Wellen und Niederlage die Tonregie? Erst nach dem Aufbau aus den Startparametern.
+var _world_audible := false
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -177,6 +179,8 @@ func _ready() -> void:
 		world.step()
 	# Erst nach dem Aufbau aus den Startparametern, damit ein Testzustand nicht mit Geräuschen beginnt.
 	_match.command_executed.connect(SoundOutput.shared().director.command_executed)
+	_world_audible = true
+	_hear_world()
 	if args.has("build"):
 		_select_build(str(args["build"]))
 	if args.has("demolish"):
@@ -534,6 +538,17 @@ func _start(description: MatchStart) -> String:
 	return error
 
 
+## Wellen, Niederlage und Schüsse der Spielwelt erreichen die Tonregie (Horn, Trommeln, Fanfare,
+## Niederlage, Pfeile). Gebäudetreffer meldet _on_building_changed().
+func _hear_world() -> void:
+	var director := SoundOutput.shared().director
+	world.shot_fired.connect(director.arrow_shot)
+	world.wave_announced.connect(director.wave_announced.unbind(1))
+	world.wave_spawned.connect(director.wave_spawned.unbind(1))
+	world.wave_repelled.connect(director.wave_repelled.unbind(1))
+	world.defeated.connect(director.defeated)
+
+
 ## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
 func _show_world() -> void:
 	world = _match.world
@@ -552,7 +567,6 @@ func _show_world() -> void:
 	world.enemy_removed.connect(_on_enemy_removed)
 	world.enemy_changed.connect(_on_enemy_changed)
 	world.shot_fired.connect(_on_shot_fired)
-	world.shot_fired.connect(SoundOutput.shared().director.arrow_shot)
 	world.founded.connect(_on_founded)
 	world.popularity_changed.connect(_update_popularity)
 	world.factors_changed.connect(_update_popularity)
@@ -561,6 +575,8 @@ func _show_world() -> void:
 	world.notice.connect(_hud.show_message)
 	world.defeated.connect(_on_defeated)
 	world.announcement_changed.connect(_update_wave_marker)
+	if _world_audible:
+		_hear_world()
 	_clock.world = world
 	_close_game_menu()
 	_build_type = ""

@@ -135,6 +135,35 @@ func test_overlapping_waves_are_repelled_each_when_all_their_enemies_are_dead() 
 	assert_eq(_enemy_waves(world), [3] as Array[int], "Übrig:")
 
 
+## Die Signale zu Erscheinen und Abwehr (für Trommeln und Fanfare): je Welle genau einmal, auch
+## wenn sich Wellen überlappen und in anderer Reihenfolge abgewehrt werden.
+func test_overlapping_waves_signal_appearance_and_repelling_once_each() -> void:
+	var world := _founded()
+	var spawned: Array[int] = []
+	var repelled: Array[int] = []
+	world.wave_spawned.connect(spawned.append)
+	world.wave_repelled.connect(repelled.append)
+	_run_world(world, 2 * GameWorld.TICKS_PER_DAY)
+	assert_eq(world.execute(Command.spawn_wave()), "", "Welle 3:")
+	assert_eq(spawned, [1, 2, 3] as Array[int], "Erschienen:")
+	kill_enemy(world, world.get_enemies()[2])
+	_kill_wave(world, 2)
+	_kill_wave(world, 1)
+	assert_eq(repelled, [2, 1] as Array[int], "Abgewehrt, Welle 3 lebt noch zum Teil:")
+	_kill_wave(world, 3)
+	assert_eq(repelled, [2, 1, 3] as Array[int], "Abgewehrt:")
+	assert_eq(spawned, [1, 2, 3] as Array[int], "Erschienen am Ende:")
+
+
+func test_wave_without_enemies_signals_appearance_then_repelling() -> void:
+	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 0}, "side": "west"}])
+	var events: Array[String] = []
+	world.wave_spawned.connect(func(number: int) -> void: events.append("erschienen %d" % number))
+	world.wave_repelled.connect(func(number: int) -> void: events.append("abgewehrt %d" % number))
+	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	assert_eq(events, ["erschienen 1", "abgewehrt 1"] as Array[String], "Signale:")
+
+
 func test_wave_notice_names_its_side() -> void:
 	var world := _founded()
 	var notices := _notices(world)

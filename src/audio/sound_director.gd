@@ -62,6 +62,26 @@ func command_executed(command: Command, error: String) -> void:
 			_wish("trade")
 
 
+## Die Ankündigung einer Welle hat begonnen (GameWorld.wave_announced): Horn.
+func wave_announced() -> void:
+	_wish("wave_announced")
+
+
+## Eine Welle ist erschienen (GameWorld.wave_spawned): Trommeln.
+func wave_spawned() -> void:
+	_wish("wave_spawned")
+
+
+## Eine Welle ist abgewehrt (GameWorld.wave_repelled): Fanfare, je Welle eine.
+func wave_repelled() -> void:
+	_wish("wave_repelled")
+
+
+## Die Partie ist verloren (GameWorld.defeated). Kommt noch im laufenden Takt, klingt also.
+func defeated() -> void:
+	_wish("defeat")
+
+
 ## Ein gewünschtes Geräusch ist ausgeklungen (oder wurde gar nicht abgespielt). Die Tonausgabe
 ## meldet das für jeden Wunsch; so zählt die Begrenzung auf MAX_SIMULTANEOUS.
 func sound_finished(wish: SoundWish) -> void:

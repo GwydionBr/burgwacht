@@ -78,6 +78,12 @@ signal defeated()
 ## Eine Ankündigung hat begonnen oder ist mit dem Erscheinen ihrer Welle vorbei
 ## (get_announced_side()).
 signal announcement_changed()
+## Die Ankündigung einer Welle hat begonnen, von dieser Seite (einmal je Ankündigung).
+signal wave_announced(side: String)
+## Die Welle mit dieser Nummer ist erschienen (ihre Feinde stehen schon auf der Karte).
+signal wave_spawned(number: int)
+## Die Welle mit dieser Nummer ist abgewehrt (get_repelled_waves()).
+signal wave_repelled(number: int)
 
 ## Ein Tag dauert 600 Takte (bei 1× eine Minute).
 const TICKS_PER_DAY := 600
@@ -1406,6 +1412,7 @@ func _take_next_wave() -> int:
 func _start_announcement(side: String) -> void:
 	_announced_side = side
 	announcement_changed.emit()
+	wave_announced.emit(side)
 
 
 ## Die laufende Ankündigung endet (Waves).
@@ -1418,6 +1425,7 @@ func _end_announcement() -> void:
 func _repel_wave(number: int) -> void:
 	_repelled_waves += 1
 	_end_keep_alarm(number)
+	wave_repelled.emit(number)
 
 
 ## Ein neuer Feind mit vollen Lebenspunkten, der zur Welle mit dieser Nummer gehört (0 = keiner;
