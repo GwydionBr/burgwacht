@@ -161,7 +161,7 @@ func _next_piece(player: AudioStreamPlayer) -> void:
 func _play_piece(piece: String) -> void:
 	_music_piece = piece
 	var stream: AudioStreamOggVorbis = _stream_of(piece)
-	stream.loop = _music_role != SoundDirector.MUSIC_PEACEFUL
+	stream.loop = _music_role != SoundData.MUSIC_PEACEFUL
 	_music.stream = stream
 	# Mit dem Dummy-Audiotreiber (headless, Screenshots) ist nichts zu hören, und ein gestartetes
 	# Musikstück gäbe der Audio-Server beim Beenden oft nicht mehr frei (Fehler im Rauchtest).

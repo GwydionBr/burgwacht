@@ -25,8 +25,12 @@ const OCCASIONS: Array[String] = [
 const GROUP_CONTROL := "control"
 const GROUP_GAME := "game"
 const GROUP_MATCH := "match"
-## Die Musikrollen mit Musikstücken in den Daten (Stille braucht keine).
-const MUSIC_ROLES: Array[String] = ["menu", "peaceful", "battle"]
+## Die Musikrollen mit Musikstücken in den Daten (Stille, SoundDirector.MUSIC_SILENCE, braucht
+## keine): im Hauptmenü, in der friedlichen Partie und Kampfmusik.
+const MUSIC_MENU := "menu"
+const MUSIC_PEACEFUL := "peaceful"
+const MUSIC_BATTLE := "battle"
+const MUSIC_ROLES: Array[String] = [MUSIC_MENU, MUSIC_PEACEFUL, MUSIC_BATTLE]
 
 ## Leer, wenn die Daten gültig sind; sonst der Grund.
 var error := ""
