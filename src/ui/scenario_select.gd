@@ -199,9 +199,7 @@ func _choose_seed() -> void:
 func _update_validity() -> void:
 	var reason := _selected.error if _selected != null else "Kein Szenario gewählt."
 	if reason == "" and _seed_button.button_pressed and _choice_row.visible:
-		reason = MatchStart.seed_error(_seed_field.text)
-		if reason == "" and _seed_field.text.strip_edges() == "":
-			reason = "Seed eintippen oder „Zufällig“ wählen."
+		reason = MatchStart.seed_error(_seed_field.text, true)
 	_error_label.text = reason
 	_start_button.disabled = reason != ""
 

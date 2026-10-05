@@ -33,6 +33,8 @@ func _init(scenario_dir := Scenario.DIR, save_dir := SaveGames.DIR) -> void:
 ## Startet die Partie neu aus der Beschreibung; liefert den Grund, wenn das nicht geht
 ## (dann bleibt alles, wie es war).
 func start(description: MatchStart) -> String:
+	if description.error != "":
+		return description.error
 	match description.kind:
 		MatchStart.Kind.SAVE:
 			return _load(description.save_path)

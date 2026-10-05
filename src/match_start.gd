@@ -14,6 +14,8 @@ var scenario_id := Scenario.DEFAULT
 ## Fester Seed; ohne ihn gilt der des Szenarios (bei „random“ ein zufälliger).
 var map_seed := 0
 var has_seed := false
+## Warum die Beschreibung nicht gilt (z. B. ein ungültiger --seed); Match.start() meldet es.
+var error := ""
 ## Datei des Spielstands (nur bei SAVE).
 var save_path := ""
 ## Name des Testaufbaus aus tests/setups/ (nur bei SETUP).
@@ -43,12 +45,13 @@ static func from_seed_text(id: String, text: String) -> MatchStart:
 	return from_scenario(id) if trimmed == "" else from_scenario_with_seed(id, trimmed.to_int())
 
 
-## Warum der eingetippte Seed nicht geht; leer = in Ordnung (auch ohne Eingabe, dann zufällig).
-## Gültig sind ganze Zahlen von 0 bis MAX_SEED.
-static func seed_error(text: String) -> String:
+## Warum der eingetippte Seed nicht geht; leer = in Ordnung. Gültig sind ganze Zahlen von 0 bis
+## MAX_SEED. Ohne Eingabe gilt der Seed des Szenarios, außer required verlangt einen (in der
+## Szenarioauswahl ist „Seed“ gewählt, beim Startparameter --seed steht einer).
+static func seed_error(text: String, required := false) -> String:
 	var trimmed := text.strip_edges()
 	if trimmed == "":
-		return ""
+		return "Seed eintippen oder „Zufällig“ wählen." if required else ""
 	var digits_only := trimmed.length() <= str(MAX_SEED).length()
 	for character in trimmed:
 		digits_only = digits_only and character >= "0" and character <= "9"
@@ -74,11 +77,16 @@ static func from_setup(setup: String) -> MatchStart:
 
 
 ## Aus den Startparametern (Name → Wert, siehe main.gd): --load vor --setup vor
-## --scenario/--seed.
+## --scenario/--seed. Ein ungültiger --seed steht in `error` (siehe seed_error()).
 static func from_args(args: Dictionary) -> MatchStart:
 	if args.has("load"):
 		return from_save(str(args["load"]))
 	if args.has("setup"):
 		return from_setup(str(args["setup"]))
 	var id := str(args.get("scenario", Scenario.DEFAULT))
-	return from_scenario_with_seed(id, int(args["seed"])) if args.has("seed") else from_scenario(id)
+	if not args.has("seed"):
+		return from_scenario(id)
+	var seed_text := str(args["seed"])
+	var start := from_seed_text(id, seed_text)
+	start.error = seed_error(seed_text, true)
+	return start
