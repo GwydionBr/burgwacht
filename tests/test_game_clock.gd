@@ -66,3 +66,35 @@ func test_clock_cannot_start_before_founding() -> void:
 	assert_true(not clock.is_paused(), "Nach der Gründung lässt sich die Uhr starten")
 	assert_eq(clock.advance(1.0), 10, "Takte nach der Gründung:")
 	clock.free()
+
+
+func test_held_clock_gives_no_ticks_and_keeps_the_previous_speed() -> void:
+	var clock := GameClock.new()
+	clock.set_speed(2)
+	clock.hold()
+	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 0, "Takte bei angehaltener Uhr:")
+	clock.release()
+	assert_true(not clock.is_paused(), "Uhr sollte nach dem Anhalten wieder laufen")
+	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 20, "Takte nach dem Anhalten bei 2×:")
+	clock.free()
+
+
+func test_released_clock_stays_paused_if_it_was_paused() -> void:
+	var clock := GameClock.new()
+	clock.toggle_pause()
+	clock.hold()
+	clock.release()
+	assert_true(clock.is_paused(), "Pause sollte bleiben")
+	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 0, "Takte in der Pause:")
+	clock.free()
+
+
+func test_held_clock_ignores_speed_and_pause_keys() -> void:
+	var clock := GameClock.new()
+	clock.hold()
+	clock.set_speed(4)
+	clock.toggle_pause()
+	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 0, "Takte bei angehaltener Uhr:")
+	clock.release()
+	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 10, "vorige Geschwindigkeit 1×:")
+	clock.free()
