@@ -7,8 +7,8 @@ APP="export/Burgwacht.app"
 PRESET="workers"
 
 # 1. Export-Templates für genau die installierte Godot-Version
-# („4.7.2.stable.official.ed1daf0bf“ → Ordner „4.7.2.stable“)
-VERSION=$(godot --version | cut -d. -f1-4)
+# („4.7.2.stable.official.ed1daf0bf“ → Ordner „4.7.2.stable“, „4.7.stable.official.…“ → „4.7.stable“)
+VERSION=$(godot --version | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?\.[a-z]+[0-9]*)\..*$/\1/')
 TEMPLATES="$HOME/Library/Application Support/Godot/export_templates/$VERSION"
 if [ ! -f "$TEMPLATES/macos.zip" ]; then
 	TAG=$(echo "$VERSION" | sed 's/\.\([a-z][a-z0-9]*\)$/-\1/')
