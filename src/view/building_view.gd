@@ -15,7 +15,7 @@ extends Node2D
 ## Gebäude trägt über dem Dach einen Lebensbalken wie die Kämpfer (FigureView); nach einem Treffer
 ## ruft main update_health() auf.
 ## Ein Gebäude mit "sprite" in den Daten zeigt statt des Blocks sein gerendertes Bild (halbe Größe,
-## Mitte der Grundfläche in der Bildmitte, ohne Namen); seinen Schatten legt es in die Bodenebene,
+## Mitte der Grundfläche in der Bildmitte, ohne Namen); seinen Schatten legt es in die Schattenschicht,
 ## die main bei setup() übergibt (unter allen Objekten, über dem Gelände). Verdecken und Lebensbalken
 ## richten sich dann nach dem Umriss des Bilds. Fehlt die Bilddatei (Datenfehler, den GameDefs schon
 ## meldet), erscheint der Block wie bei einem Typ ohne Sprite; fehlt nur der Schatten, bleibt er weg.
@@ -64,7 +64,7 @@ var _sprite: Sprite2D
 var _shadow: Sprite2D
 
 
-## Zeigt dieses Gebäude; shadows ist die Bodenebene für den Schatten eines Sprites (ohne: kein Schatten).
+## Zeigt dieses Gebäude; shadows ist die Schattenschicht für den Schatten eines Sprites (ohne: kein Schatten).
 func setup(building: Building, shadows: Node2D = null) -> void:
 	_building = building
 	_type = building.type

@@ -54,7 +54,7 @@ func test_house_shows_its_sprite_and_shadow() -> void:
 	assert_true(sprite != null, "Bild fehlt")
 	assert_eq(sprite.texture.resource_path, "res://assets/sprites/buildings/house.png", "Bild:")
 	assert_eq(sprite.global_position, Iso.point_to_world(Vector2(KEEP_ORIGIN) + Vector2(0.5, 0.5)), "Mitte des Bilds:")
-	assert_eq(shadows.get_child_count(), 1, "Schatten in der Bodenebene:")
+	assert_eq(shadows.get_child_count(), 1, "Schatten in der Schattenschicht:")
 	var shadow: Sprite2D = shadows.get_child(0)
 	assert_eq(shadow.texture.resource_path, "res://assets/sprites/buildings/house_shadow.png", "Schatten:")
 	assert_eq(shadow.global_position, sprite.global_position, "Schatten an derselben Stelle:")
@@ -84,7 +84,7 @@ func test_second_setup_replaces_shadow() -> void:
 	for child in shadows.get_children():
 		if not child.is_queued_for_deletion():
 			remaining += 1
-	assert_eq(remaining, 1, "ein Schatten in der Bodenebene:")
+	assert_eq(remaining, 1, "ein Schatten in der Schattenschicht:")
 	view.free()
 	shadows.free()
 

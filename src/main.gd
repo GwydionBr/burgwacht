@@ -114,7 +114,7 @@ var _right_pressed_on_map := false
 
 @onready var _clock: GameClock = $Clock
 @onready var _terrain: TerrainRenderer = $Terrain
-## Bodenebene für die Schatten der Sprites: über dem Gelände, unter allen Objekten.
+## Schattenschicht für die Schatten der Sprites: über dem Gelände, unter allen Objekten.
 @onready var _shadows: Node2D = $Shadows
 @onready var _objects: Node2D = $Objects
 @onready var _wave_marker: WaveMarker = $WaveMarker
