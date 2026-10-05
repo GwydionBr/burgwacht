@@ -1,6 +1,7 @@
 class_name Match
 extends RefCounted
-## Die Partie: startet aus einer Startbeschreibung (MatchStart) und hält Spielwelt und Szenario.
+## Die Partie: startet aus einer Startbeschreibung (MatchStart), hält Spielwelt und Szenario und
+## speichert sie als Spielstand (save(), gesperrt in der Gründung und nach der Niederlage).
 ## Liegt außerhalb des Kerns, weil sie Dateien (Spielstände, Testaufbauten) liest; Darstellung
 ## und Eingabe verbindet der Einstiegspunkt der Partie-Szene (main.gd) über world_changed.
 
@@ -10,13 +11,17 @@ signal world_changed()
 var world: GameWorld
 ## Das Szenario der Spielwelt; aus ihm entsteht auch eine neue Karte (Taste N im Debug-Build).
 var scenario: Scenario
+## Die Spielstände, in die save() schreibt.
+var saves: SaveGames
 
 var _scenario_dir: String
 
 
-## scenario_dir: woher die Szenarien kommen (Tests nehmen ihre eigenen).
-func _init(scenario_dir := Scenario.DIR) -> void:
+## scenario_dir: woher die Szenarien kommen (Tests nehmen ihre eigenen); save_dir: wohin
+## gespeichert wird (Tests und Presets nehmen einen Wegwerf-Ordner).
+func _init(scenario_dir := Scenario.DIR, save_dir := SaveGames.DIR) -> void:
 	_scenario_dir = scenario_dir
+	saves = SaveGames.new(save_dir)
 
 
 ## Startet die Partie neu aus der Beschreibung; liefert den Grund, wenn das nicht geht
@@ -39,6 +44,31 @@ func start(description: MatchStart) -> String:
 	var world_seed := description.map_seed if description.has_seed else scenario.resolve_seed(randi())
 	_set_world(GameWorld.create(scenario, world_seed))
 	return ""
+
+
+## Warum sich die Partie gerade nicht speichern lässt (leer = speicherbar): In der Gründung und
+## nach der Niederlage gibt es nichts zu bewahren.
+func save_error() -> String:
+	if world.is_founding():
+		return "Vor der Gründung gibt es nichts zu speichern"
+	if world.is_defeated():
+		return "Nach der Niederlage gibt es nichts zu speichern"
+	return ""
+
+
+## Speichert die Spielwelt als Spielstand dieser Art (benannte mit Namen); liefert den Fehler
+## ("" = gespeichert). Ein gleichnamiger Spielstand wird überschrieben – vorher fragen, siehe
+## SaveGames.is_name_taken().
+func save(kind: SaveGame.Kind, name := "") -> String:
+	var error := save_error()
+	if error != "":
+		return error
+	return saves.save(world, scenario.title, kind, name)
+
+
+## Vorschlag für den Namen eines Spielstands, z. B. „Freies Spiel – Tag 12“.
+func suggested_save_name() -> String:
+	return "%s – Tag %d" % [scenario.title, world.get_day()]
 
 
 ## Lädt den Spielstand aus dieser Datei (SaveGames).

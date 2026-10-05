@@ -2,13 +2,16 @@ class_name GameMenu
 extends CanvasLayer
 ## Das Spielmenü (Esc während der Partie): ein MenuPanel über einer Abdunkelung, die alle
 ## Klicks auf Karte und HUD abfängt. Zeigt Szenario und Seed der Partie; die Einträge setzt die
-## Partie-Szene mit add_entry() (Speichern, Laden, Einstellungen kommen so dazu).
+## Partie-Szene mit add_entry() (Speichern, Laden, Einstellungen kommen so dazu). Eine Ansicht
+## wie Speichern oder Laden zeigt show_view() an Stelle des Menüs, close_view() kehrt zurück.
 ## Ob die Zeit steht und Tasten wirken, regelt main.gd beim Öffnen und Schließen.
 
 const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.45)
 
 var _dim: ColorRect
 var _panel: MenuPanel
+## Die Ansicht an Stelle des Menüs (in einem CenterContainer), sonst null.
+var _view_holder: CenterContainer
 
 
 func _init() -> void:
@@ -39,7 +42,32 @@ func open(scenario_title: String, map_seed: int) -> void:
 
 
 func close() -> void:
+	close_view()
 	visible = false
+
+
+## Zeigt die Ansicht (z. B. SaveView, LoadView) mittig an Stelle des Menüs; eine vorige fliegt raus.
+func show_view(view: Control) -> void:
+	close_view()
+	_view_holder = CenterContainer.new()
+	_view_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_view_holder)
+	_view_holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_view_holder.add_child(view)
+	_panel.visible = false
+
+
+## Schließt die Ansicht und zeigt wieder das Menü.
+func close_view() -> void:
+	if _view_holder != null:
+		_view_holder.queue_free()
+		_view_holder = null
+	_panel.visible = true
+
+
+## Die offene Ansicht, sonst null.
+func get_view() -> Control:
+	return null if _view_holder == null else _view_holder.get_child(0)
 
 
 func is_open() -> bool:

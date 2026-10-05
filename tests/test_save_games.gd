@@ -1,6 +1,8 @@
 extends TestCase
 ## Spielstand-Modul (SaveGames) mit einem Wegwerf-Ordner: speichern, auflisten, laden, löschen.
 
+const PresetSaves := preload("res://tests/preset_saves.gd")
+
 ## Wird beim Freigeben samt Inhalt gelöscht.
 var _temp: DirAccess
 
@@ -130,37 +132,14 @@ func test_delete_removes_save() -> void:
 	assert_eq(store.newest_loadable().name, "Alt", "Neuester Spielstand:")
 
 
-## Schreibt den Kopf des Spielstands neu, als stammte er aus einer anderen Spielversion.
-func _rewrite_header(path: String, changes: Dictionary) -> void:
-	var file := FileAccess.open(path, FileAccess.READ)
-	file.get_buffer(SaveGames.MAGIC.length())
-	var size := file.get_32()
-	file.get_buffer(SaveGames.HASH_SIZE)
-	var header: Dictionary = bytes_to_var(file.get_buffer(size))
-	var rest := file.get_buffer(file.get_length() - file.get_position())
-	file.close()
-	header.merge(changes, true)
-	var bytes := var_to_bytes(header)
-	var context := HashingContext.new()
-	context.start(HashingContext.HASH_SHA256)
-	context.update(bytes)
-	file = FileAccess.open(path, FileAccess.WRITE)
-	file.store_buffer(SaveGames.MAGIC.to_utf8_buffer())
-	file.store_32(bytes.size())
-	file.store_buffer(context.finish())
-	file.store_buffer(bytes)
-	file.store_buffer(rest)
-	file.close()
-
-
 func test_outdated_saves_are_listed_but_not_loaded() -> void:
 	var store := _store()
 	var world := run_scenario("tiny", 10)
 	_at(store, 300.0).save(world, "Winzig", SaveGame.Kind.NAMED, "Alte Datei")
 	_at(store, 200.0).save(world, "Winzig", SaveGame.Kind.NAMED, "Alte Welt")
 	_at(store, 100.0).save(world, "Winzig", SaveGame.Kind.NAMED, "Aktuell")
-	_rewrite_header(store.path_for(SaveGame.Kind.NAMED, "Alte Datei"), {"format": SaveGames.FORMAT_VERSION - 1})
-	_rewrite_header(store.path_for(SaveGame.Kind.NAMED, "Alte Welt"), {"world_version": GameWorld.SAVE_VERSION - 1})
+	PresetSaves.rewrite_header(store.path_for(SaveGame.Kind.NAMED, "Alte Datei"), {"format": SaveGames.FORMAT_VERSION - 1})
+	PresetSaves.rewrite_header(store.path_for(SaveGame.Kind.NAMED, "Alte Welt"), {"world_version": GameWorld.SAVE_VERSION - 1})
 	var saves := store.list()
 	assert_eq(saves.size(), 3, "Spielstände:")
 	for i in 2:
