@@ -237,6 +237,18 @@ func test_successful_command_is_unsaved_progress() -> void:
 	assert_true(game.has_unsaved_progress(), "Nach der Gründung gibt es Fortschritt")
 
 
+## Für die Tonregie: Jeder Befehl wird mit seinem Ergebnis gemeldet, auch ein abgelehnter.
+func test_executed_commands_are_reported_with_their_result() -> void:
+	var game := _new_match()
+	game.start(MatchStart.from_scenario("tiny"))
+	var reported: Array[String] = []
+	game.command_executed.connect(func(command: Command, error: String) -> void:
+		reported.append("%s:%s" % [Command.Kind.keys()[command.kind], error]))
+	var rejected := game.execute(Command.build("woodcutter", Vector2i(1, 1)))
+	game.execute(Command.found(game.world.find_founding_site()))
+	assert_eq(reported, ["BUILD:" + rejected, "FOUND:"] as Array[String], "Gemeldete Befehle:")
+
+
 func test_ticks_are_unsaved_progress_until_saved() -> void:
 	var game := _match_with_saves()
 	game.start(MatchStart.from_scenario("tiny"))

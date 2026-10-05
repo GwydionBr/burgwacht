@@ -98,3 +98,24 @@ func test_held_clock_ignores_speed_and_pause_keys() -> void:
 	clock.release()
 	assert_eq(_ticks_over(clock, 60, 1.0 / 60.0), 10, "vorige Geschwindigkeit 1×:")
 	clock.free()
+
+
+## Für die Tonregie: Steht die Zeit, entstehen keine Spielgeräusche.
+func test_time_stands_when_paused_held_founding_or_defeated() -> void:
+	var clock := GameClock.new()
+	assert_true(clock.is_time_standing(), "ohne Spielwelt")
+	clock.world = new_world("tiny")
+	assert_true(clock.is_time_standing(), "in der Gründung")
+	found_castle(clock.world)
+	clock.toggle_pause()
+	assert_false(clock.is_time_standing(), "nach der Gründung bei 1×")
+	clock.hold()
+	assert_true(clock.is_time_standing(), "im Spielmenü")
+	clock.release()
+	clock.toggle_pause()
+	assert_true(clock.is_time_standing(), "in der Pause")
+	clock.toggle_pause()
+	var setup: GDScript = load(Presets.setup_path("defeat"))
+	clock.world = setup.call("create")
+	assert_true(clock.is_time_standing(), "nach der Niederlage")
+	clock.free()
