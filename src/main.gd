@@ -26,6 +26,7 @@ extends Node2D
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
 ##   --game_menu           Spielmenü geöffnet (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
+##   --saves=demo         Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn.
@@ -121,6 +122,7 @@ func _ready() -> void:
 	_hud.new_game_requested.connect(func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id))
 	_hud.main_menu_requested.connect(func() -> void: MainMenu.show_in(get_tree()))
 	_hud.quit_requested.connect(get_tree().quit)
+	_match.saves = Presets.save_games()
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
 	var error := _start(start)

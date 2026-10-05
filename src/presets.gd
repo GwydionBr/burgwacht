@@ -7,8 +7,15 @@ extends RefCounted
 
 const PATH := "res://tools/presets.json"
 const SETUP_DIR := "res://tests/setups/"
+## Füllt den Wegwerf-Ordner für --saves=demo mit Spielständen.
+const DEMO_SAVES_PATH := "res://tests/preset_saves.gd"
 ## Umgebungsvariable, über die der Editor dem gestarteten Spiel den Testzustand nennt.
 const ENV := "BURGWACHT_PRESET"
+
+## Die Spielstände dieses Spiels (siehe save_games()); Hauptmenü und Partie teilen sie.
+static var _save_games: SaveGames
+## Wegwerf-Ordner; sie leben bis zum Ende des Spiels und werden dann samt Inhalt gelöscht.
+static var _temp_dirs: Array[DirAccess] = []
 
 
 ## Alle Presets in der Reihenfolge der Datei; bei Fehlern leer (Grund über error()).
@@ -68,6 +75,33 @@ static func user_args() -> Dictionary:
 		args = _args_to_dict(args_of(preset))
 	args.merge(own, true)
 	return args
+
+
+## Die Spielstände dieses Spiels nach den Startparametern (siehe save_games_for()), einmal je Lauf.
+static func save_games() -> SaveGames:
+	if _save_games == null:
+		_save_games = save_games_for(user_args())
+	return _save_games
+
+
+## Wo gespeichert wird: im Nutzerordner (user://saves/), mit --saves=demo in einem Wegwerf-Ordner
+## mit Spielständen der Testzustände, mit --saves=empty in einem leeren. So schreiben Presets,
+## Rauchtest und Screenshots nichts in den Nutzerordner.
+static func save_games_for(args: Dictionary) -> SaveGames:
+	if not args.has("saves"):
+		return SaveGames.new()
+	var temp := DirAccess.create_temp("burgwacht_saves", false)
+	_temp_dirs.append(temp)
+	var saves := SaveGames.new(temp.get_current_dir())
+	match str(args["saves"]):
+		"demo":
+			var demo: GDScript = load(DEMO_SAVES_PATH)
+			demo.call("fill", saves)
+		"empty":
+			pass
+		_:
+			printerr("--saves: demo oder empty, nicht „%s“" % args["saves"])
+	return saves
 
 
 static func _args_to_dict(list: PackedStringArray) -> Dictionary:
