@@ -71,6 +71,18 @@ func music_role() -> String:
 	return MUSIC_PEACEFUL
 
 
+## Das nächste Musikstück (Tondatei, wie in SoundData.music_of()) dieser Rolle nach previous
+## ("" = keins): zufällig, aber nie dasselbe direkt noch einmal, außer die Rolle hat nur eins.
+## Leer bei Stille oder ungültigen Daten.
+func next_piece(role: String, previous: String) -> String:
+	if _data.error != "" or role == MUSIC_SILENCE:
+		return ""
+	var pieces := _data.music_of(role).duplicate()
+	if pieces.size() > 1:
+		pieces.erase(previous)
+	return pieces[_rng.randi_range(0, pieces.size() - 1)]
+
+
 ## Wünscht ein Geräusch dieses Anlasses.
 func _wish(occasion: String) -> void:
 	if _data.error != "":

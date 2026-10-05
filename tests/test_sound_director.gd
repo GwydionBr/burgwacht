@@ -190,3 +190,26 @@ func test_music_role_is_battle_right_after_loading_with_living_enemies() -> void
 	var director := _director()
 	director.world = loaded
 	assert_eq(director.music_role(), "battle", "gleich nach dem Laden:")
+
+
+func test_playlist_never_repeats_a_piece_directly() -> void:
+	var director := _director()
+	var pieces := _data.music_of("peaceful")
+	var heard := {}
+	var previous := ""
+	for i in 50:
+		var piece := director.next_piece("peaceful", previous)
+		assert_true(piece in pieces, "%s gehört zur friedlichen Musik" % piece)
+		assert_true(piece != previous, "%s nicht direkt wiederholt" % piece)
+		heard[piece] = true
+		previous = piece
+	assert_eq(heard.size(), pieces.size(), "alle Musikstücke gehört:")
+
+
+## Hat eine Rolle nur ein Musikstück, kommt eben dieses wieder.
+func test_single_piece_follows_itself() -> void:
+	var director := _director()
+	var piece: String = _data.music_of("menu")[0]
+	assert_eq(_data.music_of("menu").size(), 1, "Menü hat ein Musikstück:")
+	assert_eq(director.next_piece("menu", ""), piece, "erstes:")
+	assert_eq(director.next_piece("menu", piece), piece, "danach:")
