@@ -32,3 +32,16 @@ Die Lizenz ist für jede Datei auf der Quellseite geprüft (Stand 2026-10-05). B
 | `building_destroyed/building_destroyed_2.ogg` | „Fall debris (crash)“ – <https://freesound.org/people/xkeril/sounds/703248/> | xkeril | CC0 | – |
 | `building_destroyed/building_destroyed_3.ogg` | „Big falling debris (crash)“ – <https://freesound.org/people/xkeril/sounds/703247/> | xkeril | CC0 | – |
 
+## Musik (`assets/audio/music/<rolle>/`)
+
+Alle Musikstücke sind von RandomMind (<https://opengameart.org/users/randommind>), Lizenz CC0. Jedes Stück lässt sich nahtlos in Schleife abspielen; bei geschnittenen Schleifen springt die Wiedergabe an den Einsprungpunkt `loop_offset` (in der `.import`-Datei), nicht an den Anfang. Der Pegel aller Stücke ist gleich normalisiert.
+
+| Datei | Quelle | Bearbeitung |
+|---|---|---|
+| `menu/exploration.ogg` | „Medieval: Exploration“ (`Exploration.wav`) – <https://opengameart.org/content/medieval-exploration> | Stille am Anfang entfernt; Schleife selbst geschnitten: Ende nach der Wiederholung des Mittelteils, 2 s Überblendung zurück zum Einsprungpunkt, Schluss weggelassen |
+| `peaceful/bards_tale.ogg` | „Medieval: The Bard's Tale“ (`Loop_The_Bards_Tale.wav`) – <https://opengameart.org/content/medieval-the-bards-tale> | Loop-Fassung des Urhebers |
+| `peaceful/minstrel_dance.ogg` | „Medieval: Minstrel Dance“ (`Loop_Minstrel_Dance_0.wav`) – <https://opengameart.org/content/medieval-minstrel-dance> | Loop-Fassung des Urhebers |
+| `peaceful/market_day.ogg` | „Medieval: Market Day“ (`Loop_Market_Day.wav`) – <https://opengameart.org/content/medieval-market-day> | Loop-Fassung des Urhebers; die Naht knackte und ist mit 10 ms überblendet |
+| `peaceful/rejoicing.ogg` | „Medieval: Rejoicing“ (`Loop_Rejoicing.wav`) – <https://opengameart.org/content/medieval-rejoicing> | Loop-Fassung des Urhebers |
+| `peaceful/harvest_season.ogg` | „Medieval: Harvest Season“ (`harvestseason.wav`) – <https://opengameart.org/content/medieval-harvest-season> | Stille am Anfang entfernt; Schleife selbst geschnitten (2 s Überblendung zum Einsprungpunkt), Schluss weggelassen |
+| `battle/battle.ogg` | „Medieval: Battle“ (`battle_1.wav`) – <https://opengameart.org/content/medieval-battle> | Schleife selbst geschnitten (1,5 s Überblendung zum Einsprungpunkt), Ausklang weggelassen |
