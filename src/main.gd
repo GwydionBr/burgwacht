@@ -552,6 +552,7 @@ func _show_world() -> void:
 	world.enemy_removed.connect(_on_enemy_removed)
 	world.enemy_changed.connect(_on_enemy_changed)
 	world.shot_fired.connect(_on_shot_fired)
+	world.shot_fired.connect(SoundOutput.shared().director.arrow_shot)
 	world.founded.connect(_on_founded)
 	world.popularity_changed.connect(_update_popularity)
 	world.factors_changed.connect(_update_popularity)
@@ -810,6 +811,9 @@ func _on_building_added(id: int) -> void:
 
 
 func _on_building_changed(id: int) -> void:
+	var building := world.get_building(id)
+	if building != null:
+		SoundOutput.shared().director.building_changed(building)
 	if _building_views.has(id):
 		_building_views[id].update_health()
 	if world.get_building_at(_hovered) == world.get_building(id):

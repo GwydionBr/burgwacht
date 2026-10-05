@@ -87,8 +87,8 @@ func building_changed(building: Building) -> void:
 ## Wünscht ein ortsabhängiges Geräusch an diesem Punkt (Kachelkoordinaten, auch zwischen
 ## Kacheln): voll im sichtbaren Ausschnitt, außerhalb mit dem Abstand leiser, ab
 ## AUDIBLE_DISTANCE gar nicht. Das Panorama folgt der waagerechten Lage im Ausschnitt (Rand =
-## ganz links bzw. rechts, außerhalb ebenso). Jeder weitere ortsabhängige Anlass braucht nur eine Methode,
-## die dies mit seinem Ort ruft.
+## ganz links bzw. rechts, außerhalb ebenso). Jeder weitere ortsabhängige Anlass braucht nur
+## eine Methode, die dies mit seinem Ort ruft.
 func _wish_at(occasion: String, point: Vector2) -> void:
 	var position := Iso.point_to_world(point)
 	var nearest := position.clamp(visible_area.position, visible_area.end)
