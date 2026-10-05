@@ -47,17 +47,22 @@ static func get_instance() -> GameDefs:
 	return _instance
 
 
-## Pfad des Bilds eines Eintrags; leer ohne "sprite". Die Variante wird modulo "sprite_variants" gewählt.
+## Pfad des Bilds eines Eintrags; leer ohne „sprite“. Die Variante wird modulo „sprite_variants“ gewählt.
 static func sprite_path(entry: Dictionary, variant: int = 0) -> String:
 	return _sprite_file(entry, "", variant)
 
 
-## Pfad des Schattenbilds derselben Variante; leer ohne "sprite".
+## Pfad des Schattenbilds derselben Variante; leer ohne „sprite“.
 static func shadow_path(entry: Dictionary, variant: int = 0) -> String:
 	return _sprite_file(entry, SHADOW_SUFFIX, variant)
 
 
-## Pfad zu "sprite" eines Eintrags mit angehängtem Suffix und Endung; leer ohne "sprite".
+## Pfad eines Animationsbilds für Bewegungszustand, Blickrichtung und Einzelbild; leer ohne „sprite“.
+static func animation_path(entry: Dictionary, animation: String, direction: int, frame: int) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, direction, frame] if entry.has("sprite") else ""
+
+
+## Pfad zu „sprite“ eines Eintrags mit angehängtem Suffix und Endung; leer ohne „sprite“.
 static func _sprite_file(entry: Dictionary, suffix: String, variant: int) -> String:
 	var index := posmod(variant, int(entry.get("sprite_variants", 1)))
 	var variant_suffix := "_%d" % index if index > 0 else ""
@@ -139,7 +144,7 @@ static func _animation_error(entry: Dictionary) -> String:
 			return "Animation „%s“ braucht eine positive Bildrate" % animation
 		for direction in 8:
 			for frame in int(frames):
-				var path := SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, direction, frame]
+				var path := animation_path(entry, animation, direction, frame)
 				if not ResourceLoader.exists(path):
 					return "Animationsbild %s fehlt" % path
 	return ""
