@@ -123,6 +123,11 @@ def render_recipe(path: str, palette: dict) -> None:
     name = os.path.splitext(os.path.relpath(path, RECIPE_DIR))[0]
     with open(path, encoding="utf-8") as file:
         recipe = json.load(file)
+    if "animations" in recipe:
+        sys.path.insert(0, RENDER_DIR)
+        from render_figures import render_figure
+        render_figure(recipe, name, palette, sys.modules[__name__])
+        return
     reset_scene()
     materials = {}
     objects = []

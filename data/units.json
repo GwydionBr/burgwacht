@@ -3,7 +3,18 @@
     "name": "Bewohner",
     "ticks_per_tile": 5,
     "retry_ticks": 50,
-    "color": "#d8c49a"
+    "color": "#d8c49a",
+    "sprite": "units/resident",
+    "animations": {
+      "idle": {
+        "frames": 4,
+        "fps": 4
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 8
+      }
+    }
   },
   "swordsman": {
     "name": "Schwertkämpfer",
@@ -15,7 +26,10 @@
     "sight": 6,
     "leash": 8,
     "ticks_per_tile": 6,
-    "cost": { "sword": 1, "gold": 10 },
+    "cost": {
+      "sword": 1,
+      "gold": 10
+    },
     "color": "#b8323a"
   },
   "archer": {
@@ -28,7 +42,10 @@
     "wall_walk_range_bonus": 2,
     "sight": 7,
     "ticks_per_tile": 5,
-    "cost": { "bow": 1, "gold": 5 },
+    "cost": {
+      "bow": 1,
+      "gold": 5
+    },
     "color": "#3f7a3a"
   },
   "bandit": {

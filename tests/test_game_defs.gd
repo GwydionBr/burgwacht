@@ -67,3 +67,9 @@ func test_sprite_paths_choose_variant_and_wrap_seed() -> void:
 	var entry := {"sprite": "deposits/tree", "sprite_variants": 4}
 	assert_eq(GameDefs.sprite_path(entry, 5), "res://assets/sprites/deposits/tree_1.png", "Variante:")
 	assert_eq(GameDefs.shadow_path(entry, 7), "res://assets/sprites/deposits/tree_3_shadow.png", "Schatten:")
+
+
+func test_missing_figure_animation_frame_is_named() -> void:
+	var entry := {"sprite": "buildings/house", "animations": {"idle": {"frames": 1, "fps": 1}, "walk": {"frames": 1, "fps": 1}}}
+	assert_eq(GameDefs.sprites_error("units.json", {"resident": entry}),
+		"units.json, „resident“: Animationsbild res://assets/sprites/buildings/house_idle_0_0.png fehlt", "Fehler:")

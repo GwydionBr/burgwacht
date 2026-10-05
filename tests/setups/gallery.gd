@@ -42,3 +42,11 @@ static func create() -> GameWorld:
 ## Erste x-Koordinate einer Reihe: die Reihe liegt waagrecht mittig im Bild (x ≈ y).
 static func _row_start(row_sum: int) -> int:
 	return (row_sum - ROW_LENGTH) / 2
+
+
+## Ergänzt die Galerie um reine Ansichtsproben, ohne sie der Spielwelt hinzuzufügen.
+static func decorate(scene: Node2D, clock: GameClock) -> void:
+	var script: GDScript = load("res://tests/setups/gallery_figures.gd")
+	var figures: Node2D = script.new()
+	figures.call("setup", clock)
+	scene.add_child(figures)
