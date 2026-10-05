@@ -1,4 +1,8 @@
 {
+	"main_menu": {
+		"name": "Hauptmenü über der schwenkenden Karte",
+		"args": ["--menu"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]

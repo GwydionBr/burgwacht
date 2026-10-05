@@ -2,7 +2,7 @@
 extends EditorPlugin
 ## Menü „Testzustand“ in der Werkzeugleiste des Editors: Ein Eintrag startet das Spiel in diesem
 ## Preset (tools/presets.json). Es bleibt gewählt, bis „Normal starten“ – auch F5 startet so lange
-## darin. Das Spiel erfährt es über die Umgebungsvariable Presets.ENV (siehe src/main.gd).
+## darin. Das Spiel erfährt es über die Umgebungsvariable Presets.ENV (siehe Presets.user_args()).
 
 const NORMAL_ID := 0
 const LABEL := "Testzustand"

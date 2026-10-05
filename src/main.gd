@@ -1,3 +1,4 @@
+class_name MatchScene
 extends Node2D
 ## Einstiegspunkt der Partie-Szene: startet die Partie (Match) aus der Startbeschreibung und
 ## verbindet ihre Spielwelt mit Darstellung und Eingabe. Enthält keine Spiellogik – die lebt in
