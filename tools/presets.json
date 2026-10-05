@@ -7,6 +7,10 @@
 		"name": "Spielmenü (Esc) mit Szenario und Seed",
 		"args": ["--seed=1", "--days=1", "--game_menu"]
 	},
+	"settings": {
+		"name": "Einstellungen aus dem Spielmenü",
+		"args": ["--seed=1", "--days=1", "--settings"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]

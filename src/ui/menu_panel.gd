@@ -2,7 +2,7 @@ class_name MenuPanel
 extends PanelContainer
 ## Ein Menü im Holz-Gold-Stil der Oberfläche: Titel, Untertitel und eine senkrechte Liste
 ## gleich breiter Knöpfe. Hauptmenü und Spielmenü bauen sich daraus; weitere Einträge kommen
-## mit add_entry() dazu.
+## mit add_entry() dazu, andere Bedienelemente mit add_control().
 
 const ENTRY_SIZE := Vector2(300, 48)
 const ENTRY_FONT_SIZE := 20
@@ -52,6 +52,11 @@ func add_entry(text: String, action: Callable) -> Button:
 	button.pressed.connect(action)
 	_entries.add_child(button)
 	return button
+
+
+## Hängt ein beliebiges Bedienelement an (z. B. eine Zeile mit Schieberegler).
+func add_control(control: Control) -> void:
+	_entries.add_child(control)
 
 
 static func _make_label(text: String, color: Color, font_size: int) -> Label:

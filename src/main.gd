@@ -25,6 +25,7 @@ extends Node2D
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
 ##   --game_menu           Spielmenü geöffnet (für Screenshots)
+##   --settings            Einstellungen aus dem Spielmenü geöffnet (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
@@ -49,6 +50,8 @@ extends Node2D
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
 ## Ist nichts mehr davon offen (Auswahl, Ansichten, Werkzeug), öffnet Esc das Spielmenü: Die Zeit
 ## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
+## „Einstellungen“ öffnet darüber die Einstellungen; Esc oder „Zurück“ führt ins Spielmenü zurück.
+## F wechselt zwischen Vollbild und Fenster, und zwar über dieselbe Einstellung (Settings).
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
 ## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
 
@@ -67,6 +70,7 @@ const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
 var _match := Match.new()
 var _game_menu := GameMenu.new()
 var _saves := SaveGames.new()
+var _settings_view := SettingsView.new(Settings.shared(), true)
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -122,6 +126,8 @@ func _ready() -> void:
 	_hud.quit_requested.connect(get_tree().quit)
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
+	Settings.shared().changed.connect(_apply_settings)
+	_apply_settings()
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -159,8 +165,10 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
-	if args.has("game_menu"):
+	if args.has("game_menu") or args.has("settings"):
 		_open_game_menu()
+	if args.has("settings"):
+		_open_settings()
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -380,7 +388,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
-	# Bei offenem Spielmenü wirkt nur Esc (schließt es).
+	# Bei offenem Spielmenü wirkt nur Esc (schließt es); aus den Einstellungen geht es zurück ins Spielmenü.
+	if _settings_view.is_open():
+		if key.keycode == KEY_ESCAPE:
+			_settings_view.close()
+		return
 	if _game_menu.is_open():
 		if key.keycode == KEY_ESCAPE:
 			_close_game_menu()
@@ -438,8 +450,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_X:
 			_select_demolish()
 		KEY_F:
-			var window := get_window()
-			window.mode = Window.MODE_WINDOWED if window.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+			Settings.shared().set_fullscreen(not Settings.shared().is_fullscreen())
 		_:
 			for type_id in GameWorld.buildable_types():
 				if OS.find_keycode_from_string(str(GameDefs.get_instance().buildings[type_id]["hotkey"])) == key.keycode:
@@ -555,6 +566,9 @@ func _on_defeated() -> void:
 func _build_game_menu() -> void:
 	add_child(_game_menu)
 	_game_menu.add_entry("Fortsetzen", _close_game_menu)
+	_game_menu.add_entry("Einstellungen", _open_settings)
+	add_child(_settings_view)
+	_settings_view.closed.connect(_show_game_menu)
 	_game_menu.add_entry("Zum Hauptmenü", func() -> void: get_tree().change_scene_to_file(MAIN_MENU_SCENE))
 	_game_menu.add_entry("Beenden", get_tree().quit)
 
@@ -567,7 +581,23 @@ func _open_game_menu() -> void:
 	_update_preview()
 	_clock.hold()
 	_set_camera_active(false)
+	_show_game_menu()
+
+
+func _show_game_menu() -> void:
 	_game_menu.open(_match.scenario.title, world.get_seed())
+
+
+## Die Einstellungen ersetzen das Spielmenü, bis „Zurück“ es wieder zeigt; die Zeit steht weiter.
+func _open_settings() -> void:
+	_game_menu.close()
+	_settings_view.open()
+
+
+## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
+func _apply_settings() -> void:
+	Settings.shared().apply_to_window(get_window())
+	_camera.speed_factor = Settings.shared().get_camera_speed()
 
 
 ## Schließt das Spielmenü; die Zeit läuft mit der vorigen Geschwindigkeit weiter.

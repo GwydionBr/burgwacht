@@ -32,6 +32,8 @@ func _ready() -> void:
 	if not args.is_empty() and not args.has("menu"):
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
+	Settings.shared().changed.connect(_apply_settings)
+	_apply_settings()
 	_show_background_map()
 	_build_menu()
 	if args.has("screenshot"):
@@ -62,11 +64,28 @@ func _show_background_map() -> void:
 func _build_menu() -> void:
 	var menu := MenuPanel.new("Burgwacht", "Baue deine Burg, verteidige sie gegen die Wellen")
 	menu.add_entry("Neue Partie", _new_match)
+	menu.add_entry("Einstellungen", _open_settings.bind(menu))
 	menu.add_entry("Beenden", get_tree().quit)
 	_ui.add_child(menu)
 	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 	menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	menu.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+
+## Die Einstellungen ersetzen das Hauptmenü, bis „Zurück“ es wieder zeigt.
+func _open_settings(menu: MenuPanel) -> void:
+	var view := SettingsView.new(Settings.shared(), false)
+	add_child(view)
+	view.closed.connect(func() -> void:
+		view.queue_free()
+		menu.visible = true)
+	menu.visible = false
+	view.open()
+
+
+## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
+func _apply_settings() -> void:
+	Settings.shared().apply_to_window(get_window())
 
 
 ## Neue Partie im Standardszenario mit dessen Seed (im freien Spiel ein zufälliger), bis es
