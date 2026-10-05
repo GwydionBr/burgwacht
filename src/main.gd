@@ -29,8 +29,9 @@ extends Node2D
 ##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
 ##   --load_view           Ladeansicht geöffnet (für Screenshots)
 ##   --settings            Einstellungen aus dem Spielmenü geöffnet (für Screenshots)
+##   --leave               „Zum Hauptmenü“ gewählt: Rückfrage bei ungespeichertem Fortschritt (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
-##   --saves=demo         Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
+##   --saves=demo          Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn; in der Gründung und nach der
@@ -72,8 +73,6 @@ static var args_used := false
 var start: MatchStart
 ## Die Spielwelt der Partie (_match.world), hier kurz für Darstellung und Eingabe.
 var world: GameWorld
-
-const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
 
 var _match := Match.new()
 var _game_menu := GameMenu.new()
@@ -136,15 +135,16 @@ func _ready() -> void:
 	_hud.new_game_requested.connect(_leave_match.bind("Neue Partie beginnen?",
 			func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id)))
 	_hud.load_requested.connect(_open_load_view)
-	_hud.main_menu_requested.connect(_leave_match.bind("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree())))
-	_hud.quit_requested.connect(_leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	_hud.main_menu_requested.connect(_leave_to_main_menu)
+	_hud.quit_requested.connect(_quit)
 	# ⌘Q und das Schließen des Fensters kommen als NOTIFICATION_WM_CLOSE_REQUEST an.
 	get_tree().set_auto_accept_quit(false)
 	_match.saves = Presets.save_games()
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
-	Settings.shared().changed.connect(_apply_settings)
-	_apply_settings()
+	Settings.shared().follow_window(get_window())
+	Settings.shared().changed.connect(_apply_camera_speed)
+	_apply_camera_speed()
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -198,7 +198,7 @@ func _ready() -> void:
 		_open_settings()
 	if args.has("leave"):
 		_open_game_menu()
-		_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+		_leave_to_main_menu()
 		if not _leave_dialog.is_open():
 			printerr("--leave: kein ungespeicherter Fortschritt")
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
@@ -247,7 +247,7 @@ func _ready() -> void:
 		_update_hover()
 		_update_preview()
 	if args.has("screenshot"):
-		_save_screenshot_and_quit(args["screenshot"])
+		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
 
 
 func _exit_tree() -> void:
@@ -256,18 +256,29 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		_leave_match("Burgwacht beenden?", get_tree().quit)
+		_quit()
 
 
-## Verlässt die Partie mit dieser Aktion; gibt es ungespeicherten Fortschritt, erst nach der
-## Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür öffnet sie das Spielmenü, damit die Zeit steht.
-func _leave_match(question: String, action: Callable) -> void:
+## „Zum Hauptmenü“ aus Spielmenü und Niederlage-Ansicht, mit Rückfrage bei ungespeichertem Fortschritt.
+func _leave_to_main_menu() -> void:
+	_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+
+
+## „Beenden“ aus Spielmenü und Niederlage-Ansicht, ebenso ⌘Q und das Schließen des Fensters.
+func _quit() -> void:
+	_leave_match("Burgwacht beenden?", get_tree().quit)
+
+
+## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es
+## ungespeicherten Fortschritt, erst nach der Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür
+## öffnet sie das Spielmenü, damit die Zeit steht.
+func _leave_match(question: String, leave: Callable) -> void:
 	if not _match.has_unsaved_progress():
-		action.call()
+		leave.call()
 		return
 	if not _game_menu.is_open() and not _settings_view.is_open():
 		_open_game_menu()
-	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", action)
+	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", leave)
 
 
 func _process(_delta: float) -> void:
@@ -624,9 +635,8 @@ func _build_game_menu() -> void:
 	_game_menu.add_entry("Einstellungen", _open_settings)
 	add_child(_settings_view)
 	_settings_view.closed.connect(_show_game_menu)
-	_game_menu.add_entry("Zum Hauptmenü", _leave_match.bind("Zum Hauptmenü?",
-			get_tree().change_scene_to_file.bind(MAIN_MENU_SCENE)))
-	_game_menu.add_entry("Beenden", _leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	_game_menu.add_entry("Zum Hauptmenü", _leave_to_main_menu)
+	_game_menu.add_entry("Beenden", _quit)
 	add_child(_leave_dialog)
 
 
@@ -704,9 +714,9 @@ func _open_settings() -> void:
 	_settings_view.open()
 
 
-## Wendet die Einstellungen an: beim Start und nach jeder Änderung.
-func _apply_settings() -> void:
-	Settings.shared().apply_to_window(get_window())
+## Übernimmt die Kamerageschwindigkeit: beim Start und nach jeder Änderung (das Fenster stellt
+## Settings.follow_window() selbst ein).
+func _apply_camera_speed() -> void:
 	_camera.speed_factor = Settings.shared().get_camera_speed()
 
 
@@ -728,11 +738,10 @@ func _quick_save() -> void:
 
 
 func _quick_load() -> void:
-	var path := _match.saves.path_for(SaveGame.Kind.QUICK)
-	if not FileAccess.file_exists(path):
+	if not _match.saves.has(SaveGame.Kind.QUICK):
 		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
-	_leave_match("Schnellspielstand laden?", _load_from.bind(path))
+	_leave_match("Schnellspielstand laden?", _load_from.bind(_match.saves.path_for(SaveGame.Kind.QUICK)))
 
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
@@ -1152,10 +1161,3 @@ func _update_hover() -> void:
 ## Lebenspunkte eines Kämpfers für die Kachel-Info, z. B. „ (64/100 LP)“.
 static func _health_text(figure: Figure) -> String:
 	return " (%d/%d LP)" % [figure.hp, FighterType.max_hp(figure.fighter_type())]
-
-
-func _save_screenshot_and_quit(path: String) -> void:
-	for i in 3:
-		await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path)
-	get_tree().quit()

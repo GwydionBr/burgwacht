@@ -1,10 +1,11 @@
 class_name ConfirmDialog
 extends CanvasLayer
-## Eine Rückfrage über allem, im Holz-Gold-Stil der Menüs: die Frage, ein Knopf, der die Aktion
-## ausführt (z. B. „Überschreiben“, „Löschen“, „Verwerfen“), und einer, der abbricht (auch Esc).
+## Eine Rückfrage über allem, im Holz-Gold-Stil der Menüs: die Frage, ein Knopf, der bestätigt
+## (z. B. „Überschreiben“, „Löschen“, „Verwerfen“), und einer, der abbricht (auch Esc).
 ## Eine Abdunkelung fängt solange alle Klicks ab. Wiederverwendbar: ask() setzt Frage, Knöpfe und
-## die Aktion jedes Mal neu.
+## das, was beim Bestätigen geschieht, jedes Mal neu.
 
+## Etwas dunkler als MenuPanel.DIM_COLOR, weil sie meist über einem Menü liegt.
 const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.5)
 const TEXT_WIDTH := 440.0
 const BUTTON_SIZE := Vector2(190, 46)
@@ -18,11 +19,7 @@ var _on_confirm := Callable()
 func _init() -> void:
 	layer = 10
 	visible = false
-	var dim := ColorRect.new()
-	dim.color = DIM_COLOR
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(dim)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	MenuPanel.add_dim(self, DIM_COLOR)
 	var center := CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)

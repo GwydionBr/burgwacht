@@ -57,7 +57,6 @@ const POPULARITY_LOW := 25
 const UP_COLOR := Color("#9fd88a")
 ## Abstand der Felder vom Bildschirmrand und zwischen Feldern übereinander.
 const MARGIN := 12
-const DEFEAT_DIM_COLOR := Color(0, 0, 0, 0.45)
 
 var _info_label: Label
 var _seed_label: Label
@@ -116,7 +115,7 @@ var _build_buttons: Dictionary[String, Button] = {}
 var _cost_labels: Dictionary[String, Label] = {}
 var _demolish_button: Button
 var _defeat_panel: PanelContainer
-## Dunkelt hinter der Niederlage-Ansicht das Spiel ab und fängt Klicks ab.
+## Dunkelt hinter der Niederlage-Ansicht die Partie ab und fängt Klicks ab.
 var _defeat_dim: ColorRect
 ## Erreichter Tag und abgewehrte Wellen in der Niederlage-Ansicht.
 var _defeat_day_label: Label
@@ -215,11 +214,8 @@ func _ready() -> void:
 	_barracks_panel.visible = false
 
 	# Zuletzt, damit sie über allen anderen Ansichten liegt.
-	_defeat_dim = ColorRect.new()
-	_defeat_dim.color = DEFEAT_DIM_COLOR
-	_defeat_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_defeat_dim = MenuPanel.add_dim(self)
 	_defeat_dim.visible = false
-	add_child(_defeat_dim)
 	_defeat_panel = _make_defeat_panel()
 	add_child(_defeat_panel)
 	_defeat_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
@@ -229,7 +225,7 @@ func _ready() -> void:
 
 
 ## Zeigt die Niederlage-Ansicht mit dem erreichten Tag, den abgewehrten Wellen und dem Seed der
-## Karte; das Spiel dahinter wird abgedunkelt.
+## Karte; die Partie dahinter wird abgedunkelt.
 func show_defeat(day: int, repelled_waves: int, map_seed: int) -> void:
 	_defeat_day_label.text = "Erreicht: Tag %d\nAbgewehrte Wellen: %d" % [day, repelled_waves]
 	_defeat_seed_label.text = "Karte: Seed %d" % map_seed

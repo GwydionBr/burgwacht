@@ -7,13 +7,11 @@ extends CanvasLayer
 
 signal closed
 
-const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.45)
 const SLIDER_STEP := 0.1
 const SLIDER_HEIGHT := 28.0
 const SLIDER_GRABBER_SIZE := 18
 
 var _settings: Settings
-var _dim: ColorRect
 var _panel: MenuPanel
 var _fullscreen_button: Button
 var _speed_label: Label
@@ -25,11 +23,7 @@ func _init(settings: Settings, dimmed: bool) -> void:
 	_settings = settings
 	layer = 3
 	visible = false
-	_dim = ColorRect.new()
-	_dim.color = DIM_COLOR if dimmed else Color.TRANSPARENT
-	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_dim)
-	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	MenuPanel.add_dim(self, MenuPanel.DIM_COLOR if dimmed else Color.TRANSPARENT)
 	_panel = MenuPanel.new("Einstellungen")
 	add_child(_panel)
 	_fullscreen_button = _panel.add_entry("", func() -> void: _settings.set_fullscreen(not _settings.is_fullscreen()))

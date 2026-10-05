@@ -149,6 +149,22 @@ func test_invalid_seed_is_rejected() -> void:
 	assert_true(MatchStart.seed_error("abc").contains("Seed"), "Grund nennt den Seed: " + MatchStart.seed_error("abc"))
 
 
+func test_chosen_seed_must_be_typed() -> void:
+	assert_false(MatchStart.seed_error("", true) == "", "„Seed“ gewählt, aber leer, sollte abgewiesen werden")
+	assert_false(MatchStart.seed_error("  ", true) == "", "Nur Leerzeichen sollte abgewiesen werden")
+	assert_eq(MatchStart.seed_error("42", true), "", "Eingetippter Seed:")
+	assert_false(MatchStart.seed_error("abc", true) == "", "Ungültiger Seed bleibt ungültig")
+
+
+func test_invalid_start_seed_is_rejected() -> void:
+	var game := _new_match()
+	assert_eq(game.start(MatchStart.from_args({"scenario": "tiny_random", "seed": "7"})), "", "Fehler beim Start:")
+	for text: String in ["abc", "-1", ""]:
+		var reason := game.start(MatchStart.from_args({"scenario": "tiny_random", "seed": text}))
+		assert_true(reason.contains("Seed"), "--seed=%s sollte mit Grund abgewiesen werden: %s" % [text, reason])
+	assert_eq(game.world.get_seed(), 7, "Die Partie bleibt, wie sie war:")
+
+
 ## Gegründete Partie im Szenario tiny mit Wegwerf-Ordner für Spielstände.
 func _founded_match() -> Match:
 	var game := _match_with_saves()

@@ -88,6 +88,17 @@ func test_empty_folder_has_no_saves() -> void:
 	assert_eq(store.newest_loadable(), null, "Neuester Spielstand:")
 	assert_false(store.is_name_taken("Meine Burg"), "Name belegt:")
 	assert_eq(SaveGames.read(store.path_for(SaveGame.Kind.QUICK)).error, "Spielstand nicht gefunden", "Schnellladen:")
+	assert_false(store.has(SaveGame.Kind.QUICK), "Schnellspielstand vorhanden:")
+
+
+func test_has_knows_which_special_saves_exist() -> void:
+	var store := _store()
+	var world := run_scenario("tiny", 10)
+	store.save(world, "Winzig", SaveGame.Kind.QUICK)
+	assert_true(store.has(SaveGame.Kind.QUICK), "Schnellspielstand nach F5")
+	assert_false(store.has(SaveGame.Kind.AUTO), "Kein Autospielstand ohne Tagesbeginn")
+	store.save(world, "Winzig", SaveGame.Kind.AUTO)
+	assert_true(store.has(SaveGame.Kind.AUTO), "Autospielstand nach dem Speichern")
 
 
 func test_folder_that_does_not_exist_yet_has_no_saves_and_is_created_on_save() -> void:

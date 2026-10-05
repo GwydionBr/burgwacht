@@ -110,6 +110,15 @@ static func save_games_for(args: Dictionary) -> SaveGames:
 	return saves
 
 
+## Speichert nach ein paar Bildern (damit alles gezeichnet ist) ein Bild des Fensters von node
+## und beendet das Spiel (--screenshot=pfad.png in Hauptmenü und Partie).
+static func save_screenshot_and_quit(node: Node, path: String) -> void:
+	for i in 3:
+		await RenderingServer.frame_post_draw
+	node.get_viewport().get_texture().get_image().save_png(path)
+	node.get_tree().quit()
+
+
 static func _args_to_dict(list: PackedStringArray) -> Dictionary:
 	var args := {}
 	for arg in list:
