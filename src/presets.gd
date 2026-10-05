@@ -74,6 +74,8 @@ static func user_args() -> Dictionary:
 	else:
 		args = _args_to_dict(args_of(preset))
 	args.merge(own, true)
+	# Auch ein Preset aus dem Editor (ENV) gilt als Preset, siehe save_games_for().
+	args["preset"] = preset
 	return args
 
 
@@ -85,11 +87,15 @@ static func save_games() -> SaveGames:
 
 
 ## Wo gespeichert wird: im Nutzerordner (user://saves/), mit --saves=demo in einem Wegwerf-Ordner
-## mit Spielständen der Testzustände, mit --saves=empty in einem leeren. So schreiben Presets,
-## Rauchtest und Screenshots nichts in den Nutzerordner.
+## mit Spielständen der Testzustände, mit --saves=empty in einem leeren. Presets und Screenshots
+## ohne --saves bekommen einen leeren, damit auch ihr Autospielstand (Tagesbeginn, etwa bei
+## --days) nicht im Nutzerordner landet. So schreiben Presets, Rauchtest und Screenshots nichts
+## in den Nutzerordner.
 static func save_games_for(args: Dictionary) -> SaveGames:
 	if not args.has("saves"):
-		return SaveGames.new()
+		if not args.has("preset") and not args.has("screenshot"):
+			return SaveGames.new()
+		args = args.merged({"saves": "empty"})
 	var temp := DirAccess.create_temp("burgwacht_saves", false)
 	_temp_dirs.append(temp)
 	var saves := SaveGames.new(temp.get_current_dir())

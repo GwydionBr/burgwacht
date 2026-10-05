@@ -46,3 +46,10 @@ func test_empty_saves_parameter_gives_an_empty_throwaway_folder() -> void:
 	var saves := Presets.save_games_for({"saves": "empty"})
 	assert_false(saves.path_for(SaveGame.Kind.QUICK).begins_with(SaveGames.DIR), "Nicht im Nutzerordner")
 	assert_eq(saves.list().size(), 0, "Spielstände:")
+
+
+func test_presets_and_screenshots_never_save_to_the_user_folder() -> void:
+	for args: Dictionary in [{"preset": "workers"}, {"screenshot": "bild.png", "days": "3"}]:
+		var saves := Presets.save_games_for(args)
+		assert_false(saves.path_for(SaveGame.Kind.AUTO).begins_with(SaveGames.DIR), "Nicht im Nutzerordner: %s" % args)
+		assert_eq(saves.list().size(), 0, "Leer bei %s:" % args)

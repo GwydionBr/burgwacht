@@ -1,8 +1,8 @@
 class_name Match
 extends RefCounted
 ## Die Partie: startet aus einer Startbeschreibung (MatchStart), hält Spielwelt und Szenario und
-## speichert sie als Spielstand (save(), gesperrt in der Gründung und nach der Niederlage).
-## Sie weiß, ob es ungespeicherten Fortschritt gibt (has_unsaved_progress()); Befehle laufen dafür
+## speichert sie als Spielstand (save(), gesperrt in der Gründung und nach der Niederlage),
+## zu jedem Tagesbeginn selbst als Autospielstand. Sie weiß, ob es ungespeicherten Fortschritt gibt (has_unsaved_progress()); Befehle laufen dafür
 ## über execute().
 ## Liegt außerhalb des Kerns, weil sie Dateien (Spielstände, Testaufbauten) liest; Darstellung
 ## und Eingabe verbindet der Einstiegspunkt der Partie-Szene (main.gd) über world_changed.
@@ -106,10 +106,20 @@ func _load(path: String) -> String:
 	return ""
 
 
+## Zu jedem Tagesbeginn überschreibt die Partie den Autospielstand; save() lässt das in der
+## Gründung und nach der Niederlage aus. Ein Fehler beim Schreiben hält die Partie nicht auf.
+func _auto_save(_day: int) -> void:
+	if save_error() == "":
+		var error := save(SaveGame.Kind.AUTO)
+		if error != "":
+			printerr("Autospielstand: ", error)
+
+
 ## Übernimmt die Spielwelt samt ihrem Szenario. Kennt der Szenario-Ordner es nicht (Testaufbau
 ## aus einem Testszenario), entsteht eine neue Karte im Standardszenario.
 func _set_world(new_world: GameWorld) -> void:
 	world = new_world
+	world.day_started.connect(_auto_save)
 	_mark_saved()
 	if scenario == null or scenario.id != world.get_scenario_id():
 		scenario = Scenario.load_named(world.get_scenario_id(), _scenario_dir)

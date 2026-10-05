@@ -41,6 +41,7 @@ signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
 ## Die Menge eines Vorkommens hat sich geändert (abgebaut, aber nicht erschöpft).
 signal deposit_changed(tile: Vector2i)
+## Ein neuer Tag hat begonnen; kommt am Ende des Takts, die Spielwelt ist dann vollständig.
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
@@ -289,7 +290,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 
 
 ## Genau ein Takt; in Gründung und nach der Niederlage steht die Zeit still. Fällt der
-## Bergfried, endet der Takt sofort.
+## Bergfried, endet der Takt sofort. day_started kommt erst am Ende des Takts, damit ein
+## Autospielstand einen vollständigen Takt festhält.
 func step() -> void:
 	if _founding or _defeated:
 		return
@@ -301,10 +303,12 @@ func step() -> void:
 	if _defeated:
 		return
 	_migrate()
-	if _tick % TICKS_PER_DAY == 0:
+	var new_day := _tick % TICKS_PER_DAY == 0
+	if new_day:
 		_start_day()
-		day_started.emit(get_day())
 	_waves().update()
+	if new_day:
+		day_started.emit(get_day())
 
 
 ## Führt einen Befehl sofort aus. Leer bei Erfolg, sonst der Grund auf Deutsch;
