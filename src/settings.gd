@@ -1,9 +1,9 @@
 class_name Settings
 extends RefCounted
-## Die Einstellungen des Spiels: Vollbild/Fenster und Kamerageschwindigkeit. Getrennt von den
-## Spielständen in einer JSON-Datei (im Spiel user://settings.cfg, in Tests ein vorgegebener Pfad).
-## Jede Änderung wird sofort geschrieben und mit `changed` gemeldet; wer sie anwendet
-## (Fenster, Kamera), hört darauf. Fehlt die Datei oder ist sie kaputt, gelten die Standardwerte;
+## Die Einstellungen des Spiels: Vollbild/Fenster, Kamerageschwindigkeit und die drei Lautstärken
+## (Gesamt, Musik, Geräusche). Getrennt von den Spielständen in einer JSON-Datei (im Spiel
+## user://settings.cfg, in Tests ein vorgegebener Pfad). Jede Änderung wird sofort geschrieben und
+## mit `changed` gemeldet; wer sie anwendet (Fenster, Kamera, Audio-Busse), hört darauf. Fehlt die Datei oder ist sie kaputt, gelten die Standardwerte;
 ## ein Wert mit falschem Typ ergibt seinen Standardwert.
 
 signal changed
@@ -18,6 +18,10 @@ const MAX_VOLUME := 100
 const DEFAULT_MASTER_VOLUME := 80
 const DEFAULT_MUSIC_VOLUME := 60
 const DEFAULT_SOUND_VOLUME := 80
+## Die Audio-Busse aus default_bus_layout.tres: Gesamt, darunter Musik und Geräusche.
+const MASTER_BUS := &"Master"
+const MUSIC_BUS := &"Music"
+const SOUND_BUS := &"Sounds"
 
 ## Die Einstellungen, die Hauptmenü und Partie gemeinsam anwenden und ändern (siehe shared()).
 static var _shared: Settings
@@ -68,6 +72,7 @@ static func _read_volume(data: Dictionary, key: String, fallback: int) -> int:
 static func shared() -> Settings:
 	if _shared == null:
 		_shared = Settings.new(PATH if Presets.user_args().is_empty() else "")
+		_shared.follow_audio()
 	return _shared
 
 
@@ -134,6 +139,30 @@ func follow_window(window: Window) -> void:
 		changed.connect(_apply_to_followed_window)
 	_window = window
 	apply_to_window(window)
+
+
+## Stellt die Lautstärken der Audio-Busse sofort und nach jeder Änderung ein (shared() ruft es).
+## Bei 0 ist der Bus stumm.
+func follow_audio() -> void:
+	if not changed.is_connected(_apply_to_audio):
+		changed.connect(_apply_to_audio)
+	_apply_to_audio()
+
+
+func _apply_to_audio() -> void:
+	_apply_to_bus(MASTER_BUS, _master_volume)
+	_apply_to_bus(MUSIC_BUS, _music_volume)
+	_apply_to_bus(SOUND_BUS, _sound_volume)
+
+
+static func _apply_to_bus(bus_name: StringName, volume: int) -> void:
+	var bus := AudioServer.get_bus_index(bus_name)
+	if bus == -1:
+		push_error("Audio-Bus „%s“ fehlt in default_bus_layout.tres" % bus_name)
+		return
+	AudioServer.set_bus_mute(bus, volume == 0)
+	if volume > 0:
+		AudioServer.set_bus_volume_linear(bus, float(volume) / MAX_VOLUME)
 
 
 func _apply_to_followed_window() -> void:
