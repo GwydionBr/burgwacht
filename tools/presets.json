@@ -3,6 +3,10 @@
 		"name": "Hauptmenü über der schwenkenden Karte",
 		"args": ["--menu"]
 	},
+	"scenario_select": {
+		"name": "Szenarioauswahl mit dem freien Spiel",
+		"args": ["--scenario_select"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]
