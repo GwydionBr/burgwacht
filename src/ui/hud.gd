@@ -1,6 +1,7 @@
 class_name Hud
 extends CanvasLayer
-## Bedienoberfläche: Titelleiste mit Tag, Geschwindigkeit, Belegung je Lagerart, Bewohnern und Gold, Meldungen oben
+## Bedienoberfläche: Titelleiste mit Tag, Tempo, Belegung je Lagerart (mit Füllbalken), Bewohnern,
+## Soldaten, Beliebtheit und Gold, jeweils mit Symbol, Meldungen oben
 ## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und unten mittig die Bauleiste: Reiter je Kategorie, darunter je Gebäude der Kategorie eine Karte
 ## mit Symbol, Name, Taste und Kosten (rot, wenn sie nicht reichen) und daneben das Abriss-Werkzeug.
@@ -41,8 +42,13 @@ const CARD_SEPARATION := 10
 const RECRUIT_COLUMN_WIDTH := 250
 ## So lange bleibt eine Meldung (z. B. „Gespeichert“) stehen, in Sekunden.
 const MESSAGE_SECONDS := 3.0
-## Abstand des Bauhinweises und der Meldungen vom oberen Rand, unterhalb der Titelleiste.
-const BUILD_HINT_TOP := 64
+## Breite der Füllbalken in der Titelleiste.
+const METER_WIDTH := 92
+## Ab diesem Anteil gilt ein Lager als fast voll (Füllbalken rot).
+const STORAGE_NEARLY_FULL := 0.9
+## Beliebtheit darunter: Füllbalken golden statt grün bzw. rot.
+const POPULARITY_GOOD := 50
+const POPULARITY_LOW := 25
 ## Steigende Beliebtheit (fallende in BLOCKED_COLOR).
 const UP_COLOR := Color("#9fd88a")
 ## Abstand der Felder vom Bildschirmrand und zwischen Feldern übereinander.
@@ -55,15 +61,22 @@ var _day_label: Label
 ## Ankündigung der nächsten Welle („Welle aus Norden in 0:42“); unsichtbar, wenn keine läuft.
 var _announcement_panel: PanelContainer
 var _announcement_label: Label
-var _speed_label: Label
+## Tempo (0 = Pause, sonst GameClock.SPEEDS) → Segment der Tempoanzeige in der Titelleiste.
+var _speed_segments: Dictionary[int, PanelContainer] = {}
 var _message_label: Label
 var _message_panel: PanelContainer
 var _message_timer: Timer
 var _info_panel: PanelContainer
-var _storage_label: Label
+## Lagerart → Wert, Füllbalken und ganzer Eintrag (für den Hinweis) in der Titelleiste.
+var _storage_values: Dictionary[String, Label] = {}
+var _storage_meters: Dictionary[String, ProgressBar] = {}
+var _storage_stats: Dictionary[String, HBoxContainer] = {}
 var _residents_label: Label
+var _idle_label: Label
 var _soldiers_label: Label
 var _popularity_label: Label
+var _trend_label: Label
+var _popularity_meter: ProgressBar
 var _gold_label: Label
 var _admin_panel: PanelContainer
 var _ration_label: Label
@@ -106,34 +119,11 @@ var _defeat_day_label: Label
 
 
 func _ready() -> void:
-	var bar := _make_panel()
-	# Über die ganze Breite: ohne Rundung, Rand nur unten.
-	var bar_style: StyleBoxFlat = bar.get_theme_stylebox("panel")
-	bar_style.set_corner_radius_all(0)
-	bar_style.set_border_width_all(0)
-	bar_style.border_width_bottom = 2
+	var bar := _make_title_bar()
 	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	bar.add_child(row)
-	row.add_child(_make_label("Burgwacht", TEXT_COLOR, 20))
-	_seed_label = _make_label("", HINT_COLOR, 14)
-	row.add_child(_seed_label)
-	_day_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_day_label)
-	_speed_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_speed_label)
-	_storage_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_storage_label)
-	_residents_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_residents_label)
-	_soldiers_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_soldiers_label)
-	_popularity_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_popularity_label)
-	_gold_label = _make_label("", TEXT_COLOR, 16)
-	row.add_child(_gold_label)
 	add_child(bar)
+	# Bauhinweis, Meldungen und Ankündigung beginnen unterhalb der Titelleiste.
+	var below_bar := int(bar.get_combined_minimum_size().y) + MARGIN
 
 	# Meldungen eigen statt in der Titelleiste, damit sie bei langem Bestand nicht abgeschnitten werden.
 	_message_panel = _make_panel()
@@ -141,7 +131,7 @@ func _ready() -> void:
 	_message_panel.add_child(_message_label)
 	add_child(_message_panel)
 	_message_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
-	_message_panel.offset_top = BUILD_HINT_TOP
+	_message_panel.offset_top = below_bar
 	_message_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_message_panel.visible = false
 	_message_timer = Timer.new()
@@ -154,7 +144,7 @@ func _ready() -> void:
 	_announcement_panel.add_child(_announcement_label)
 	add_child(_announcement_panel)
 	_announcement_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, MARGIN)
-	_announcement_panel.offset_top = BUILD_HINT_TOP
+	_announcement_panel.offset_top = below_bar
 	_announcement_panel.visible = false
 
 	var help_panel := _make_panel()
@@ -182,7 +172,7 @@ func _ready() -> void:
 	_build_label = _make_label("", TEXT_COLOR, 17)
 	_build_panel.add_child(_build_label)
 	add_child(_build_panel)
-	_build_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, BUILD_HINT_TOP)
+	_build_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, below_bar)
 	_build_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_build_panel.visible = false
 
@@ -255,7 +245,7 @@ func set_seed(map_seed: int) -> void:
 
 
 func show_day(day: int) -> void:
-	_day_label.text = "Tag %d" % day
+	_day_label.text = str(day)
 
 
 ## Ankündigung in der Titelleiste: Seite (MapSide, leer = keine) und Countdown in Spielzeit
@@ -271,8 +261,22 @@ func show_announcement(side: String, ticks: int) -> void:
 		_announcement_panel.reset_size()
 
 
+## Hebt in der Tempoanzeige „Pause“ bzw. das laufende Tempo hervor.
 func show_speed(speed: int, paused: bool) -> void:
-	_speed_label.text = "Pause" if paused else "%d×" % speed
+	for key: int in _speed_segments:
+		var selected: bool = key == 0 if paused else key == speed
+		var segment := _speed_segments[key]
+		var style := UiStyle.card_style(UiStyle.WOOD_PRESSED_COLOR if selected else Color(0, 0, 0, 0.3),
+				UiStyle.GOLD_COLOR if selected else UiStyle.PANEL_BORDER_COLOR)
+		style.content_margin_left = 8
+		style.content_margin_right = 8
+		style.content_margin_top = 1
+		style.content_margin_bottom = 1
+		segment.add_theme_stylebox_override("panel", style)
+		var color := HINT_COLOR
+		if selected:
+			color = BLOCKED_COLOR if key == 0 else UiStyle.GOLD_COLOR
+		(segment.get_child(0) as Label).add_theme_color_override("font_color", color)
 
 
 ## Kurze Meldung oben rechts unter der Titelleiste, verschwindet nach MESSAGE_SECONDS.
@@ -289,28 +293,50 @@ func show_tile_info(text: String) -> void:
 	_info_panel.reset_size()
 
 
-## Belegung je Lagerart in der Titelleiste, z. B. „Warenlager 150/200 · Kornspeicher 40/100“.
-func show_storage(text: String) -> void:
-	_storage_label.text = text
+## Belegung einer Lagerart in der Titelleiste, z. B. „147/200“ mit Füllbalken; rot, wenn das
+## Lager (fast) voll ist, blass, wenn es keins gibt.
+func show_storage(storage_type: String, used: int, capacity: int) -> void:
+	var share := float(used) / capacity if capacity > 0 else 0.0
+	var value := _storage_values[storage_type]
+	value.text = "%d/%d" % [used, capacity]
+	var color := TEXT_COLOR
+	if capacity == 0:
+		color = HINT_COLOR
+	elif used >= capacity:
+		color = BLOCKED_COLOR
+	value.add_theme_color_override("font_color", color)
+	var meter := _storage_meters[storage_type]
+	meter.value = share
+	_set_meter_color(meter, BLOCKED_COLOR if share >= STORAGE_NEARLY_FULL else UiStyle.GOLD_COLOR)
+	_storage_stats[storage_type].tooltip_text = (Building.storage_missing_text(storage_type) if capacity == 0
+			else "%s: %d von %d Plätzen belegt" % [Building.storage_name(storage_type), used, capacity])
 
 
-## Bewohnerzahl, Wohnraum und Soldaten in der Titelleiste, z. B. „Bewohner 8/16 (Untätig 4)“
-## und „Soldaten 2“.
+## Bewohnerzahl und Wohnraum („8/16“), Untätige und Soldaten in der Titelleiste.
 func show_residents(total: int, housing: int, idle: int, soldiers: int) -> void:
-	_residents_label.text = "Bewohner %d/%d (Untätig %d)" % [total, housing, idle]
-	_soldiers_label.text = "Soldaten %d" % soldiers
+	_residents_label.text = "%d/%d" % [total, housing]
+	_idle_label.text = "%d untätig" % idle
+	_soldiers_label.text = str(soldiers)
 
 
-## Beliebtheit und ihre Tendenz pro Tag in der Titelleiste, z. B. „Beliebtheit 54 ▲3“.
+## Beliebtheit mit Füllbalken (0–100) und ihre Tendenz pro Tag in der Titelleiste, z. B. „54 ▲3“.
 func show_popularity(popularity: int, trend: int) -> void:
-	_popularity_label.text = "Beliebtheit %d %s" % [popularity, _trend_text(trend)]
-	_popularity_label.add_theme_color_override("font_color",
-			UP_COLOR if trend > 0 else (BLOCKED_COLOR if trend < 0 else TEXT_COLOR))
+	_popularity_label.text = str(popularity)
+	_trend_label.text = _trend_text(trend)
+	_trend_label.add_theme_color_override("font_color",
+			UP_COLOR if trend > 0 else (BLOCKED_COLOR if trend < 0 else HINT_COLOR))
+	_popularity_meter.value = popularity
+	var color := UP_COLOR
+	if popularity < POPULARITY_LOW:
+		color = BLOCKED_COLOR
+	elif popularity < POPULARITY_GOOD:
+		color = UiStyle.GOLD_COLOR
+	_set_meter_color(_popularity_meter, color)
 
 
-## Gold im Schatz in der Titelleiste, z. B. „Gold 120“.
+## Gold im Schatz in der Titelleiste.
 func show_treasury(gold: int) -> void:
-	_gold_label.text = "Gold %d" % gold
+	_gold_label.text = str(gold)
 
 
 ## Verwaltung öffnen bzw. schließen (Taste V); schließt die anderen Ansichten.
@@ -460,6 +486,157 @@ func show_tool(build_type: String, demolishing: bool) -> void:
 	for button_type: String in _build_buttons:
 		_build_buttons[button_type].set_pressed_no_signal(button_type == build_type)
 	_demolish_button.set_pressed_no_signal(demolishing)
+
+
+## Die Titelleiste über die ganze Breite: links Name und Karte, dann Tag und Tempo, die Lager mit
+## Füllbalken, Bewohner und Soldaten und rechts Beliebtheit und Gold; Gruppen durch Striche getrennt.
+func _make_title_bar() -> PanelContainer:
+	var bar := PanelContainer.new()
+	bar.add_theme_stylebox_override("panel", UiStyle.title_bar_style())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	bar.add_child(row)
+	var title := VBoxContainer.new()
+	title.add_theme_constant_override("separation", -4)
+	title.alignment = BoxContainer.ALIGNMENT_CENTER
+	title.add_child(_make_label("Burgwacht", UiStyle.GOLD_COLOR, 22))
+	_seed_label = _make_label("", HINT_COLOR, 12)
+	title.add_child(_seed_label)
+	row.add_child(title)
+	row.add_child(_make_divider())
+
+	var day := _make_stat(StatIcon.new(StatIcon.DAY), "Tag", "Spieltag")
+	_day_label = _stat_value(day)
+	row.add_child(day)
+	row.add_child(_make_speed_display())
+	row.add_child(_make_divider())
+
+	for storage_type in Building.storage_types():
+		var icon := BuildingIcon.new(Building.storage_building_of(storage_type))
+		icon.custom_minimum_size = Vector2(34, 28)
+		var stat := _make_stat(icon, Building.storage_name(storage_type), "")
+		_storage_values[storage_type] = _stat_value(stat)
+		_storage_meters[storage_type] = _make_meter(stat, 1.0)
+		_storage_stats[storage_type] = stat
+		row.add_child(stat)
+	row.add_child(_make_divider())
+
+	var residents := _make_stat(StatIcon.new(StatIcon.RESIDENTS), "Bewohner",
+			"Bewohner / Wohnraum\nUntätige warten auf Arbeit oder Anwerbung")
+	_residents_label = _stat_value(residents)
+	_idle_label = _make_label("", HINT_COLOR, 13)
+	_stat_value(residents).get_parent().add_child(_idle_label)
+	row.add_child(residents)
+	var soldiers := _make_stat(StatIcon.new(StatIcon.SOLDIERS), "Soldaten", "Angeworbene Soldaten")
+	_soldiers_label = _stat_value(soldiers)
+	row.add_child(soldiers)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(spacer)
+
+	var popularity := _make_stat(StatIcon.new(StatIcon.POPULARITY), "Beliebtheit",
+			"Beliebtheit und Tendenz pro Tag\nV: Verwaltung")
+	_popularity_label = _stat_value(popularity)
+	_trend_label = _make_label("", HINT_COLOR, 14)
+	_popularity_label.get_parent().add_child(_trend_label)
+	_popularity_meter = _make_meter(popularity, 100.0)
+	row.add_child(popularity)
+	row.add_child(_make_divider())
+	var gold := _make_stat(StatIcon.new(StatIcon.GOLD), "Gold", "Gold im Schatz\nM: Markt")
+	_gold_label = _stat_value(gold)
+	_gold_label.add_theme_color_override("font_color", UiStyle.GOLD_COLOR)
+	_gold_label.add_theme_font_size_override("font_size", 20)
+	(gold.get_node("Text") as Control).custom_minimum_size = Vector2(56, 0)
+	row.add_child(gold)
+	return bar
+
+
+## Eintrag der Titelleiste: Symbol, daneben klein die Beschriftung und darunter der Wert
+## (stat_value()). Der Hinweis gilt für den ganzen Eintrag.
+func _make_stat(icon: Control, caption: String, tooltip: String) -> HBoxContainer:
+	var stat := HBoxContainer.new()
+	stat.add_theme_constant_override("separation", 8)
+	stat.tooltip_text = tooltip
+	stat.mouse_filter = Control.MOUSE_FILTER_PASS
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stat.add_child(icon)
+	var text := VBoxContainer.new()
+	text.name = "Text"
+	text.add_theme_constant_override("separation", -3)
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat.add_child(text)
+	text.add_child(_make_label(caption, HINT_COLOR, 12))
+	var line := HBoxContainer.new()
+	line.name = "Line"
+	line.add_theme_constant_override("separation", 6)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.add_child(line)
+	var value := _make_label("", TEXT_COLOR, 18)
+	value.name = "Value"
+	line.add_child(value)
+	return stat
+
+
+## Das Wertfeld eines Eintrags aus _make_stat().
+func _stat_value(stat: HBoxContainer) -> Label:
+	return stat.get_node("Text/Line/Value") as Label
+
+
+## Füllbalken unter dem Wert eines Eintrags, von 0 bis max_value.
+func _make_meter(stat: HBoxContainer, max_value: float) -> ProgressBar:
+	var meter := ProgressBar.new()
+	meter.show_percentage = false
+	meter.max_value = max_value
+	meter.step = 0.0
+	meter.custom_minimum_size = Vector2(METER_WIDTH, 5)
+	meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var styles := UiStyle.meter_styles(UiStyle.GOLD_COLOR)
+	meter.add_theme_stylebox_override("background", styles[0])
+	meter.add_theme_stylebox_override("fill", styles[1])
+	# Etwas Abstand zum Wert darüber, der Text steht enger.
+	var gap := MarginContainer.new()
+	gap.add_theme_constant_override("margin_top", 4)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gap.add_child(meter)
+	stat.get_node("Text").add_child(gap)
+	return meter
+
+
+func _set_meter_color(meter: ProgressBar, color: Color) -> void:
+	(meter.get_theme_stylebox("fill") as StyleBoxFlat).bg_color = color
+
+
+## Tempoanzeige: Segmente „Pause“ und je Tempo aus GameClock.SPEEDS („1×“, „2×“, „4×“);
+## show_speed() hebt das laufende hervor.
+func _make_speed_display() -> HBoxContainer:
+	var segments := HBoxContainer.new()
+	segments.add_theme_constant_override("separation", 3)
+	segments.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	segments.tooltip_text = "Leertaste: Pause  ·  1/2/3: Tempo"
+	segments.mouse_filter = Control.MOUSE_FILTER_PASS
+	var speeds: Array[int] = [0]
+	speeds.append_array(GameClock.SPEEDS)
+	for speed in speeds:
+		var segment := PanelContainer.new()
+		segment.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		segment.add_child(_make_label("Pause" if speed == 0 else "%d×" % speed, HINT_COLOR, 14))
+		segments.add_child(segment)
+		_speed_segments[speed] = segment
+	show_speed(1, true)
+	return segments
+
+
+## Senkrechter Messingstrich zwischen Gruppen der Titelleiste.
+func _make_divider() -> ColorRect:
+	var line := ColorRect.new()
+	line.color = UiStyle.PANEL_BORDER_COLOR
+	line.custom_minimum_size = Vector2(1, 32)
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return line
 
 
 ## Die Bauleiste: oben die Reiter der Kategorien, darunter im Feld die Karten der gewählten
