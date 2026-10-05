@@ -1,0 +1,88 @@
+class_name Settings
+extends RefCounted
+## Die Einstellungen des Spiels: Vollbild/Fenster und Kamerageschwindigkeit. Getrennt von den
+## Spielständen in einer JSON-Datei (im Spiel user://settings.cfg, in Tests ein vorgegebener Pfad).
+## Jede Änderung wird sofort geschrieben und mit `changed` gemeldet; wer sie anwendet
+## (Fenster, Kamera), hört darauf. Fehlt die Datei oder ist sie kaputt, gelten die Standardwerte;
+## ein Wert mit falschem Typ ergibt seinen Standardwert.
+
+signal changed
+
+const PATH := "user://settings.cfg"
+## Faktor auf CameraController.PAN_SPEED; 1 ist die Geschwindigkeit von vor den Einstellungen.
+const DEFAULT_CAMERA_SPEED := 1.0
+const MIN_CAMERA_SPEED := 0.5
+const MAX_CAMERA_SPEED := 2.5
+
+## Die Einstellungen, die Hauptmenü und Partie gemeinsam anwenden und ändern (siehe shared()).
+static var _shared: Settings
+
+var _path: String
+var _fullscreen := false
+var _camera_speed := DEFAULT_CAMERA_SPEED
+
+
+## Liest die Einstellungen aus path; ein leerer Pfad hält sie nur im Speicher (nichts wird
+## gelesen oder geschrieben).
+func _init(path := PATH) -> void:
+	_path = path
+	if _path == "" or not FileAccess.file_exists(_path):
+		return
+	# JSON.parse() meldet Fehler nur über den Rückgabewert, ConfigFile druckt sie aus.
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(_path)) != OK or not json.data is Dictionary:
+		return
+	var data: Dictionary = json.data
+	var fullscreen: Variant = data.get("fullscreen", false)
+	if fullscreen is bool:
+		_fullscreen = fullscreen
+	var speed: Variant = data.get("camera_speed", DEFAULT_CAMERA_SPEED)
+	if speed is float or speed is int:
+		_camera_speed = clampf(float(speed), MIN_CAMERA_SPEED, MAX_CAMERA_SPEED)
+
+
+## Die Einstellungen des laufenden Spiels, beim ersten Aufruf gelesen. Mit Startparametern
+## (Presets, Rauchtest, Screenshots) nur im Speicher und mit Standardwerten, damit nichts in den
+## Nutzerordner geschrieben wird und Bilder nicht von den eigenen Einstellungen abhängen.
+static func shared() -> Settings:
+	if _shared == null:
+		_shared = Settings.new(PATH if Presets.user_args().is_empty() else "")
+	return _shared
+
+
+func is_fullscreen() -> bool:
+	return _fullscreen
+
+
+func set_fullscreen(on: bool) -> void:
+	_fullscreen = on
+	_store()
+
+
+## Faktor auf die Geschwindigkeit, mit der Tastatur und Bildschirmrand die Kamera schieben.
+func get_camera_speed() -> float:
+	return _camera_speed
+
+
+## Begrenzt auf MIN_CAMERA_SPEED bis MAX_CAMERA_SPEED.
+func set_camera_speed(speed: float) -> void:
+	_camera_speed = clampf(speed, MIN_CAMERA_SPEED, MAX_CAMERA_SPEED)
+	_store()
+
+
+## Stellt das Fenster auf Vollbild oder Fenster, wie eingestellt.
+func apply_to_window(window: Window) -> void:
+	var mode := Window.MODE_FULLSCREEN if _fullscreen else Window.MODE_WINDOWED
+	if window.mode != mode:
+		window.mode = mode
+
+
+func _store() -> void:
+	if _path != "":
+		var file := FileAccess.open(_path, FileAccess.WRITE)
+		if file == null:
+			push_warning("Einstellungen nicht gespeichert: %s" % error_string(FileAccess.get_open_error()))
+		else:
+			file.store_string(JSON.stringify({"fullscreen": _fullscreen, "camera_speed": _camera_speed}, "\t"))
+			file.close()
+	changed.emit()
