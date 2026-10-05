@@ -1,7 +1,8 @@
 class_name Match
 extends RefCounted
 ## Die Partie: startet aus einer Startbeschreibung (MatchStart), hält Spielwelt und Szenario und
-## speichert sie als Spielstand (save(), gesperrt in der Gründung und nach der Niederlage).
+## speichert sie als Spielstand (save(), gesperrt in der Gründung und nach der Niederlage),
+## zu jedem Tagesbeginn selbst als Autospielstand.
 ## Liegt außerhalb des Kerns, weil sie Dateien (Spielstände, Testaufbauten) liest; Darstellung
 ## und Eingabe verbindet der Einstiegspunkt der Partie-Szene (main.gd) über world_changed.
 
