@@ -19,6 +19,7 @@ var _rng := RandomNumberGenerator.new()
 
 
 ## random_seed legt den Zufall für Variante und Tonhöhe fest (Tests); im Spiel ein beliebiger.
+## Sind die Daten ungültig (data.error), wünscht die Tonregie nichts.
 func _init(data: SoundData, random_seed: int) -> void:
 	_data = data
 	_rng.seed = random_seed
@@ -48,6 +49,8 @@ func command_executed(command: Command, error: String) -> void:
 
 ## Wünscht ein Geräusch dieses Anlasses.
 func _wish(occasion: String) -> void:
+	if _data.error != "":
+		return
 	var sound := _data.sound(occasion)
 	if time_stands and sound.group == SoundData.GROUP_GAME:
 		return

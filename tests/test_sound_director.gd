@@ -94,6 +94,15 @@ func test_world_randomness_stays_untouched() -> void:
 	assert_eq(heard.to_data()["rng"], silent.to_data()["rng"], "Zufall der Spielwelt mit und ohne Tonregie:")
 
 
+## Kaputte Geräuschdatei: Der Fehler steht in SoundData.error; die Tonregie schweigt dann.
+func test_invalid_data_stays_silent() -> void:
+	_data = SoundData.from_dict({})
+	var director := _director()
+	director.button_pressed()
+	director.command_executed(Command.trade("wood", true), "")
+	assert_eq(_occasions(), [] as Array[String], "Anlässe:")
+
+
 func test_successful_commands_wish_their_sound() -> void:
 	var cases := [
 		[Command.build("woodcutter", Vector2i(3, 3)), "building_placed"],

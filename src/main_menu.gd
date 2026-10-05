@@ -48,6 +48,8 @@ static func show_in(tree: SceneTree, scenario_id := "") -> void:
 
 
 func _ready() -> void:
+	# Die Tonausgabe entsteht hier, bevor Knöpfe entstehen, und bleibt bis zum Ende bestehen.
+	SoundOutput.shared()
 	# Hat die Partie die Startparameter schon gelesen, führt „Zum Hauptmenü“ hierher zurück.
 	var args := {} if MatchScene.args_used else Presets.user_args()
 	if not args.is_empty() and not args.has("menu") and not args.has("scenario_select"):

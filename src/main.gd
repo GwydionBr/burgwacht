@@ -145,6 +145,7 @@ func _ready() -> void:
 	Settings.shared().follow_window(get_window())
 	Settings.shared().changed.connect(_apply_camera_speed)
 	_apply_camera_speed()
+	SoundOutput.shared().follow_clock(_clock)
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -174,6 +175,8 @@ func _ready() -> void:
 			printerr("--spawn: ", spawn_reason)
 	for i in int(args.get("ticks", 0)):
 		world.step()
+	# Erst nach dem Aufbau aus den Startparametern, damit ein Testzustand nicht mit Geräuschen beginnt.
+	_match.command_executed.connect(SoundOutput.shared().director.command_executed)
 	if args.has("build"):
 		_select_build(str(args["build"]))
 	if args.has("demolish"):
