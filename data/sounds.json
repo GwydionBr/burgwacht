@@ -63,7 +63,7 @@
     },
     "sword_hit": {
       "files": ["sounds/sword_hit/sword_hit_1.ogg", "sounds/sword_hit/sword_hit_2.ogg", "sounds/sword_hit/sword_hit_3.ogg", "sounds/sword_hit/sword_hit_4.ogg"],
-      "volume": 1.0,
+      "volume": 1.4,
       "positional": true,
       "group": "game"
     },

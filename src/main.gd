@@ -538,11 +538,14 @@ func _start(description: MatchStart) -> String:
 	return error
 
 
-## Wellen, Niederlage und Schüsse der Spielwelt erreichen die Tonregie (Horn, Trommeln, Fanfare,
-## Niederlage, Pfeile). Gebäudetreffer meldet _on_building_changed().
+## Wellen, Niederlage und Kampf der Spielwelt erreichen die Tonregie (Horn, Trommeln, Fanfare,
+## Niederlage, Pfeile, Schwerthiebe, Tod, Zerstörung). Gebäudetreffer meldet _on_building_changed().
 func _hear_world() -> void:
 	var director := SoundOutput.shared().director
 	world.shot_fired.connect(director.arrow_shot)
+	world.melee_hit.connect(director.sword_hit)
+	world.fighter_died.connect(director.fighter_died)
+	world.building_destroyed.connect(_on_building_destroyed)
 	world.wave_announced.connect(director.wave_announced.unbind(1))
 	world.wave_spawned.connect(director.wave_spawned.unbind(1))
 	world.wave_repelled.connect(director.wave_repelled.unbind(1))
@@ -834,6 +837,11 @@ func _on_building_changed(id: int) -> void:
 		_building_views[id].update_health()
 	if world.get_building_at(_hovered) == world.get_building(id):
 		_update_hover()
+
+
+## Ein Gebäude ist zerstört; es steht noch, die Tonregie hört es an seinem Ort.
+func _on_building_destroyed(id: int) -> void:
+	SoundOutput.shared().director.building_destroyed(world.get_building(id))
 
 
 func _on_building_removed(id: int) -> void:

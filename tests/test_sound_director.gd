@@ -235,3 +235,56 @@ func test_wave_and_defeat_events_wish_their_sound_everywhere_alike() -> void:
 		assert_false(_data.sound(wish.occasion).positional, "%s ist nicht ortsabhängig" % wish.occasion)
 		assert_eq(wish.volume, _data.sound(wish.occasion).volume, "Lautstärkefaktor zu %s:" % wish.occasion)
 		assert_eq(wish.pan, 0.0, "Panorama zu %s:" % wish.occasion)
+
+
+## Hieb, Tod und Zerstörung: je ihr Geräusch an ihrem Ort, im Ausschnitt voll, rechts im Bild
+## rechts im Panorama, jenseits der festen Entfernung keines.
+func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -> void:
+	var director := _director()
+	var building := Building.create(3, "tower", Vector2i(10, 4))
+	var events: Array[Callable] = [
+		director.sword_hit.bind(Vector3i(10, 4, 0), Vector3i(11, 4, 0)),
+		director.fighter_died.bind(Vector3i(10, 4, 0)),
+		director.building_destroyed.bind(building),
+	]
+	var expected: Array[String] = ["sword_hit", "fighter_died", "building_destroyed"]
+	director.visible_area = _area_around(Vector2i(10, 4))
+	for event in events:
+		event.call()
+	assert_eq(_occasions(), expected, "Anlässe im Ausschnitt:")
+	for wish in _wishes:
+		assert_eq(wish.volume, _data.sound(wish.occasion).volume, "%s voll hörbar:" % wish.occasion)
+	# Ausschnitt links vom Ort, halb so weit weg wie die feste Entfernung: leiser, rechts.
+	for wish in _wishes:
+		director.sound_finished(wish)
+	_wishes.clear()
+	director.visible_area = _area_around(Vector2i(10, 4), Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE / 2.0, 0))
+	for event in events:
+		event.call()
+	assert_eq(_occasions(), expected, "Anlässe außerhalb, aber nah genug:")
+	for wish in _wishes:
+		assert_true(wish.volume < _data.sound(wish.occasion).volume, "%s außerhalb leiser: %f" % [wish.occasion, wish.volume])
+		assert_eq(wish.pan, 1.0, "%s rechts außerhalb → ganz rechts:" % wish.occasion)
+	_wishes.clear()
+	director.visible_area = _area_around(Vector2i(10, 4), Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE - 64.0, 0))
+	for event in events:
+		event.call()
+	assert_eq(_occasions(), [] as Array[String], "Anlässe jenseits der festen Entfernung:")
+
+
+func test_fifth_simultaneous_sword_hit_is_dropped() -> void:
+	var director := _director()
+	director.visible_area = _area_around(Vector2i(10, 4))
+	for i in 5:
+		director.sword_hit(Vector3i(10, 4, 0), Vector3i(11, 4, 0))
+	assert_eq(_wishes.size(), SoundDirector.MAX_SIMULTANEOUS, "Hiebe bei 5 gleichzeitigen:")
+
+
+func test_standing_time_silences_sword_hit_death_and_destruction() -> void:
+	var director := _director()
+	director.visible_area = _area_around(Vector2i(10, 4))
+	director.time_stands = true
+	director.sword_hit(Vector3i(10, 4, 0), Vector3i(11, 4, 0))
+	director.fighter_died(Vector3i(10, 4, 0))
+	director.building_destroyed(Building.create(3, "tower", Vector2i(10, 4)))
+	assert_eq(_occasions(), [] as Array[String], "Anlässe bei stehender Zeit:")

@@ -101,7 +101,29 @@ func building_changed(building: Building) -> void:
 	var before: int = _building_hp.get(key, building.max_hp())
 	_building_hp[key] = building.hp
 	if building.hp < before:
-		_wish_at("building_hit", Vector2(building.origin) + Vector2(Building.size_of(building.type) - Vector2i.ONE) / 2.0)
+		_wish_at("building_hit", _center_of(building))
+
+
+## Ein Nahkämpfer auf from hat den Kämpfer auf to getroffen (GameWorld.melee_hit): Schwerthieb
+## zwischen beiden.
+func sword_hit(from: Vector3i, to: Vector3i) -> void:
+	_wish_at("sword_hit", (Vector2(from.x, from.y) + Vector2(to.x, to.y)) / 2.0)
+
+
+## Ein Soldat oder Feind ist auf position gestorben (GameWorld.fighter_died).
+func fighter_died(position: Vector3i) -> void:
+	_wish_at("fighter_died", Vector2(position.x, position.y))
+
+
+## Ein Gebäude ist zerstört (GameWorld.building_destroyed, vor dem Entfernen): Es kracht in der
+## Mitte seiner Grundfläche, anders als beim Abriss.
+func building_destroyed(building: Building) -> void:
+	_wish_at("building_destroyed", _center_of(building))
+
+
+## Die Mitte der Grundfläche (Kachelkoordinaten).
+static func _center_of(building: Building) -> Vector2:
+	return Vector2(building.origin) + Vector2(Building.size_of(building.type) - Vector2i.ONE) / 2.0
 
 
 ## Wünscht ein ortsabhängiges Geräusch an diesem Punkt (Kachelkoordinaten, auch zwischen
