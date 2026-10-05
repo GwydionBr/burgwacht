@@ -17,7 +17,7 @@ extends Node2D
 ##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --market              Marktansicht geöffnet (für Screenshots)
 ##   --barracks            Kasernenansicht der ersten Kaserne geöffnet (für Screenshots)
-##   --load=pfad.sav       Spielstand laden statt neuer Partie (für Screenshots)
+##   --load=pfad.sav       Spielstand (Datei von SaveGames) laden statt neuer Partie (für Screenshots)
 ##   --setup=name          Spielwelt aus tests/setups/name.gd statt neuer Partie (für Testzustände)
 ##   --preset=id           Startparameter des Testzustands aus tools/presets.json (eigene gehen vor)
 ##   --select              alle Soldaten ausgewählt (für Screenshots)
@@ -27,7 +27,7 @@ extends Node2D
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
-## F5 speichert schnell, F9 lädt diesen Spielstand (bis es ein Menü gibt).
+## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn.
 ## Eine neue Partie beginnt mit der Gründung: Vorschau von Bergfried, erstem Warenlager,
 ## erstem Kornspeicher und Lagerfeuer unter der Maus, Linksklick schickt den Gründungsbefehl.
 ## Danach wählt die Bauleiste (oder L/G/H/B/J/O/P) ein Gebäude: Vorschau unter der Maus,
@@ -49,7 +49,6 @@ extends Node2D
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
 ## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
 
-const QUICKSAVE_PATH := "user://quicksave.sav"
 
 ## Woraus die Partie startet; das Hauptmenü setzt sie vor dem Betreten des Baums, sonst gelten
 ## die Startparameter.
@@ -58,6 +57,7 @@ var start: MatchStart
 var world: GameWorld
 
 var _match := Match.new()
+var _saves := SaveGames.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -530,20 +530,16 @@ func _on_defeated() -> void:
 
 
 func _quick_save() -> void:
-	var file := FileAccess.open(QUICKSAVE_PATH, FileAccess.WRITE)
-	if file == null:
-		_hud.show_message("Speichern fehlgeschlagen: %s" % error_string(FileAccess.get_open_error()))
-		return
-	file.store_var(world.to_data())
-	file.close()
-	_hud.show_message("Gespeichert (Tag %d)" % world.get_day())
+	var error := _saves.save(world, _match.scenario.title, SaveGame.Kind.QUICK)
+	_hud.show_message(error if error != "" else "Gespeichert (Tag %d)" % world.get_day())
 
 
 func _quick_load() -> void:
-	if not FileAccess.file_exists(QUICKSAVE_PATH):
-		_hud.show_message("Noch kein Spielstand – erst mit F5 speichern")
+	var path := _saves.path_for(SaveGame.Kind.QUICK)
+	if not FileAccess.file_exists(path):
+		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
-	_load_from(QUICKSAVE_PATH)
+	_load_from(path)
 
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).

@@ -41,16 +41,12 @@ func start(description: MatchStart) -> String:
 	return ""
 
 
-## Lädt den Spielstand aus dieser Datei.
+## Lädt den Spielstand aus dieser Datei (SaveGames).
 func _load(path: String) -> String:
-	var file := FileAccess.open(path, FileAccess.READ)
-	var data: Variant = file.get_var() if file != null else null
-	var error := "Spielstand ist beschädigt"
-	if data is Dictionary:
-		error = GameWorld.data_error(data)
-	if error != "":
-		return error
-	_set_world(GameWorld.from_data(data))
+	var save := SaveGames.read(path)
+	if save.error != "":
+		return save.error
+	_set_world(save.world)
 	return ""
 
 

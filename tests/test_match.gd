@@ -32,34 +32,29 @@ func test_failed_start_keeps_the_running_world() -> void:
 
 
 func test_start_from_save_continues_that_world_in_its_scenario() -> void:
+	var temp := DirAccess.create_temp("burgwacht_match", false)
+	var saves := SaveGames.new(temp.get_current_dir())
 	var saved := run_scenario("tiny_three", 30)
-	var path := _write_save(saved.to_data())
+	assert_eq(saves.save(saved, "Drei", SaveGame.Kind.QUICK), "", "Fehler beim Speichern:")
 	var game := _new_match()
 	game.start(MatchStart.from_scenario("tiny"))
-	assert_eq(game.start(MatchStart.from_save(path)), "", "Fehler beim Laden:")
-	DirAccess.remove_absolute(path)
+	assert_eq(game.start(MatchStart.from_save(saves.path_for(SaveGame.Kind.QUICK))), "", "Fehler beim Laden:")
 	assert_eq(world_snapshot(game.world), world_snapshot(saved), "Spielwelt:")
 	assert_eq(game.scenario.id, "tiny_three", "Szenario nach dem Laden:")
 
 
-## Schreibt Daten wie ein Spielstand in eine Wegwerf-Datei und nennt ihren Pfad.
-func _write_save(data: Variant) -> String:
-	var path := OS.get_temp_dir().path_join("burgwacht_test_match.sav")
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	file.store_var(data)
-	file.close()
-	return path
-
-
 func test_damaged_save_gives_a_message_and_keeps_the_world() -> void:
+	var temp := DirAccess.create_temp("burgwacht_match", false)
+	var path := temp.get_current_dir().path_join("kaputt.sav")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string("kein Spielstand")
+	file.close()
 	var game := _new_match()
 	game.start(MatchStart.from_scenario("tiny"))
 	var before := game.world
-	var path := _write_save("kein Spielstand")
-	assert_eq(game.start(MatchStart.from_save(path)), "Spielstand ist beschädigt", "Grund:")
-	DirAccess.remove_absolute(path)
+	assert_eq(game.start(MatchStart.from_save(path)), SaveGames.CORRUPT, "Grund:")
 	assert_true(game.world == before, "Spielwelt sollte bleiben")
-	assert_false(game.start(MatchStart.from_save(path)) == "", "Fehlende Datei sollte nicht laden")
+	assert_false(game.start(MatchStart.from_save(path + ".fehlt")) == "", "Fehlende Datei sollte nicht laden")
 
 
 func test_start_from_setup_builds_that_world() -> void:
