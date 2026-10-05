@@ -94,9 +94,10 @@ func test_save_under_a_name_lists_it_with_scenario_and_day() -> void:
 	for i in GameWorld.TICKS_PER_DAY * 2:
 		game.world.step()
 	assert_eq(game.save(SaveGame.Kind.NAMED, "Meine Burg"), "", "Fehler beim Speichern:")
-	var saves := game.saves.list()
-	assert_eq(saves.size(), 1, "Spielstände:")
-	assert_eq([saves[0].name, saves[0].scenario_title, saves[0].day], ["Meine Burg", "Kleine Testkarte", 3], "Kopf:")
+	var saves := game.saves.list().filter(func(save: SaveGame) -> bool: return save.kind == SaveGame.Kind.NAMED)
+	assert_eq(saves.size(), 1, "Benannte Spielstände (dazu kommt der Autospielstand):")
+	var named: SaveGame = saves[0]
+	assert_eq([named.name, named.scenario_title, named.day], ["Meine Burg", "Kleine Testkarte", 3], "Kopf:")
 
 
 func test_suggested_save_name_is_scenario_and_day() -> void:
@@ -146,3 +147,60 @@ func test_invalid_seed_is_rejected() -> void:
 	for text: String in ["abc", "-1", "1.5", "12 34", "1e5", "4294967296", "99999999999999999999"]:
 		assert_false(MatchStart.seed_error(text) == "", "„%s“ sollte abgewiesen werden" % text)
 	assert_true(MatchStart.seed_error("abc").contains("Seed"), "Grund nennt den Seed: " + MatchStart.seed_error("abc"))
+
+
+## Gegründete Partie im Szenario tiny mit Wegwerf-Ordner für Spielstände.
+func _founded_match() -> Match:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.world.execute(Command.found(game.world.find_founding_site()))
+	return game
+
+
+func test_day_start_writes_the_auto_save() -> void:
+	var game := _founded_match()
+	for i in GameWorld.TICKS_PER_DAY - 1:
+		game.world.step()
+	assert_eq(game.saves.list().size(), 0, "Vor dem Tagesbeginn kein Spielstand:")
+	game.world.step()
+	var saves := game.saves.list()
+	assert_eq(saves.size(), 1, "Spielstände:")
+	assert_eq([saves[0].kind, saves[0].day], [SaveGame.Kind.AUTO, 2], "Art und Tag:")
+	for i in GameWorld.TICKS_PER_DAY:
+		game.world.step()
+	saves = game.saves.list()
+	assert_eq(saves.size(), 1, "Genau ein Autospielstand:")
+	assert_eq(saves[0].day, 3, "Am nächsten Tag überschrieben:")
+
+
+func test_auto_save_continues_like_the_world_it_was_taken_from() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny_waves"))
+	game.world.execute(Command.found(game.world.find_founding_site()))
+	for i in GameWorld.TICKS_PER_DAY * 2:
+		game.world.step()
+	var resumed := Match.new(TEST_SCENARIO_DIR)
+	assert_eq(resumed.start(MatchStart.from_save(game.saves.path_for(SaveGame.Kind.AUTO))), "", "Fehler beim Laden:")
+	assert_eq(world_snapshot(resumed.world), world_snapshot(game.world), "Spielwelt beim Tagesbeginn:")
+	var unsaved := run_scenario("tiny_waves", GameWorld.TICKS_PER_DAY * 4)
+	for i in GameWorld.TICKS_PER_DAY * 2:
+		game.world.step()
+		resumed.world.step()
+	assert_eq(world_snapshot(game.world), world_snapshot(unsaved), "Speichern sollte den Verlauf nicht ändern:")
+	assert_eq(world_snapshot(resumed.world), world_snapshot(unsaved), "Geladen sollte es genauso weitergehen:")
+
+
+func test_no_auto_save_during_founding() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	for i in GameWorld.TICKS_PER_DAY * 2:
+		game.world.step()
+	assert_eq(game.saves.list().size(), 0, "In der Gründung kein Autospielstand:")
+
+
+func test_no_auto_save_after_defeat() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_setup("defeat"))
+	for i in GameWorld.TICKS_PER_DAY * 2:
+		game.world.step()
+	assert_eq(game.saves.list().size(), 0, "Nach der Niederlage kein Autospielstand:")
