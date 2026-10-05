@@ -19,9 +19,12 @@ const OCCASIONS: Array[String] = [
 	"sword_hit", "arrow_shot", "building_hit", "fighter_died", "building_destroyed",
 ]
 ## Gruppe „group“ eines Anlasses: Bediengeräusche klingen auch bei stehender Zeit (Pause,
-## Spielmenü), Spielgeräusche nur, wenn die Zeit läuft.
+## Spielmenü), Spielgeräusche nur, wenn die Zeit läuft. Partiesignale (Wellen, Niederlage)
+## klingen immer, auch wenn sie bei stehender Zeit kommen (Ankündigung bei der Gründung,
+## Debug-Welle in der Pause).
 const GROUP_CONTROL := "control"
 const GROUP_GAME := "game"
+const GROUP_MATCH := "match"
 ## Die Musikrollen mit Musikstücken in den Daten (Stille braucht keine).
 const MUSIC_ROLES: Array[String] = ["menu", "peaceful", "battle"]
 
@@ -141,8 +144,8 @@ func _read_sound(occasion: String, raw: Variant) -> String:
 		return "„positional“ muss true oder false sein"
 	result.positional = positional
 	var group: Variant = entry.get("group")
-	if group != GROUP_CONTROL and group != GROUP_GAME:
-		return "„group“ muss „%s“ oder „%s“ sein" % [GROUP_CONTROL, GROUP_GAME]
+	if not group in [GROUP_CONTROL, GROUP_GAME, GROUP_MATCH]:
+		return "„group“ muss „%s“, „%s“ oder „%s“ sein" % [GROUP_CONTROL, GROUP_GAME, GROUP_MATCH]
 	result.group = group
 	_sounds[occasion] = result
 	return ""

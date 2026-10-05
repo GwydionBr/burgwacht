@@ -32,7 +32,7 @@ func test_wrong_types_are_named() -> void:
 	var cases := {
 		"volume": ["laut", "Geräuschanlass „button“: „volume“ muss eine Zahl über 0 sein"],
 		"positional": ["ja", "Geräuschanlass „button“: „positional“ muss true oder false sein"],
-		"group": ["menu", "Geräuschanlass „button“: „group“ muss „control“ oder „game“ sein"],
+		"group": ["menu", "Geräuschanlass „button“: „group“ muss „control“, „game“ oder „match“ sein"],
 		"files": ["sounds/button/button_1.ogg", "Geräuschanlass „button“: „files“ muss eine nicht leere Liste von Tondateien sein"],
 	}
 	for key: String in cases:

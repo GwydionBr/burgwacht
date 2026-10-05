@@ -41,25 +41,25 @@
       "files": ["sounds/wave_announced/wave_announced_1.ogg", "sounds/wave_announced/wave_announced_2.ogg"],
       "volume": 1.0,
       "positional": false,
-      "group": "game"
+      "group": "match"
     },
     "wave_spawned": {
       "files": ["sounds/wave_spawned/wave_spawned_1.ogg", "sounds/wave_spawned/wave_spawned_2.ogg", "sounds/wave_spawned/wave_spawned_3.ogg"],
       "volume": 1.0,
       "positional": false,
-      "group": "game"
+      "group": "match"
     },
     "wave_repelled": {
       "files": ["sounds/wave_repelled/wave_repelled_1.ogg", "sounds/wave_repelled/wave_repelled_2.ogg"],
       "volume": 1.0,
       "positional": false,
-      "group": "game"
+      "group": "match"
     },
     "defeat": {
       "files": ["sounds/defeat/defeat_1.ogg"],
       "volume": 1.0,
       "positional": false,
-      "group": "game"
+      "group": "match"
     },
     "sword_hit": {
       "files": ["sounds/sword_hit/sword_hit_1.ogg", "sounds/sword_hit/sword_hit_2.ogg", "sounds/sword_hit/sword_hit_3.ogg", "sounds/sword_hit/sword_hit_4.ogg"],

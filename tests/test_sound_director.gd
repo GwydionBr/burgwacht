@@ -314,6 +314,18 @@ func test_wave_and_defeat_events_wish_their_sound_everywhere_alike() -> void:
 		assert_eq(wish.pan, 0.0, "Panorama zu %s:" % wish.occasion)
 
 
+## Wellen und Niederlage sind Partiesignale: Sie klingen auch bei stehender Zeit, etwa die
+## Ankündigung direkt bei der Gründung oder die Debug-Welle in der Pause.
+func test_wave_and_defeat_sound_even_while_time_stands() -> void:
+	var director := _director()
+	director.time_stands = true
+	director.wave_announced()
+	director.wave_spawned()
+	director.wave_repelled()
+	director.defeated()
+	assert_eq(_occasions(), ["wave_announced", "wave_spawned", "wave_repelled", "defeat"] as Array[String], "Anlässe bei stehender Zeit:")
+
+
 ## Hieb, Tod und Zerstörung: je ihr Geräusch an ihrem Ort, im Ausschnitt voll, rechts im Bild
 ## rechts im Panorama, jenseits der festen Entfernung keines.
 func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -> void:
