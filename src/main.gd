@@ -730,11 +730,10 @@ func _quick_save() -> void:
 
 
 func _quick_load() -> void:
-	var path := _match.saves.path_for(SaveGame.Kind.QUICK)
-	if not FileAccess.file_exists(path):
+	if not _match.saves.has(SaveGame.Kind.QUICK):
 		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
-	_leave_match("Schnellspielstand laden?", _load_from.bind(path))
+	_leave_match("Schnellspielstand laden?", _load_from.bind(_match.saves.path_for(SaveGame.Kind.QUICK)))
 
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).

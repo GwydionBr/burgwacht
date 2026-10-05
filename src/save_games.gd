@@ -15,14 +15,16 @@ const DIR := "user://saves/"
 ## Ändert sich nur die Spielwelt, reicht GameWorld.SAVE_VERSION.
 const FORMAT_VERSION := 1
 const EXTENSION := ".sav"
-const QUICK_FILE := "quick" + EXTENSION
-const AUTO_FILE := "auto" + EXTENSION
+## Fester Dateiname und Anzeigename je Art; benannte Spielstände stehen nicht darin, sie leiten
+## beides aus dem Namen ab.
+const FIXED_KINDS: Dictionary[SaveGame.Kind, Dictionary] = {
+	SaveGame.Kind.QUICK: {"file": "quick" + EXTENSION, "name": "Schnellspielstand"},
+	SaveGame.Kind.AUTO: {"file": "auto" + EXTENSION, "name": "Autospielstand"},
+}
 ## Vorsilbe benannter Spielstände, damit sie nie mit den festen Dateinamen zusammenfallen.
 const NAMED_PREFIX := "named-"
 ## Längster aus dem Namen abgeleiteter Teil des Dateinamens (Dateisysteme erlauben 255 Bytes).
 const MAX_FILE_NAME := 200
-const QUICK_NAME := "Schnellspielstand"
-const AUTO_NAME := "Autospielstand"
 const MAGIC := "BURGWACHT"
 const HASH_SIZE := 32
 const CORRUPT := "Spielstand ist beschädigt"
@@ -96,7 +98,13 @@ func newest_loadable() -> SaveGame:
 
 ## Ob es schon einen benannten Spielstand gibt, den save() mit diesem Namen überschreiben würde.
 func is_name_taken(name: String) -> bool:
-	return FileAccess.file_exists(path_for(SaveGame.Kind.NAMED, name.strip_edges()))
+	return has(SaveGame.Kind.NAMED, name)
+
+
+## Ob es den Spielstand dieser Art gibt (für benannte: unter diesem Namen), z. B. den
+## Schnellspielstand vor F9.
+func has(kind: SaveGame.Kind, name := "") -> bool:
+	return FileAccess.file_exists(path_for(kind, name.strip_edges()))
 
 
 ## Löscht die Datei des Spielstands (auch beschädigte und veraltete); liefert den Fehler ("" = gelöscht).
@@ -108,11 +116,8 @@ func delete(save: SaveGame) -> String:
 ## Pfad der Datei für diese Art; benannte Spielstände bekommen einen gültigen Dateinamen aus dem
 ## Namen (ohne Unterschied von Groß- und Kleinschreibung, wie auf dem Mac).
 func path_for(kind: SaveGame.Kind, name := "") -> String:
-	match kind:
-		SaveGame.Kind.QUICK:
-			return _dir + QUICK_FILE
-		SaveGame.Kind.AUTO:
-			return _dir + AUTO_FILE
+	if FIXED_KINDS.has(kind):
+		return _dir + str(FIXED_KINDS[kind]["file"])
 	return _dir + NAMED_PREFIX + name.to_lower().uri_encode().left(MAX_FILE_NAME) + EXTENSION
 
 
@@ -149,12 +154,7 @@ static func read(path: String, with_world := true) -> SaveGame:
 
 
 static func _display_name(kind: SaveGame.Kind, name: String) -> String:
-	match kind:
-		SaveGame.Kind.QUICK:
-			return QUICK_NAME
-		SaveGame.Kind.AUTO:
-			return AUTO_NAME
-	return name
+	return str(FIXED_KINDS[kind]["name"]) if FIXED_KINDS.has(kind) else name
 
 
 static func _store_block(file: FileAccess, bytes: PackedByteArray) -> void:
