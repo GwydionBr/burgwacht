@@ -73,11 +73,6 @@ static func from_dict(raw: Dictionary) -> SoundData:
 	return data
 
 
-## Zahl der Varianten eines Anlasses.
-func variant_count(occasion: String) -> int:
-	return sound(occasion).files.size()
-
-
 ## Die Tondatei einer Variante (0 = erste).
 func file_of(occasion: String, variant: int) -> String:
 	return sound(occasion).files[variant]

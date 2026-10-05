@@ -6,7 +6,7 @@ extends TestCase
 func test_game_data_is_valid() -> void:
 	var data := SoundData.load_file()
 	assert_eq(data.error, "", "Fehler der Geräuschdatei:")
-	assert_eq(data.variant_count("button"), 3, "Varianten des Knopfs:")
+	assert_eq(data.sound("button").files.size(), 3, "Varianten des Knopfs:")
 	assert_eq(data.file_of("trade", 0), "res://assets/audio/sounds/trade/trade_1.ogg", "erste Variante des Handels:")
 
 

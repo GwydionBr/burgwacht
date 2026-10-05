@@ -29,7 +29,7 @@ func test_button_press_wishes_button_sound() -> void:
 	var wish := _wishes[0]
 	assert_eq(wish.volume, _data.sound("button").volume, "Lautstärkefaktor = Grundlautstärke:")
 	assert_eq(wish.pan, 0.0, "Panorama:")
-	assert_true(wish.variant >= 0 and wish.variant < _data.variant_count("button"), "Variante %d" % wish.variant)
+	assert_true(wish.variant >= 0 and wish.variant < _data.sound("button").files.size(), "Variante %d" % wish.variant)
 	assert_true(absf(wish.pitch - 1.0) <= _data.pitch_variation, "Tonhöhe %f" % wish.pitch)
 
 
@@ -55,7 +55,7 @@ func test_variant_and_pitch_follow_the_seed() -> void:
 		variants[int(wish.x)] = true
 		pitches[wish.y] = true
 		assert_true(absf(wish.y - 1.0) <= _data.pitch_variation, "Tonhöhe %f innerhalb der Schwankung" % wish.y)
-	assert_eq(variants.size(), _data.variant_count("button"), "verschiedene Varianten in 20 Wünschen:")
+	assert_eq(variants.size(), _data.sound("button").files.size(), "verschiedene Varianten in 20 Wünschen:")
 	assert_true(pitches.size() > 1, "Tonhöhe schwankt")
 
 
