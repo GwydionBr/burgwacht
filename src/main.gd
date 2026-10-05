@@ -261,10 +261,6 @@ func _ready() -> void:
 		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
 
 
-func _exit_tree() -> void:
-	get_tree().set_auto_accept_quit(true)
-
-
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_quit()
@@ -277,7 +273,7 @@ func _leave_to_main_menu() -> void:
 
 ## „Beenden“ aus Spielmenü und Niederlage-Ansicht, ebenso ⌘Q und das Schließen des Fensters.
 func _quit() -> void:
-	_leave_match("Burgwacht beenden?", get_tree().quit)
+	_leave_match("Burgwacht beenden?", SoundOutput.shared().quit)
 
 
 ## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es

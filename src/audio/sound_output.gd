@@ -23,6 +23,9 @@ extends Node
 const PLAYER_COUNT := 16
 ## Sekunden, die eine Überblendung beim Wechsel der Musikrolle dauert.
 const MUSIC_FADE_SECONDS := 2.0
+## Sekunden zwischen dem Anhalten aller Abspieler und dem Beenden (quit()): So lange braucht der
+## Audio-Server, um angehaltene Tondateien freizugeben (ein Mischdurchgang und ein Frame).
+const QUIT_DELAY_SECONDS := 0.1
 const DUMMY_DRIVER := "Dummy"
 
 static var _shared: SoundOutput
@@ -46,6 +49,8 @@ var _music_role := ""
 var _music: AudioStreamPlayer
 ## Das laufende Musikstück (Tondatei), damit das nächste nicht dasselbe ist.
 var _music_piece := ""
+## Verstummt (_silence()): Ab jetzt spielt sie nichts mehr, das Programm endet gleich.
+var _silent := false
 
 
 ## Die Tonausgabe des laufenden Spiels, beim ersten Aufruf angelegt (Hauptmenü und Partie rufen
@@ -86,9 +91,26 @@ func _process(_delta: float) -> void:
 		_switch_music(role)
 
 
-## Beim Beenden hält jeder Abspieler an und lässt seine Tondatei los; sonst gäbe der Audio-Server
-## laufende Musikstücke nicht mehr frei.
+## Beendet das Spiel („Beenden“, ⌘Q, Fenster schließen): Erst verstummt aller Ton, dann endet
+## das Programm nach QUIT_DELAY_SECONDS. Der Audio-Server gibt angehaltene Geräusche und
+## Musikstücke erst im nächsten Mischdurchgang frei; ein sofortiges SceneTree.quit() mitten in
+## einem Geräusch meldete sie mit echtem Treiber als „resources still in use“.
+func quit() -> void:
+	_silence()
+	await get_tree().create_timer(QUIT_DELAY_SECONDS, true, false, true).timeout
+	get_tree().quit()
+
+
+## Endet das Programm ohne quit() (etwa mit --quit-after), hält sie wenigstens alle Abspieler an;
+## ob der Audio-Server sie dann noch freigibt, ist nicht sicher.
 func _exit_tree() -> void:
+	_silence()
+
+
+## Hält jeden Abspieler an (auch ausblendende Musik) und lässt seine Tondatei los.
+func _silence() -> void:
+	_silent = true
+	set_process(false)
 	for player: AudioStreamPlayer in find_children("", "AudioStreamPlayer", false, false):
 		player.stop()
 		player.stream = null
@@ -116,7 +138,8 @@ func _add_pan_bus(bus_name: String) -> StringName:
 func _play(wish: SoundWish) -> void:
 	# Der Dummy-Treiber (headless, Screenshots) mischt nicht: Dort bliebe jedes Geräusch ewig
 	# „laufend“ und über das Programmende hängen, also spielt sie dort nichts.
-	var index := _free_player() if is_inside_tree() and AudioServer.get_driver_name() != DUMMY_DRIVER else -1
+	var audible := is_inside_tree() and not _silent and AudioServer.get_driver_name() != DUMMY_DRIVER
+	var index := _free_player() if audible else -1
 	if index == -1:
 		director.sound_finished(wish)
 		return
@@ -166,7 +189,7 @@ func _play_piece(piece: String) -> void:
 	# Mit dem Dummy-Audiotreiber (headless, Screenshots) ist nichts zu hören, und ein gestartetes
 	# Musikstück gäbe der Audio-Server beim Beenden oft nicht mehr frei (Fehler im Rauchtest).
 	# Überblendung und Wiedergabeliste laufen trotzdem durch.
-	if AudioServer.get_driver_name() != DUMMY_DRIVER:
+	if not _silent and AudioServer.get_driver_name() != DUMMY_DRIVER:
 		_music.play()
 
 

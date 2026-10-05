@@ -56,6 +56,8 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
 	Settings.shared().follow_window(get_window())
+	# ⌘Q und das Schließen des Fensters beenden über die Tonausgabe (_notification()).
+	get_tree().set_auto_accept_quit(false)
 	# Ohne Partie läuft die Menümusik.
 	SoundOutput.shared().director.world = null
 	if args.has("scenario_select"):
@@ -68,6 +70,11 @@ func _ready() -> void:
 		_open_load_view()
 	if args.has("screenshot"):
 		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		SoundOutput.shared().quit()
 
 
 func _process(delta: float) -> void:
@@ -98,7 +105,7 @@ func _build_menu() -> void:
 	_menu.add_entry("Neue Partie", _open_scenario_select.bind(Scenario.DEFAULT))
 	_menu.add_entry("Laden", _open_load_view)
 	_menu.add_entry("Einstellungen", _open_settings)
-	_menu.add_entry("Beenden", get_tree().quit)
+	_menu.add_entry("Beenden", SoundOutput.shared().quit)
 	_add_centered(_menu)
 
 
