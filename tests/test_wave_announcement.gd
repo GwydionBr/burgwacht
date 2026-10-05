@@ -159,3 +159,18 @@ func test_after_the_debug_wave_the_next_announcement_begins_at_once() -> void:
 	assert_eq([world.get_announced_side(), world.get_announced_ticks()], ["south", 2 * DAY], "Sofort, ohne Takt:")
 	assert_eq(notices.filter(func(text: String) -> bool: return text.begins_with("Welle")),
 			["Welle aus Osten!", "Welle aus Süden in 2 Tagen"], "Meldungen:")
+
+
+## Das Signal zum Beginn einer Ankündigung (für das Horn): je Ankündigung genau einmal, mit ihrer
+## Seite; ihr Ende mit dem Erscheinen meldet es nicht.
+func test_start_of_an_announcement_is_signalled_once_with_its_side() -> void:
+	var world := _founded([{"day": 3, "enemies": {"bandit": 1}, "side": "east"},
+			{"day": 4, "enemies": {"bandit": 1}, "side": "south"}])
+	var sides: Array[String] = []
+	world.wave_announced.connect(sides.append)
+	_run_world(world, DAY)
+	assert_eq(sides, ["east"] as Array[String], "Tag 2:")
+	_run_world(world, DAY)
+	assert_eq(sides, ["east", "south"] as Array[String], "Tag 3, Welle 1 erschienen:")
+	_run_world(world, DAY)
+	assert_eq(sides, ["east", "south"] as Array[String], "Tag 4, Welle 2 erschienen:")
