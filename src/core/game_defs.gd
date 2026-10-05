@@ -47,19 +47,21 @@ static func get_instance() -> GameDefs:
 	return _instance
 
 
-## Pfad des Bilds eines Eintrags (Gelände, Vorkommen, Gebäude, Einheit); leer ohne "sprite".
-static func sprite_path(entry: Dictionary) -> String:
-	return _sprite_file(entry, "")
+## Pfad des Bilds eines Eintrags; leer ohne "sprite". Die Variante wird modulo "sprite_variants" gewählt.
+static func sprite_path(entry: Dictionary, variant: int = 0) -> String:
+	return _sprite_file(entry, "", variant)
 
 
-## Pfad des Schattenbilds eines Eintrags; leer ohne "sprite".
-static func shadow_path(entry: Dictionary) -> String:
-	return _sprite_file(entry, SHADOW_SUFFIX)
+## Pfad des Schattenbilds derselben Variante; leer ohne "sprite".
+static func shadow_path(entry: Dictionary, variant: int = 0) -> String:
+	return _sprite_file(entry, SHADOW_SUFFIX, variant)
 
 
 ## Pfad zu "sprite" eines Eintrags mit angehängtem Suffix und Endung; leer ohne "sprite".
-static func _sprite_file(entry: Dictionary, suffix: String) -> String:
-	return SPRITE_DIR + str(entry["sprite"]) + suffix + ".png" if entry.has("sprite") else ""
+static func _sprite_file(entry: Dictionary, suffix: String, variant: int) -> String:
+	var index := posmod(variant, int(entry.get("sprite_variants", 1)))
+	var variant_suffix := "_%d" % index if index > 0 else ""
+	return SPRITE_DIR + str(entry["sprite"]) + variant_suffix + suffix + ".png" if entry.has("sprite") else ""
 
 
 ## Prüft das Feld "sprite" aller Einträge (ID → Dictionary) einer Datendatei: ein Text ohne Endung,
@@ -79,11 +81,15 @@ static func _sprite_error(entry: Dictionary) -> String:
 	var value: Variant = entry["sprite"]
 	if not value is String or str(value) == "" or str(value).ends_with(".png"):
 		return SPRITE_TYPE_ERROR
+	var count: Variant = entry.get("sprite_variants", 1)
+	if not (count is int or count is float) or float(count) < 1 or float(count) != floor(float(count)):
+		return "„sprite_variants“ muss eine positive ganze Zahl sein"
 	# ResourceLoader statt FileAccess: In der exportierten App liegen nur die importierten Dateien.
-	if not ResourceLoader.exists(sprite_path(entry)):
-		return "Bild %s fehlt" % sprite_path(entry)
-	if not ResourceLoader.exists(shadow_path(entry)):
-		return "Schatten %s fehlt" % shadow_path(entry)
+	for variant in int(count):
+		if not ResourceLoader.exists(sprite_path(entry, variant)):
+			return "Bild %s fehlt" % sprite_path(entry, variant)
+		if not ResourceLoader.exists(shadow_path(entry, variant)):
+			return "Schatten %s fehlt" % shadow_path(entry, variant)
 	return ""
 
 

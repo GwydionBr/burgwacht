@@ -1,0 +1,13 @@
+{
+  "parts": [
+    {
+      "model": "kenney-nature/tree_detailed.glb",
+      "scale": 0.8,
+      "rotation": 45,
+      "recolor": {
+        "white": "leaf_light",
+        "plaster": "wood_dark"
+      }
+    }
+  ]
+}

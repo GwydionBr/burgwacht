@@ -1,0 +1,14 @@
+{
+  "parts": [
+    {
+      "model": "kenney-nature/tree_pineRoundA.glb",
+      "scale": 0.85,
+      "rotation": 90,
+      "recolor": {
+        "white": "leaf_dark",
+        "plaster": "wood_dark",
+        "stone_light": "leaf_dark"
+      }
+    }
+  ]
+}

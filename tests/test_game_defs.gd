@@ -48,3 +48,22 @@ func test_missing_shadow_file_is_named() -> void:
 	var entries := {"house": {"sprite": "buildings/house_shadow"}}
 	assert_eq(GameDefs.sprites_error("buildings.json", entries),
 			"buildings.json, „house“: Schatten res://assets/sprites/buildings/house_shadow_shadow.png fehlt", "Fehler:")
+
+
+func test_sprite_variant_count_must_be_a_positive_integer() -> void:
+	for value: Variant in [0, -1, 1.5, "4", true]:
+		var entries := {"tree": {"sprite": "buildings/house", "sprite_variants": value}}
+		assert_eq(GameDefs.sprites_error("deposits.json", entries),
+				"deposits.json, „tree“: „sprite_variants“ muss eine positive ganze Zahl sein", "Fehler:")
+
+
+func test_missing_variant_sprite_is_named() -> void:
+	var entries := {"tree": {"sprite": "buildings/house", "sprite_variants": 2}}
+	assert_eq(GameDefs.sprites_error("deposits.json", entries),
+			"deposits.json, „tree“: Bild res://assets/sprites/buildings/house_1.png fehlt", "Fehler:")
+
+
+func test_sprite_paths_choose_variant_and_wrap_seed() -> void:
+	var entry := {"sprite": "deposits/tree", "sprite_variants": 4}
+	assert_eq(GameDefs.sprite_path(entry, 5), "res://assets/sprites/deposits/tree_1.png", "Variante:")
+	assert_eq(GameDefs.shadow_path(entry, 7), "res://assets/sprites/deposits/tree_3_shadow.png", "Schatten:")
