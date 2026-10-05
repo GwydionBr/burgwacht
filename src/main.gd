@@ -29,8 +29,9 @@ extends Node2D
 ##   --save_as=Name        Speichern-Ansicht mit diesem Namen abgeschickt, bei belegtem Namen mit Rückfrage (für Screenshots)
 ##   --load_view           Ladeansicht geöffnet (für Screenshots)
 ##   --settings            Einstellungen aus dem Spielmenü geöffnet (für Screenshots)
+##   --leave               „Zum Hauptmenü“ gewählt: Rückfrage bei ungespeichertem Fortschritt (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
-##   --saves=demo         Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
+##   --saves=demo          Spielstände in einem Wegwerf-Ordner mit Beispielen statt user://saves/ (empty: leer)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
 ## F5 überschreibt den Schnellspielstand (user://saves/), F9 lädt ihn; in der Gründung und nach der
@@ -259,15 +260,16 @@ func _notification(what: int) -> void:
 		_leave_match("Burgwacht beenden?", get_tree().quit)
 
 
-## Verlässt die Partie mit dieser Aktion; gibt es ungespeicherten Fortschritt, erst nach der
-## Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür öffnet sie das Spielmenü, damit die Zeit steht.
-func _leave_match(question: String, action: Callable) -> void:
+## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es
+## ungespeicherten Fortschritt, erst nach der Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür
+## öffnet sie das Spielmenü, damit die Zeit steht.
+func _leave_match(question: String, leave: Callable) -> void:
 	if not _match.has_unsaved_progress():
-		action.call()
+		leave.call()
 		return
 	if not _game_menu.is_open() and not _settings_view.is_open():
 		_open_game_menu()
-	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", action)
+	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", leave)
 
 
 func _process(_delta: float) -> void:

@@ -1,9 +1,9 @@
 class_name ConfirmDialog
 extends CanvasLayer
-## Eine Rückfrage über allem, im Holz-Gold-Stil der Menüs: die Frage, ein Knopf, der die Aktion
-## ausführt (z. B. „Überschreiben“, „Löschen“, „Verwerfen“), und einer, der abbricht (auch Esc).
+## Eine Rückfrage über allem, im Holz-Gold-Stil der Menüs: die Frage, ein Knopf, der bestätigt
+## (z. B. „Überschreiben“, „Löschen“, „Verwerfen“), und einer, der abbricht (auch Esc).
 ## Eine Abdunkelung fängt solange alle Klicks ab. Wiederverwendbar: ask() setzt Frage, Knöpfe und
-## die Aktion jedes Mal neu.
+## das, was beim Bestätigen geschieht, jedes Mal neu.
 
 const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.5)
 const TEXT_WIDTH := 440.0
