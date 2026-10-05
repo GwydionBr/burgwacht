@@ -3,6 +3,10 @@
 		"name": "Hauptmenü über der schwenkenden Karte",
 		"args": ["--menu"]
 	},
+	"game_menu": {
+		"name": "Spielmenü (Esc) mit Szenario und Seed",
+		"args": ["--seed=1", "--days=1", "--game_menu"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]

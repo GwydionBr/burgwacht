@@ -5,7 +5,7 @@ extends Node2D
 ## einer Startbeschreibung.
 ##
 ## Wird mit Startparametern gestartet (siehe main.gd), geht es ohne Hauptmenü gleich in die
-## Partie, die die Parameter selbst liest. Ausnahmen:
+## Partie, die die Parameter selbst liest (nur einmal, siehe MatchScene.args_used). Ausnahmen:
 ##   --menu                Hauptmenü trotzdem zeigen (Preset main_menu)
 ##   --screenshot=pfad.png Bild des Hauptmenüs speichern und beenden (nur mit --menu)
 
@@ -27,7 +27,8 @@ var _pan_time := 0.0
 
 
 func _ready() -> void:
-	var args := Presets.user_args()
+	# Hat die Partie die Startparameter schon gelesen, führt „Zum Hauptmenü“ hierher zurück.
+	var args := {} if MatchScene.args_used else Presets.user_args()
 	if not args.is_empty() and not args.has("menu"):
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return

@@ -8,6 +8,7 @@ const ENTRY_SIZE := Vector2(300, 48)
 const ENTRY_FONT_SIZE := 20
 
 var _entries: VBoxContainer
+var _subtitle: Label
 
 
 func _init(title: String, subtitle := "") -> void:
@@ -19,14 +20,21 @@ func _init(title: String, subtitle := "") -> void:
 	column.add_theme_constant_override("separation", 10)
 	add_child(column)
 	column.add_child(_make_label(title, UiStyle.GOLD_COLOR, 44))
-	if subtitle != "":
-		column.add_child(_make_label(subtitle, UiStyle.HINT_COLOR, 16))
+	_subtitle = _make_label("", UiStyle.HINT_COLOR, 16)
+	column.add_child(_subtitle)
+	set_subtitle(subtitle)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 14)
 	column.add_child(gap)
 	_entries = VBoxContainer.new()
 	_entries.add_theme_constant_override("separation", 12)
 	column.add_child(_entries)
+
+
+## Ändert den Untertitel; leer blendet ihn aus.
+func set_subtitle(text: String) -> void:
+	_subtitle.text = text
+	_subtitle.visible = text != ""
 
 
 ## Hängt einen Knopf an, der action aufruft; der Knopf kommt zurück (z. B. zum Sperren).
