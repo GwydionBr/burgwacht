@@ -41,8 +41,9 @@ extends Node2D
 ## Ohne Werkzeug wählt ein Linksklick einen Soldaten (Ring), Linksziehen alle im Rahmen; ein
 ## Rechtsklick ohne Ziehen schickt die Auswahl per Befehl Angreifen auf den Feind unter der Maus,
 ## sonst per Befehl Bewegen dorthin – auf den Wehrgang, wenn unter der Maus Mauer, Tor oder Turm liegt –;
-## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
-## einen Räuber am Rand nächst dem Bergfried erscheinen, F7 die nächste Welle des Wellenplans.
+## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. Nur im Debug-Build:
+## N startet eine neue Karte, F8 lässt einen Räuber am Rand nächst dem Bergfried erscheinen,
+## F7 die nächste Welle des Wellenplans.
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
 ## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
@@ -368,8 +369,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_N:
-			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed.
-			_new_world(randi())
+			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed (nur im Debug-Build).
+			if OS.is_debug_build():
+				_new_world(randi())
 		KEY_SPACE:
 			_clock.toggle_pause()
 		KEY_1, KEY_2, KEY_3:
