@@ -10,7 +10,9 @@ Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt
 6. **Produktionsketten & Markt**: Weizen → Mühle → Bäcker; Eisen → Schmied → Waffen; Waffenkammer; Markt mit festen Preisen
 7. **Verteidigung**: Mauern, Türme und Tore (begehbar, Ebene); Kaserne wirbt Untätige mit Waffen zu Soldaten an; Soldaten auswählen, bewegen, angreifen
 8. **Angriffswellen**: Feinde aus `units.json`; Wellenplan im Szenario mit Schonfrist und Steigerungsformel; Ankündigung mit Richtung und Countdown; Räuber (Nahkampf) und Wilderer (Fernkampf); Feinde laufen zum Bergfried und greifen Hindernisse an; Gebäude haben Lebenspunkte; Niederlage, wenn der Bergfried fällt
-9. **Feinschliff**: Speichern/Laden im Menü, Hauptmenü und Szenarioauswahl, Sound, Sprites statt Platzhaltergrafik, macOS-Export (.app)
+9. **Menüs & Spielstände**: Hauptmenü, Szenarioauswahl, Spielmenü (Esc), Einstellungen; benannte Spielstände, Schnell- und Autospielstand; Rückfrage bei ungespeichertem Fortschritt; macOS-Export (.app)
+10. **Sound**: Geräusche und Musik, Lautstärke in den Einstellungen
+11. **Grafik**: Sprites statt prozedural gezeichneter Platzhaltergrafik
 
 ## Später denkbar
 
