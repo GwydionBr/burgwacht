@@ -56,7 +56,7 @@
       "group": "game"
     },
     "defeat": {
-      "files": ["sounds/defeat/defeat_1.ogg", "sounds/defeat/defeat_2.ogg"],
+      "files": ["sounds/defeat/defeat_1.ogg"],
       "volume": 1.0,
       "positional": false,
       "group": "game"
