@@ -70,6 +70,13 @@ func focus_on(world_pos: Vector2) -> void:
 	_clamp_to_bounds()
 
 
+## Setzt den Zoom (begrenzt auf ZOOM_MIN bis ZOOM_MAX), die Bildmitte bleibt.
+func set_zoom_level(level: float) -> void:
+	var clamped := clampf(level, ZOOM_MIN, ZOOM_MAX)
+	zoom = Vector2(clamped, clamped)
+	_clamp_to_bounds()
+
+
 func _move_by(offset: Vector2) -> void:
 	position += offset
 	_clamp_to_bounds()

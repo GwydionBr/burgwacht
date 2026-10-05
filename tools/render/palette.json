@@ -1,0 +1,23 @@
+{
+  "plaster": "#d9c7a0",
+  "white": "#ece3cf",
+  "stone_light": "#aaa395",
+  "stone": "#878075",
+  "stone_dark": "#5f5a52",
+  "wood_light": "#b27c4b",
+  "wood": "#8a5a35",
+  "wood_dark": "#5b3d24",
+  "roof_red": "#a04e34",
+  "roof_brown": "#7a4b30",
+  "thatch": "#b8954f",
+  "leaf_light": "#72964a",
+  "leaf": "#4f7a3a",
+  "leaf_dark": "#36582a",
+  "cloth_red": "#9c3a2c",
+  "cloth_blue": "#41618a",
+  "gold": "#d1a548",
+  "metal": "#6b6f73",
+  "water": "#4d7f99",
+  "sand": "#cdb47e",
+  "dark": "#2b2621"
+}

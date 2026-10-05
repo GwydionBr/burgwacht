@@ -1,9 +1,18 @@
 class_name GameDefs
 extends RefCounted
 ## Spielinhalte (Gelände, Vorkommen, Waren, Gebäude, Kategorien der Bauleiste, Einheiten, Bevölkerung, Markt) aus den JSON-Dateien in res://data.
-## Neue Inhalte werden dort eingetragen, nicht im Code.
+## Neue Inhalte werden dort eingetragen, nicht im Code. Gelände, Vorkommen, Gebäude und Einheiten
+## dürfen ein Feld "sprite" haben (Bild samt Schatten); es wird beim Laden geprüft, ein Fehler steht
+## dann in `error` und wird als Fehler gemeldet.
 
 const DATA_DIR := "res://data/"
+## Sprites stehen in den Daten ("sprite") relativ zu diesem Ordner und ohne Endung; der Schatten
+## liegt daneben mit SHADOW_SUFFIX (gerendert mit tools/render.sh).
+const SPRITE_DIR := "res://assets/sprites/"
+const SHADOW_SUFFIX := "_shadow"
+## Datendateien, deren Einträge ein Feld "sprite" haben dürfen.
+const SPRITE_FILES: Array[String] = ["terrain.json", "deposits.json", "buildings.json", "units.json"]
+const SPRITE_TYPE_ERROR := "„sprite“ muss der Pfad eines Bilds sein (Text, ohne .png)"
 
 static var _instance: GameDefs
 
@@ -19,6 +28,8 @@ var units: Dictionary = {}
 var population: Dictionary = {}
 ## Regelwerte des Markts: Einheiten je Handel.
 var market: Dictionary = {}
+## Leer, wenn die Spieldaten gültig sind; sonst der Grund.
+var error := ""
 
 
 static func get_instance() -> GameDefs:
@@ -32,7 +43,54 @@ static func get_instance() -> GameDefs:
 		_instance.units = _load_json("units.json")
 		_instance.population = _load_json("population.json")
 		_instance.market = _load_json("market.json")
+		_instance.error = _instance._sprites_error()
+		if _instance.error != "":
+			push_error("Spieldaten: " + _instance.error)
 	return _instance
+
+
+## Pfad des Bilds eines Eintrags (Gelände, Vorkommen, Gebäude, Einheit); leer ohne "sprite".
+static func sprite_path(entry: Dictionary) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + ".png" if entry.has("sprite") else ""
+
+
+## Pfad des Schattenbilds eines Eintrags; leer ohne "sprite".
+static func shadow_path(entry: Dictionary) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + SHADOW_SUFFIX + ".png" if entry.has("sprite") else ""
+
+
+## Prüft das Feld "sprite" aller Einträge (ID → Dictionary) einer Datendatei: ein Text ohne Endung,
+## Bild und Schatten vorhanden. Leer, wenn alles stimmt; sonst der Grund mit Datei und Eintrag.
+static func sprites_error(file_name: String, entries: Dictionary) -> String:
+	for id: String in entries:
+		var entry: Variant = entries[id]
+		if not entry is Dictionary or not (entry as Dictionary).has("sprite"):
+			continue
+		var reason := _sprite_error(entry)
+		if reason != "":
+			return "%s, „%s“: %s" % [file_name, id, reason]
+	return ""
+
+
+static func _sprite_error(entry: Dictionary) -> String:
+	var value: Variant = entry["sprite"]
+	if not value is String or str(value) == "" or str(value).ends_with(".png"):
+		return SPRITE_TYPE_ERROR
+	# ResourceLoader statt FileAccess: In der exportierten App liegen nur die importierten Dateien.
+	if not ResourceLoader.exists(sprite_path(entry)):
+		return "Bild %s fehlt" % sprite_path(entry)
+	if not ResourceLoader.exists(shadow_path(entry)):
+		return "Schatten %s fehlt" % shadow_path(entry)
+	return ""
+
+
+func _sprites_error() -> String:
+	var sections := [terrain, deposits, buildings, units]
+	for i in SPRITE_FILES.size():
+		var reason := sprites_error(SPRITE_FILES[i], sections[i])
+		if reason != "":
+			return reason
+	return ""
 
 
 static func _load_json(file_name: String) -> Dictionary:

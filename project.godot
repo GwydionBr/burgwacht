@@ -28,3 +28,9 @@ gdscript/warnings/untyped_declaration=2
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/presets/plugin.cfg")
+
+[importer_defaults]
+
+texture={
+"mipmaps/generate": true
+}

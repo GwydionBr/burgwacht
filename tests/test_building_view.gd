@@ -31,3 +31,40 @@ func test_figure_beside_keep_is_not_covered() -> void:
 
 func test_campfire_covers_nothing() -> void:
 	assert_true(not _covers("campfire", Vector2i(10, 9)), "hinter dem Lagerfeuer:")
+
+
+## Gebäude mit Sprite verdecken nach dem Umriss ihres Bilds, nicht nach dem Block: Über dem Block
+## eines gleich großen Gebäudes ohne Sprite (Jäger) ragt das Dach des Wohnhauses noch auf.
+func test_figure_behind_house_roof_is_covered() -> void:
+	var behind_roof := Vector2i(8, 9)
+	assert_true(_covers("house", behind_roof), "hinter dem Dach des Wohnhauses:")
+	assert_false(_covers("hunter", behind_roof), "über dem Block des Jägers:")
+
+
+func test_figure_in_front_of_house_is_not_covered() -> void:
+	assert_false(_covers("house", Vector2i(11, 13)), "vor der linken Wand:")
+	assert_false(_covers("house", Vector2i(13, 11)), "vor der rechten Wand:")
+
+
+func test_house_shows_its_sprite_and_shadow() -> void:
+	var shadows := Node2D.new()
+	var view := BuildingView.new()
+	view.setup(Building.create(1, "house", KEEP_ORIGIN), shadows)
+	var sprite := view.get_sprite()
+	assert_true(sprite != null, "Bild fehlt")
+	assert_eq(sprite.texture.resource_path, "res://assets/sprites/buildings/house.png", "Bild:")
+	assert_eq(sprite.global_position, Iso.point_to_world(Vector2(KEEP_ORIGIN) + Vector2(0.5, 0.5)), "Mitte des Bilds:")
+	assert_eq(shadows.get_child_count(), 1, "Schatten in der Bodenebene:")
+	var shadow: Sprite2D = shadows.get_child(0)
+	assert_eq(shadow.texture.resource_path, "res://assets/sprites/buildings/house_shadow.png", "Schatten:")
+	assert_eq(shadow.global_position, sprite.global_position, "Schatten an derselben Stelle:")
+	view.free()
+	assert_true(shadow.is_queued_for_deletion(), "Schatten verschwindet mit dem Gebäude")
+	shadows.free()
+
+
+func test_type_without_sprite_has_no_sprite() -> void:
+	var view := BuildingView.new()
+	view.setup(Building.create(1, "keep", KEEP_ORIGIN))
+	assert_true(view.get_sprite() == null, "Bergfried ohne Sprite:")
+	view.free()
