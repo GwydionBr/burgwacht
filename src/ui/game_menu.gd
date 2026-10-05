@@ -6,9 +6,6 @@ extends CanvasLayer
 ## wie Speichern oder Laden zeigt show_view() an Stelle des Menüs, close_view() kehrt zurück.
 ## Ob die Zeit steht und Tasten wirken, regelt main.gd beim Öffnen und Schließen.
 
-const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.45)
-
-var _dim: ColorRect
 var _panel: MenuPanel
 ## Die Ansicht an Stelle des Menüs (in einem CenterContainer), sonst null.
 var _view_holder: CenterContainer
@@ -17,11 +14,7 @@ var _view_holder: CenterContainer
 func _init() -> void:
 	layer = 2
 	visible = false
-	_dim = ColorRect.new()
-	_dim.color = DIM_COLOR
-	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_dim)
-	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	MenuPanel.add_dim(self)
 	_panel = MenuPanel.new("Spielmenü")
 	add_child(_panel)
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)

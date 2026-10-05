@@ -2,11 +2,14 @@ class_name MenuPanel
 extends PanelContainer
 ## Ein Menü im Holz-Gold-Stil der Oberfläche: Titel, Untertitel und eine senkrechte Liste
 ## gleich breiter Knöpfe. Hauptmenü und Spielmenü bauen sich daraus; weitere Einträge kommen
-## mit add_entry() dazu, andere Bedienelemente mit add_control(). Rahmen, Knöpfe und
-## Beschriftungen gibt es auch einzeln für Ansichten mit eigenem Aufbau (Szenarioauswahl).
+## mit add_entry() dazu, andere Bedienelemente mit add_control(). Rahmen, Knöpfe, Beschriftungen,
+## Textfelder und die Abdunkelung gibt es auch einzeln für Ansichten mit eigenem Aufbau (siehe
+## MenuView, Einstellungen, Rückfrage).
 
 const ENTRY_SIZE := Vector2(300, 48)
 const ENTRY_FONT_SIZE := 20
+## Abdunkelung der Partie hinter Menüs und Ansichten.
+const DIM_COLOR := Color(0.0, 0.0, 0.0, 0.45)
 
 var _entries: VBoxContainer
 var _subtitle: Label
@@ -80,3 +83,40 @@ static func make_label(text: String, color: Color, font_size: int) -> Label:
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_font_size_override("font_size", font_size)
 	return label
+
+
+## Eine linksbündige Beschriftung; wrap bricht lange Texte um.
+static func make_text(text: String, color: Color, font_size: int, wrap := false) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if wrap:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", font_size)
+	return label
+
+
+## Ein Textfeld im Stil der Menüs: dunkler Grund, Goldrand mit Fokus, schreibgeschützt blasser.
+static func make_field(font_size: int) -> LineEdit:
+	var field := LineEdit.new()
+	field.add_theme_font_size_override("font_size", font_size)
+	field.add_theme_stylebox_override("normal", UiStyle.card_style(Color(0, 0, 0, 0.45), UiStyle.PANEL_BORDER_COLOR))
+	field.add_theme_stylebox_override("focus", UiStyle.card_style(Color(0, 0, 0, 0), UiStyle.GOLD_COLOR, 2))
+	field.add_theme_stylebox_override("read_only", UiStyle.card_style(Color(0, 0, 0, 0.25), UiStyle.PANEL_BORDER_COLOR.darkened(0.4)))
+	field.add_theme_color_override("font_color", UiStyle.TEXT_COLOR)
+	field.add_theme_color_override("font_placeholder_color", UiStyle.HINT_COLOR.darkened(0.2))
+	field.add_theme_color_override("caret_color", UiStyle.GOLD_COLOR)
+	field.add_theme_color_override("selection_color", UiStyle.GOLD_COLOR.darkened(0.5))
+	return field
+
+
+## Legt eine Abdunkelung über den ganzen Schirm in parent, die alle Klicks darunter abfängt
+## (auf Karte und HUD); transparent fängt sie nur.
+static func add_dim(parent: Node, color := DIM_COLOR) -> ColorRect:
+	var dim := ColorRect.new()
+	dim.color = color
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	parent.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return dim
