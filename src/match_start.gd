@@ -5,6 +5,9 @@ extends RefCounted
 
 enum Kind { SCENARIO, SAVE, SETUP }
 
+## Größter eintippbarer Seed: so groß wie die zufälligen (randi()).
+const MAX_SEED := 4294967295
+
 var kind := Kind.SCENARIO
 ## Szenario aus dem Szenario-Ordner (nur bei SCENARIO).
 var scenario_id := Scenario.DEFAULT
@@ -31,6 +34,27 @@ static func from_scenario_with_seed(id: String, seed_value: int) -> MatchStart:
 	start.map_seed = seed_value
 	start.has_seed = true
 	return start
+
+
+## Neue Partie mit dem eingetippten Seed (Szenarioauswahl); leer oder nur Leerzeichen heißt:
+## der Seed des Szenarios (bei „random“ ein zufälliger). Vorher mit seed_error() prüfen.
+static func from_seed_text(id: String, text: String) -> MatchStart:
+	var trimmed := text.strip_edges()
+	return from_scenario(id) if trimmed == "" else from_scenario_with_seed(id, trimmed.to_int())
+
+
+## Warum der eingetippte Seed nicht geht; leer = in Ordnung (auch ohne Eingabe, dann zufällig).
+## Gültig sind ganze Zahlen von 0 bis MAX_SEED.
+static func seed_error(text: String) -> String:
+	var trimmed := text.strip_edges()
+	if trimmed == "":
+		return ""
+	var digits_only := trimmed.length() <= str(MAX_SEED).length()
+	for character in trimmed:
+		digits_only = digits_only and character >= "0" and character <= "9"
+	if not digits_only or trimmed.to_int() > MAX_SEED:
+		return "Der Seed muss eine ganze Zahl von 0 bis %d sein." % MAX_SEED
+	return ""
 
 
 ## Die Partie aus dieser Spielstand-Datei fortsetzen.
