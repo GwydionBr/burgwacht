@@ -49,8 +49,9 @@ extends Node2D
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
 ## Ist nichts mehr davon offen (Auswahl, Ansichten, Werkzeug), öffnet Esc das Spielmenü: Die Zeit
 ## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
-## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag und die abgewehrten Wellen; „Neue Partie“ startet
-## dasselbe Szenario (bei zufälligem Seed eine neue Karte), „Beenden“ schließt das Spiel.
+## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag, die abgewehrten Wellen und den Seed;
+## „Neue Partie“ öffnet die Szenarioauswahl mit demselben Szenario, „Zum Hauptmenü“ wechselt ins
+## Hauptmenü, „Beenden“ schließt das Spiel. N (sofort eine neue Karte) wirkt nur im Debug-Build.
 
 
 ## Die Startparameter sind gelesen; das Hauptmenü wertet sie danach nicht mehr aus.
@@ -117,7 +118,8 @@ func _ready() -> void:
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
-	_hud.new_game_requested.connect(func() -> void: _start(MatchStart.from_scenario(_match.scenario.id)))
+	_hud.new_game_requested.connect(func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id))
+	_hud.main_menu_requested.connect(func() -> void: MainMenu.show_in(get_tree()))
 	_hud.quit_requested.connect(get_tree().quit)
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
@@ -386,8 +388,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_N:
-			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed.
-			_start(MatchStart.from_scenario_with_seed(_match.scenario.id, randi()))
+			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed (nur zum Entwickeln).
+			if OS.is_debug_build():
+				_start(MatchStart.from_scenario_with_seed(_match.scenario.id, randi()))
 		KEY_SPACE:
 			_clock.toggle_pause()
 		KEY_1, KEY_2, KEY_3:
@@ -547,7 +550,7 @@ func _on_defeated() -> void:
 	_hud.close_administration()
 	_hud.close_market()
 	_hud.set_build_bar_enabled(false)
-	_hud.show_defeat(world.get_day(), world.get_repelled_waves())
+	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
 
 
 ## Einträge des Spielmenüs; Speichern, Laden und Einstellungen kommen hier dazu.

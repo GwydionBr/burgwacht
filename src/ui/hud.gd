@@ -10,8 +10,8 @@ extends CanvasLayer
 ## sie ist zugleich die Bestandsübersicht. Die Kasernenansicht (Linksklick auf eine Kaserne) zeigt
 ## Untätige und Waffen und je Soldatentyp einen Knopf zum Anwerben. Verwaltung, Marktansicht und
 ## Kasernenansicht schließen sich gegenseitig. Nach der Niederlage liegt die Niederlage-Ansicht
-## über allem: „Der Bergfried ist gefallen“, der erreichte Tag und die Knöpfe „Neue Partie“ und
-## „Beenden“.
+## über allem: „Der Bergfried ist gefallen“, der erreichte Tag, der Seed der Karte und die Knöpfe
+## „Neue Partie“, „Zum Hauptmenü“ und „Beenden“.
 
 ## Ein Knopf der Bauleiste wurde gedrückt.
 signal build_selected(type_id: String)
@@ -27,6 +27,8 @@ signal trade_requested(good: String, buying: bool)
 signal recruit_requested(type_id: String)
 ## In der Niederlage-Ansicht wurde „Neue Partie“ gedrückt.
 signal new_game_requested()
+## In der Niederlage-Ansicht wurde „Zum Hauptmenü“ gedrückt.
+signal main_menu_requested()
 ## In der Niederlage-Ansicht wurde „Beenden“ gedrückt.
 signal quit_requested()
 
@@ -116,6 +118,8 @@ var _defeat_panel: PanelContainer
 var _defeat_dim: ColorRect
 ## Erreichter Tag und abgewehrte Wellen in der Niederlage-Ansicht.
 var _defeat_day_label: Label
+## Seed der Karte in der Niederlage-Ansicht.
+var _defeat_seed_label: Label
 
 
 func _ready() -> void:
@@ -152,7 +156,7 @@ func _ready() -> void:
 		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
 		+ "Soldaten: Linksklick/-ziehen wählen, Rechtsklick schickt sie hin bzw. greift an  ·  Esc: Auswahl aufheben\n"
 		+ "WASD/Pfeile, zwei Finger, Rechtsziehen: Kamera  ·  Pinch/Mausrad: zoomen\n"
-		+ "Leertaste: Pause  ·  1/2/3: Tempo  ·  N: neue Karte\n"
+		+ "Leertaste: Pause  ·  1/2/3: Tempo" + ("  ·  N: neue Karte" if OS.is_debug_build() else "") + "\n"
 		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
 		HINT_COLOR, 13))
 	add_child(help_panel)
@@ -222,10 +226,11 @@ func _ready() -> void:
 	_defeat_panel.visible = false
 
 
-## Zeigt die Niederlage-Ansicht mit dem erreichten Tag und den abgewehrten Wellen; das Spiel
-## dahinter wird abgedunkelt.
-func show_defeat(day: int, repelled_waves: int) -> void:
+## Zeigt die Niederlage-Ansicht mit dem erreichten Tag, den abgewehrten Wellen und dem Seed der
+## Karte; das Spiel dahinter wird abgedunkelt.
+func show_defeat(day: int, repelled_waves: int, map_seed: int) -> void:
 	_defeat_day_label.text = "Erreicht: Tag %d\nAbgewehrte Wellen: %d" % [day, repelled_waves]
+	_defeat_seed_label.text = "Karte: Seed %d" % map_seed
 	_defeat_panel.visible = true
 	_defeat_dim.visible = true
 	_defeat_panel.reset_size()
@@ -865,7 +870,8 @@ func _make_barracks_panel() -> PanelContainer:
 	return panel
 
 
-## Die Niederlage-Ansicht: Überschrift, erreichter Tag und die Knöpfe „Neue Partie“ und „Beenden“.
+## Die Niederlage-Ansicht: Überschrift, erreichter Tag, Seed und eine Reihe Knöpfe (je Eintrag
+## Text und Signal; weitere kommen einfach in die Liste).
 func _make_defeat_panel() -> PanelContainer:
 	var panel := _make_panel()
 	panel.custom_minimum_size = Vector2(460, 200)
@@ -879,18 +885,23 @@ func _make_defeat_panel() -> PanelContainer:
 	_defeat_day_label = _make_label("", TEXT_COLOR, 18)
 	_defeat_day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_defeat_day_label)
+	_defeat_seed_label = _make_label("", HINT_COLOR, 15)
+	_defeat_seed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_defeat_seed_label)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(row)
-	for entry: Array in [["Neue Partie", new_game_requested], ["Beenden", quit_requested]]:
-		var button := Button.new()
-		button.text = str(entry[0])
-		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_size_override("font_size", 16)
-		button.custom_minimum_size = Vector2(140, 0)
+	var entries: Array[Array] = [
+		["Neue Partie", new_game_requested],
+		["Zum Hauptmenü", main_menu_requested],
+		["Beenden", quit_requested],
+	]
+	for entry: Array in entries:
 		var pressed: Signal = entry[1]
-		button.pressed.connect(func() -> void: pressed.emit())
+		var button := MenuPanel.make_button(str(entry[0]), pressed.emit)
+		button.add_theme_font_size_override("font_size", 16)
+		button.custom_minimum_size = Vector2(150, 40)
 		row.add_child(button)
 	return panel
 

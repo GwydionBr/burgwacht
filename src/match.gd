@@ -9,7 +9,7 @@ extends RefCounted
 signal world_changed()
 
 var world: GameWorld
-## Das Szenario der Spielwelt; aus ihm entsteht auch eine neue Karte (Taste N, Niederlage).
+## Das Szenario der Spielwelt; aus ihm entsteht auch eine neue Karte (Taste N im Debug-Build).
 var scenario: Scenario
 ## Die Spielstände, in die save() schreibt.
 var saves: SaveGames
