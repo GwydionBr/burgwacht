@@ -53,3 +53,21 @@ func test_presets_and_screenshots_never_save_to_the_user_folder() -> void:
 		var saves := Presets.save_games_for(args)
 		assert_false(saves.path_for(SaveGame.Kind.AUTO).begins_with(SaveGames.DIR), "Nicht im Nutzerordner: %s" % args)
 		assert_eq(saves.list().size(), 0, "Leer bei %s:" % args)
+
+
+## Die Ton-Presets: Ihr Ereignis kommt erst nach dem Aufbau (sonst hörte die Tonregie es nicht),
+## aber gleich danach (LEAD Takte).
+func test_sound_presets_reach_their_event_shortly_after_start() -> void:
+	var cases := {
+		"wave_horn": func(world: GameWorld) -> bool: return world.get_announced_side() != "",
+		"wave_repelled": func(world: GameWorld) -> bool: return world.get_repelled_waves() > 0,
+		"keep_falling": func(world: GameWorld) -> bool: return world.is_defeated(),
+	}
+	for setup_id: String in cases:
+		var reached: Callable = cases[setup_id]
+		var setup: GDScript = load(Presets.setup_path(setup_id))
+		var world: GameWorld = setup.call("create")
+		assert_false(reached.call(world), "%s: noch nicht im Aufbau" % setup_id)
+		for i in int(setup.get("LEAD")):
+			world.step()
+		assert_true(reached.call(world), "%s: nach LEAD Takten eingetreten" % setup_id)

@@ -9,16 +9,22 @@ const TICKS := 180
 
 
 static func create() -> GameWorld:
+	var world := founded(2)
+	for i in TICKS:
+		world.step()
+	assert(world.get_announced_side() == "north", "Ankündigung läuft")
+	return world
+
+
+## Gleich nach der Gründung, die Welle aus Norden kommt an Tag wave_day (Vorwarnzeit 1 Tag).
+static func founded(wave_day: int) -> GameWorld:
 	var scenario := Scenario.from_dict("wave_announced", {
 		"name": "Angekündigte Welle", "map": {"width": 24, "height": 18}, "seed": 7,
 		"start_goods": {"wood": 100, "stone": 50}, "start_residents": 4,
-		"waves": {"list": [{"day": 2, "enemies": {"bandit": 3}, "side": "north"}]},
+		"waves": {"list": [{"day": wave_day, "enemies": {"bandit": 3}, "side": "north"}]},
 	})
 	assert(scenario.error == "", scenario.error)
 	var world := TestCase.new().clear_map(GameWorld.create(scenario, 7))
 	var reason := world.execute(Command.found(KEEP_ORIGIN))
 	assert(reason == "", "Gründung: %s" % reason)
-	for i in TICKS:
-		world.step()
-	assert(world.get_announced_side() == "north", "Ankündigung läuft")
 	return world
