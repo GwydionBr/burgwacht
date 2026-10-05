@@ -369,3 +369,36 @@ func test_negative_grace_days_are_invalid() -> void:
 	for grace_days: Variant in [-1, 2.5, "5"]:
 		var error := _error_for(_waves_data({"grace_days": grace_days}))
 		assert_true(error.contains("waves") and error.contains("grace_days"), "Schonfrist %s: %s" % [str(grace_days), error])
+
+
+func test_description_is_optional_text() -> void:
+	assert_eq(Scenario.from_dict("test", _valid_data()).description, "", "Ohne Feld keine Beschreibung:")
+	var data := _valid_data()
+	data["description"] = "Eine kleine Karte."
+	var scenario := Scenario.from_dict("test", data)
+	assert_eq(scenario.error, "", "Fehler:")
+	assert_eq(scenario.description, "Eine kleine Karte.", "Beschreibung:")
+
+
+func test_description_that_is_not_text_is_invalid() -> void:
+	for value: Variant in [3, ["Text"], {"de": "Text"}, null]:
+		var data := _valid_data()
+		data["description"] = value
+		assert_true(_error_for(data).contains("description"), "Beschreibung %s: %s" % [str(value), _error_for(data)])
+
+
+func test_list_shows_the_scenarios_of_the_game_data_only() -> void:
+	assert_eq(Scenario.list_ids(), PackedStringArray(["free_play"]), "Szenarien der Spieldaten:")
+
+
+func test_list_of_a_folder_is_sorted_and_has_only_json_files() -> void:
+	var ids := Scenario.list_ids(TEST_SCENARIO_DIR)
+	assert_true(ids.has("tiny") and ids.has("broken"), "Testszenarien fehlen: %s" % str(ids))
+	var sorted := ids.duplicate()
+	sorted.sort()
+	assert_eq(ids, sorted, "Sortierung:")
+	assert_eq(Scenario.list_ids("res://gibt_es_nicht/"), PackedStringArray(), "Fehlender Ordner:")
+
+
+func test_free_play_has_a_description() -> void:
+	assert_false(Scenario.load_named(Scenario.DEFAULT).description == "", "Das freie Spiel braucht eine Beschreibung")

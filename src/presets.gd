@@ -50,3 +50,29 @@ static func args_of(id: String) -> PackedStringArray:
 ## Pfad des Aufbau-Skripts für --setup=name.
 static func setup_path(setup_name: String) -> String:
 	return SETUP_DIR + setup_name + ".gd"
+
+
+## Startparameter als Name → Wert; die eines Presets (--preset= oder aus dem Editor über die
+## Umgebungsvariable ENV) zuerst, eigene Parameter überschreiben sie.
+static func user_args() -> Dictionary:
+	var own := _args_to_dict(OS.get_cmdline_user_args())
+	var preset := str(own.get("preset", OS.get_environment(ENV)))
+	if preset == "":
+		return own
+	var args := {}
+	if error() != "":
+		printerr("--preset: ", error())
+	elif not load_all().has(preset):
+		printerr("--preset: unbekannt: ", preset, " (vorhanden: ", ", ".join(load_all().keys()), ")")
+	else:
+		args = _args_to_dict(args_of(preset))
+	args.merge(own, true)
+	return args
+
+
+static func _args_to_dict(list: PackedStringArray) -> Dictionary:
+	var args := {}
+	for arg in list:
+		var parts := arg.trim_prefix("--").split("=", true, 1)
+		args[parts[0]] = parts[1] if parts.size() > 1 else ""
+	return args

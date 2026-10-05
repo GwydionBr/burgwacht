@@ -1,5 +1,6 @@
 {
   "name": "Freies Spiel",
+  "description": "Eine unberührte Karte ohne Ziel. Gründe deine Burg, baue eine Wirtschaft auf und halte so lange durch, wie du kannst: Nach zehn Tagen Schonfrist kommt alle drei Tage eine Welle Räuber, später auch Wilderer, jede stärker als die vorige.",
   "map": { "width": 100, "height": 100 },
   "seed": "random",
   "start_goods": { "wood": 100, "stone": 50, "apples": 40 },
