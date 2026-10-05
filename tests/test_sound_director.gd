@@ -269,32 +269,56 @@ func test_fifth_simultaneous_wish_of_an_occasion_is_dropped() -> void:
 	assert_eq(_occasions(), ["arrow_shot", "arrow_shot", "arrow_shot", "arrow_shot", "button", "arrow_shot"] as Array[String], "nach einem ausgeklungenen Pfeil wieder einer:")
 
 
+## Eine gegründete Spielwelt mit einem Turm, die die Tonregie hört; der sichtbare Ausschnitt
+## liegt um den Turm. Liefert die ID des Turms.
+func _hear_tower(director: SoundDirector) -> int:
+	var world := found_castle(empty_world())
+	put_goods(world, 2, "stone", 100)
+	var tower := build(world, "tower", find_site(world, "tower"))
+	director.world = world
+	director.visible_area = _area_around(world.get_building(tower).origin)
+	return tower
+
+
 func test_building_hit_only_when_its_hit_points_changed() -> void:
 	var director := _director()
-	var building := Building.create(3, "tower", Vector2i(10, 4))
-	director.visible_area = _area_around(Vector2i(10, 4))
-	director.building_changed(building)
+	var tower := _hear_tower(director)
+	var building := director.world.get_building(tower)
+	director.building_changed(tower)
 	assert_eq(_occasions(), [] as Array[String], "volle Lebenspunkte, kein Treffer:")
 	building.hp -= 10
-	director.building_changed(building)
+	director.building_changed(tower)
 	assert_eq(_occasions(), ["building_hit"] as Array[String], "Lebenspunkte gesunken:")
 	assert_eq(_wishes[0].volume, _data.sound("building_hit").volume, "im Ausschnitt voll hörbar:")
-	director.building_changed(building)
+	director.building_changed(tower)
 	assert_eq(_occasions(), ["building_hit"] as Array[String], "dieselben Lebenspunkte noch einmal gemeldet:")
-	var other := Building.create(4, "tower", Vector2i(20, 4))
-	other.hp -= 10
-	director.building_changed(other)
+	var keep := director.world.get_building(1)
+	director.visible_area = _area_around(keep.origin)
+	keep.hp -= 10
+	director.building_changed(keep.id)
 	assert_eq(_occasions(), ["building_hit", "building_hit"] as Array[String], "ein anderes Gebäude getroffen:")
+
+
+## Die gemerkten Lebenspunkte gelten nur für die Spielwelt, in der sie gemeldet wurden: In einer
+## neuen zählt ein Gebäude mit derselben ID wieder ab vollen Lebenspunkten.
+func test_building_hit_counts_from_full_hit_points_in_a_new_world() -> void:
+	var director := _director()
+	var tower := _hear_tower(director)
+	director.world.get_building(tower).hp -= 20
+	director.building_changed(tower)
+	_hear_tower(director)
+	director.world.get_building(tower).hp -= 10
+	director.building_changed(tower)
+	assert_eq(_occasions(), ["building_hit", "building_hit"] as Array[String], "Treffer in der neuen Spielwelt:")
 
 
 func test_standing_time_silences_combat_sounds() -> void:
 	var director := _director()
-	var building := Building.create(3, "tower", Vector2i(10, 4))
-	director.visible_area = _area_around(Vector2i(10, 4))
+	var tower := _hear_tower(director)
 	director.time_stands = true
 	director.arrow_shot(Vector3i(10, 4, 0), Vector3i(12, 4, 0))
-	building.hp -= 10
-	director.building_changed(building)
+	director.world.get_building(tower).hp -= 10
+	director.building_changed(tower)
 	assert_eq(_occasions(), [] as Array[String], "Anlässe bei stehender Zeit:")
 
 
@@ -339,14 +363,14 @@ func test_defeat_keeps_its_pitch() -> void:
 ## rechts im Panorama, jenseits der festen Entfernung keines.
 func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -> void:
 	var director := _director()
-	var building := Building.create(3, "tower", Vector2i(10, 4))
+	var tower := _hear_tower(director)
+	var tile := director.world.get_building(tower).origin
 	var events: Array[Callable] = [
-		director.sword_hit.bind(Vector3i(10, 4, 0), Vector3i(11, 4, 0)),
-		director.fighter_died.bind(Vector3i(10, 4, 0)),
-		director.building_destroyed.bind(building),
+		director.sword_hit.bind(Vector3i(tile.x, tile.y, 0), Vector3i(tile.x, tile.y + 1, 0)),
+		director.fighter_died.bind(Vector3i(tile.x, tile.y, 0)),
+		director.building_destroyed.bind(tower),
 	]
 	var expected: Array[String] = ["sword_hit", "fighter_died", "building_destroyed"]
-	director.visible_area = _area_around(Vector2i(10, 4))
 	for event in events:
 		event.call()
 	assert_eq(_occasions(), expected, "Anlässe im Ausschnitt:")
@@ -356,7 +380,7 @@ func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -
 	for wish in _wishes:
 		director.sound_finished(wish)
 	_wishes.clear()
-	director.visible_area = _area_around(Vector2i(10, 4), Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE / 2.0, 0))
+	director.visible_area = _area_around(tile, Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE / 2.0, 0))
 	for event in events:
 		event.call()
 	assert_eq(_occasions(), expected, "Anlässe außerhalb, aber nah genug:")
@@ -364,7 +388,7 @@ func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -
 		assert_true(wish.volume < _data.sound(wish.occasion).volume, "%s außerhalb leiser: %f" % [wish.occasion, wish.volume])
 		assert_eq(wish.pan, 1.0, "%s rechts außerhalb → ganz rechts:" % wish.occasion)
 	_wishes.clear()
-	director.visible_area = _area_around(Vector2i(10, 4), Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE - 64.0, 0))
+	director.visible_area = _area_around(tile, Vector2(-200 - SoundDirector.AUDIBLE_DISTANCE - 64.0, 0))
 	for event in events:
 		event.call()
 	assert_eq(_occasions(), [] as Array[String], "Anlässe jenseits der festen Entfernung:")
@@ -380,9 +404,10 @@ func test_fifth_simultaneous_sword_hit_is_dropped() -> void:
 
 func test_standing_time_silences_sword_hit_death_and_destruction() -> void:
 	var director := _director()
-	director.visible_area = _area_around(Vector2i(10, 4))
+	var tower := _hear_tower(director)
+	var tile := director.world.get_building(tower).origin
 	director.time_stands = true
-	director.sword_hit(Vector3i(10, 4, 0), Vector3i(11, 4, 0))
-	director.fighter_died(Vector3i(10, 4, 0))
-	director.building_destroyed(Building.create(3, "tower", Vector2i(10, 4)))
+	director.sword_hit(Vector3i(tile.x, tile.y, 0), Vector3i(tile.x + 1, tile.y, 0))
+	director.fighter_died(Vector3i(tile.x, tile.y, 0))
+	director.building_destroyed(tower)
 	assert_eq(_occasions(), [] as Array[String], "Anlässe bei stehender Zeit:")

@@ -30,16 +30,20 @@ var time_stands := false
 ## hörbar. Wird von außen gesetzt.
 var visible_area := Rect2()
 
-## Die Spielwelt der laufenden Partie, aus der sich die Musikrolle ergibt; null = Hauptmenü.
-## Wird von außen gesetzt, auch nach dem Laden eines Spielstands.
-var world: GameWorld
+## Die Spielwelt der laufenden Partie, aus der sich die Musikrolle ergibt und in der die
+## Tonregie Gebäude nachschlägt; null = Hauptmenü. Wird von außen gesetzt, auch nach dem Laden
+## eines Spielstands; dabei vergisst sie die gemerkten Lebenspunkte.
+var world: GameWorld:
+	set(value):
+		world = value
+		_building_hp.clear()
 
 var _data: SoundData
 var _rng := RandomNumberGenerator.new()
 ## Ortsabhängiger Anlass → Zahl seiner Wünsche, die noch klingen (bis sound_finished()).
 var _sounding: Dictionary[String, int] = {}
-## Gebäude (Instanz-ID, damit kein Gebäude einer früheren Partie verwechselt wird) → zuletzt
-## gemeldete Lebenspunkte. Ein Gebäude, das hier fehlt, hatte bisher volle.
+## Gebäude-ID in world → zuletzt gemeldete Lebenspunkte. Ein Gebäude, das hier fehlt, hatte
+## bisher volle; entfernte Gebäude fallen heraus (building_removed()).
 var _building_hp: Dictionary[int, int] = {}
 
 
@@ -129,14 +133,22 @@ func arrow_shot(from: Vector3i, _to: Vector3i) -> void:
 	_wish_at("arrow_shot", Vector2(from.x, from.y))
 
 
-## Die Lebenspunkte eines Gebäudes wurden gemeldet (GameWorld.building_changed): Sind sie
-## gesunken, wurde es getroffen, und es kracht in der Mitte seiner Grundfläche.
-func building_changed(building: Building) -> void:
-	var key := building.get_instance_id()
-	var before: int = _building_hp.get(key, building.max_hp())
-	_building_hp[key] = building.hp
+## Die Lebenspunkte eines Gebäudes in world wurden gemeldet (GameWorld.building_changed): Sind
+## sie gesunken, wurde es getroffen, und es kracht in der Mitte seiner Grundfläche.
+func building_changed(id: int) -> void:
+	var building := world.get_building(id)
+	if building == null:
+		return
+	var before: int = _building_hp.get(id, building.max_hp())
+	_building_hp[id] = building.hp
 	if building.hp < before:
 		_wish_at("building_hit", _center_of(building))
+
+
+## Ein Gebäude ist aus world verschwunden (GameWorld.building_removed, Abriss oder Zerstörung):
+## Seine gemerkten Lebenspunkte braucht es nicht mehr.
+func building_removed(id: int) -> void:
+	_building_hp.erase(id)
 
 
 ## Ein Nahkämpfer auf from hat den Kämpfer auf to getroffen (GameWorld.melee_hit): Schwerthieb
@@ -150,10 +162,12 @@ func fighter_died(position: Vector3i) -> void:
 	_wish_at("fighter_died", Vector2(position.x, position.y))
 
 
-## Ein Gebäude ist zerstört (GameWorld.building_destroyed, vor dem Entfernen): Es kracht in der
-## Mitte seiner Grundfläche, anders als beim Abriss.
-func building_destroyed(building: Building) -> void:
-	_wish_at("building_destroyed", _center_of(building))
+## Ein Gebäude in world ist zerstört (GameWorld.building_destroyed, vor dem Entfernen, es ist
+## also noch abfragbar): Es kracht in der Mitte seiner Grundfläche, anders als beim Abriss.
+func building_destroyed(id: int) -> void:
+	var building := world.get_building(id)
+	if building != null:
+		_wish_at("building_destroyed", _center_of(building))
 
 
 ## Die Mitte der Grundfläche (Kachelkoordinaten).
