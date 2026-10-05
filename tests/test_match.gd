@@ -1,6 +1,9 @@
 extends TestCase
 ## Die Partie: startet aus einer Startbeschreibung und hält Spielwelt und Szenario.
 
+## Wegwerf-Ordner für Spielstände; werden beim Freigeben samt Inhalt gelöscht.
+var _temp_dirs: Array[DirAccess] = []
+
 
 func _new_match() -> Match:
 	return Match.new(TEST_SCENARIO_DIR)
@@ -76,3 +79,46 @@ func test_start_args_fill_the_description() -> void:
 	assert_eq([setup.kind, setup.setup_name], [MatchStart.Kind.SETUP, "barracks"], "--setup:")
 	var save := MatchStart.from_args({"load": "a.sav", "setup": "barracks"})
 	assert_eq([save.kind, save.save_path], [MatchStart.Kind.SAVE, "a.sav"], "--load geht vor:")
+
+
+func _match_with_saves() -> Match:
+	var temp := DirAccess.create_temp("burgwacht_match", false)
+	_temp_dirs.append(temp)
+	return Match.new(TEST_SCENARIO_DIR, temp.get_current_dir())
+
+
+func test_save_under_a_name_lists_it_with_scenario_and_day() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.world.execute(Command.found(game.world.find_founding_site()))
+	for i in GameWorld.TICKS_PER_DAY * 2:
+		game.world.step()
+	assert_eq(game.save(SaveGame.Kind.NAMED, "Meine Burg"), "", "Fehler beim Speichern:")
+	var saves := game.saves.list()
+	assert_eq(saves.size(), 1, "Spielstände:")
+	assert_eq([saves[0].name, saves[0].scenario_title, saves[0].day], ["Meine Burg", "Kleine Testkarte", 3], "Kopf:")
+
+
+func test_suggested_save_name_is_scenario_and_day() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.world.execute(Command.found(game.world.find_founding_site()))
+	for i in GameWorld.TICKS_PER_DAY * 11:
+		game.world.step()
+	assert_eq(game.suggested_save_name(), "Kleine Testkarte – Tag 12")
+
+
+func test_saving_is_blocked_during_founding() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	assert_false(game.save_error() == "", "In der Gründung sollte Speichern gesperrt sein")
+	assert_eq(game.save(SaveGame.Kind.QUICK), game.save_error(), "Grund beim Speichern:")
+	assert_eq(game.saves.list().size(), 0, "Nichts gespeichert:")
+
+
+func test_saving_is_blocked_after_defeat() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_setup("defeat"))
+	assert_false(game.save_error() == "", "Nach der Niederlage sollte Speichern gesperrt sein")
+	assert_false(game.save(SaveGame.Kind.NAMED, "Verloren") == "", "Speichern sollte scheitern")
+	assert_eq(game.saves.list().size(), 0, "Nichts gespeichert:")

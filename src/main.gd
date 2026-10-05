@@ -66,7 +66,6 @@ const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
 
 var _match := Match.new()
 var _game_menu := GameMenu.new()
-var _saves := SaveGames.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -583,12 +582,12 @@ func _set_camera_active(active: bool) -> void:
 
 
 func _quick_save() -> void:
-	var error := _saves.save(world, _match.scenario.title, SaveGame.Kind.QUICK)
+	var error := _match.save(SaveGame.Kind.QUICK)
 	_hud.show_message(error if error != "" else "Gespeichert (Tag %d)" % world.get_day())
 
 
 func _quick_load() -> void:
-	var path := _saves.path_for(SaveGame.Kind.QUICK)
+	var path := _match.saves.path_for(SaveGame.Kind.QUICK)
 	if not FileAccess.file_exists(path):
 		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
