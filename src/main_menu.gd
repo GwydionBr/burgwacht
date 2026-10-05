@@ -56,6 +56,8 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
 	Settings.shared().follow_window(get_window())
+	# Ohne Partie läuft die Menümusik.
+	SoundOutput.shared().director.world = null
 	if args.has("scenario_select"):
 		scenario_choice = Scenario.DEFAULT
 	_show_background_map()

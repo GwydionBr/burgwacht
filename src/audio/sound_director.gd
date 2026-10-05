@@ -10,6 +10,12 @@ extends RefCounted
 ## Ein Geräusch soll erklingen.
 signal wished(wish: SoundWish)
 
+## Musikrollen (music_role()); die ersten drei sind die Rollen der Geräuschdatei.
+const MUSIC_MENU := "menu"
+const MUSIC_PEACEFUL := "peaceful"
+const MUSIC_BATTLE := "battle"
+## Keine Musik (nach der Niederlage); braucht keine Musikstücke.
+const MUSIC_SILENCE := "silence"
 ## Ab so viel Abstand (Weltkoordinaten) zum sichtbaren Ausschnitt entfällt ein ortsabhängiges
 ## Geräusch; bis dahin wird es mit dem Abstand gleichmäßig leiser.
 const AUDIBLE_DISTANCE := 1000.0
@@ -23,6 +29,10 @@ var time_stands := false
 ## Der sichtbare Ausschnitt in Weltkoordinaten (Iso). Ortsabhängige Geräusche darin sind voll
 ## hörbar. Wird von außen gesetzt.
 var visible_area := Rect2()
+
+## Die Spielwelt der laufenden Partie, aus der sich die Musikrolle ergibt; null = Hauptmenü.
+## Wird von außen gesetzt, auch nach dem Laden eines Spielstands.
+var world: GameWorld
 
 var _data: SoundData
 var _rng := RandomNumberGenerator.new()
@@ -60,6 +70,31 @@ func command_executed(command: Command, error: String) -> void:
 			_wish("recruit")
 		Command.Kind.TRADE:
 			_wish("trade")
+
+
+## Welche Musik gerade laufen soll (MUSIC_*): Menü ohne Partie, Stille nach der Niederlage, Kampf,
+## solange mindestens ein Feind lebt, sonst friedlich. Ergibt sich allein aus dem Zustand der
+## Spielwelt, gilt also auch gleich nach dem Laden.
+func music_role() -> String:
+	if world == null:
+		return MUSIC_MENU
+	if world.is_defeated():
+		return MUSIC_SILENCE
+	if not world.get_enemies().is_empty():
+		return MUSIC_BATTLE
+	return MUSIC_PEACEFUL
+
+
+## Das nächste Musikstück (Tondatei, wie in SoundData.music_of()) dieser Rolle nach previous
+## ("" = keins): zufällig, aber nie dasselbe direkt noch einmal, außer die Rolle hat nur eins.
+## Leer bei Stille oder ungültigen Daten.
+func next_piece(role: String, previous: String) -> String:
+	if _data.error != "" or role == MUSIC_SILENCE:
+		return ""
+	var pieces := _data.music_of(role).duplicate()
+	if pieces.size() > 1:
+		pieces.erase(previous)
+	return pieces[_rng.randi_range(0, pieces.size() - 1)]
 
 
 ## Die Ankündigung einer Welle hat begonnen (GameWorld.wave_announced): Horn.
