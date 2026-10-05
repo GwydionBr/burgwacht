@@ -24,6 +24,7 @@ extends Node2D
 ##   --box=x,y             Auswahlrahmen von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --line=x,y            im Baumodus einer Mauer: Linie von dieser Kachel bis zur Kachel unter der Maus (für Screenshots)
 ##   --focus=x,y           Kamera auf diese Kachel richten statt auf die Kartenmitte (für Screenshots)
+##   --game_menu           Spielmenü geöffnet (für Screenshots)
 ##   --spawn               nach der Gründung einen Räuber am Rand erscheinen lassen (wie F8 nur im Debug-Build, für Screenshots)
 ##   --screenshot=pfad.png Bild speichern und beenden (für Tests/Entwicklung)
 ##
@@ -46,10 +47,15 @@ extends Node2D
 ## Rechtsziehen verschiebt die Kamera. Esc hebt zuerst die Auswahl auf. F8 lässt im Debug-Build
 ## einen Räuber am Rand nächst dem Bergfried erscheinen, F7 die nächste Welle des Wellenplans.
 ## Läuft eine Ankündigung, zeigen HUD (Countdown) und Randmarkierung Seite und Erscheinungskachel.
+## Ist nichts mehr davon offen (Auswahl, Ansichten, Werkzeug), öffnet Esc das Spielmenü: Die Zeit
+## steht, Klicks und Tasten wirken nicht auf die Partie, Esc oder „Fortsetzen“ schließt es wieder.
 ## Fällt der Bergfried, zeigt die Niederlage-Ansicht den erreichten Tag, die abgewehrten Wellen und den Seed;
 ## „Neue Partie“ öffnet die Szenarioauswahl mit demselben Szenario, „Zum Hauptmenü“ wechselt ins
 ## Hauptmenü, „Beenden“ schließt das Spiel. N (sofort eine neue Karte) wirkt nur im Debug-Build.
 
+
+## Die Startparameter sind gelesen; das Hauptmenü wertet sie danach nicht mehr aus.
+static var args_used := false
 
 ## Woraus die Partie startet; das Hauptmenü setzt sie vor dem Betreten des Baums, sonst gelten
 ## die Startparameter.
@@ -57,7 +63,10 @@ var start: MatchStart
 ## Die Spielwelt der Partie (_match.world), hier kurz für Darstellung und Eingabe.
 var world: GameWorld
 
+const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
+
 var _match := Match.new()
+var _game_menu := GameMenu.new()
 var _saves := SaveGames.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
@@ -101,6 +110,7 @@ func _ready() -> void:
 	var args := Presets.user_args() if start == null else {}
 	if start == null:
 		start = MatchStart.from_args(args)
+		args_used = true
 	_clock.speed_changed.connect(_hud.show_speed)
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
@@ -113,6 +123,7 @@ func _ready() -> void:
 	_hud.main_menu_requested.connect(func() -> void: MainMenu.show_in(get_tree()))
 	_hud.quit_requested.connect(get_tree().quit)
 	_match.world_changed.connect(_show_world)
+	_build_game_menu()
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -150,6 +161,8 @@ func _ready() -> void:
 		_hud.toggle_administration()
 	if args.has("market"):
 		_hud.toggle_market()
+	if args.has("game_menu"):
+		_open_game_menu()
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -369,6 +382,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
+	# Bei offenem Spielmenü wirkt nur Esc (schließt es).
+	if _game_menu.is_open():
+		if key.keycode == KEY_ESCAPE:
+			_close_game_menu()
+		return
 	match key.keycode:
 		KEY_N:
 			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed (nur zum Entwickeln).
@@ -390,7 +408,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_execute_or_show(Command.spawn_wave())
 		KEY_ESCAPE:
 			# Zuerst die Auswahl; ist die Verwaltung, die Marktansicht oder die Kasernenansicht
-			# offen, schließt Esc nur sie.
+			# offen, schließt Esc nur sie, dann das Werkzeug. Erst danach öffnet es das Spielmenü
+			# (nicht nach der Niederlage, da gilt die Niederlage-Ansicht).
 			if not _selected.is_empty():
 				_set_selection([])
 			elif _hud.is_administration_open():
@@ -399,8 +418,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_hud.close_market()
 			elif _hud.is_barracks_open():
 				_hud.close_barracks()
-			else:
+			elif _build_type != "" or _demolishing:
 				_select_build("")
+			elif not world.is_defeated():
+				_open_game_menu()
 		KEY_V:
 			_hud.toggle_administration()
 		KEY_M:
@@ -465,6 +486,7 @@ func _show_world() -> void:
 	world.defeated.connect(_on_defeated)
 	world.announcement_changed.connect(_update_wave_marker)
 	_clock.world = world
+	_close_game_menu()
 	_build_type = ""
 	_demolishing = false
 	_hud.show_tool("", false)
@@ -530,6 +552,37 @@ func _on_defeated() -> void:
 	_hud.close_market()
 	_hud.set_build_bar_enabled(false)
 	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
+
+
+## Einträge des Spielmenüs; Speichern, Laden und Einstellungen kommen hier dazu.
+func _build_game_menu() -> void:
+	add_child(_game_menu)
+	_game_menu.add_entry("Fortsetzen", _close_game_menu)
+	_game_menu.add_entry("Zum Hauptmenü", func() -> void: get_tree().change_scene_to_file(MAIN_MENU_SCENE))
+	_game_menu.add_entry("Beenden", get_tree().quit)
+
+
+## Öffnet das Spielmenü: Zeit anhalten, laufende Auswahl oder Mauerlinie verwerfen, Kamera ruhen lassen.
+func _open_game_menu() -> void:
+	_selecting = false
+	_drawing_line = false
+	_selection_box.visible = false
+	_update_preview()
+	_clock.hold()
+	_set_camera_active(false)
+	_game_menu.open(_match.scenario.title, world.get_seed())
+
+
+## Schließt das Spielmenü; die Zeit läuft mit der vorigen Geschwindigkeit weiter.
+func _close_game_menu() -> void:
+	_game_menu.close()
+	_clock.release()
+	_set_camera_active(true)
+
+
+func _set_camera_active(active: bool) -> void:
+	_camera.set_process(active)
+	_camera.set_process_unhandled_input(active)
 
 
 func _quick_save() -> void:

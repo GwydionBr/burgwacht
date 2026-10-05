@@ -7,6 +7,10 @@
 		"name": "Szenarioauswahl mit dem freien Spiel",
 		"args": ["--scenario_select"]
 	},
+	"game_menu": {
+		"name": "Spielmenü (Esc) mit Szenario und Seed",
+		"args": ["--seed=1", "--days=1", "--game_menu"]
+	},
 	"founding": {
 		"name": "Gründung",
 		"args": ["--seed=1"]

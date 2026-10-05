@@ -6,11 +6,10 @@ extends Node2D
 ## startet in der Partie-Szene (main.tscn) aus der Startbeschreibung, die sie liefert.
 ##
 ## Wird mit Startparametern gestartet (siehe main.gd), geht es ohne Hauptmenü gleich in die
-## Partie, die die Parameter selbst liest. Ausnahmen:
+## Partie, die die Parameter selbst liest (nur einmal, siehe MatchScene.args_used). Ausnahmen:
 ##   --menu                Hauptmenü trotzdem zeigen (Preset main_menu)
 ##   --scenario_select     gleich mit offener Szenarioauswahl (Preset scenario_select)
 ##   --screenshot=pfad.png Bild des Hauptmenüs speichern und beenden (nur mit den beiden oben)
-## Aus einer Partie heraus (show_in()) gelten die Startparameter nicht mehr.
 
 const SCENE := "res://scenes/main_menu.tscn"
 const MATCH_SCENE := "res://scenes/main.tscn"
@@ -20,8 +19,6 @@ const PAN_RADIUS_SHARE := 0.2
 const PAN_SECONDS := 240.0
 const CAMERA_ZOOM := 0.8
 
-## Aus einer Partie geöffnet: Die Startparameter gelten nicht mehr (sonst ginge es gleich zurück).
-var opened_from_match := false
 ## Mit offener Szenarioauswahl und diesem Szenario vorgewählt beginnen; leer = Hauptmenü.
 var scenario_choice := ""
 
@@ -42,13 +39,13 @@ var _pan_time := 0.0
 static func show_in(tree: SceneTree, scenario_id := "") -> void:
 	var scene: PackedScene = load(SCENE)
 	var menu: MainMenu = scene.instantiate()
-	menu.opened_from_match = true
 	menu.scenario_choice = scenario_id
 	tree.change_scene_to_node(menu)
 
 
 func _ready() -> void:
-	var args := {} if opened_from_match else Presets.user_args()
+	# Hat die Partie die Startparameter schon gelesen, führt „Zum Hauptmenü“ hierher zurück.
+	var args := {} if MatchScene.args_used else Presets.user_args()
 	if not args.is_empty() and not args.has("menu") and not args.has("scenario_select"):
 		get_tree().change_scene_to_file.call_deferred(MATCH_SCENE)
 		return
