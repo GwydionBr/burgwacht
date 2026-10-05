@@ -18,6 +18,12 @@ func assert_true(condition: bool, message := "") -> void:
 		failures.append(message if message != "" else "Bedingung ist falsch")
 
 
+func assert_false(condition: bool, message := "") -> void:
+	checks += 1
+	if condition:
+		failures.append(message if message != "" else "Bedingung ist wahr")
+
+
 func assert_eq(actual: Variant, expected: Variant, message := "") -> void:
 	checks += 1
 	if actual != expected:

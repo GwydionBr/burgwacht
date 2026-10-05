@@ -12,7 +12,31 @@ _Avoid_: Spiel, Runde, Level
 
 **Spielwelt**:
 Der gesamte Zustand einer Partie: Karte, alles darauf, Lager, Zeit und Zufall.
-_Avoid_: Spielstand, State
+_Avoid_: State
+
+**Spielstand**:
+Eine gespeicherte Spielwelt mit Namen und Zeitpunkt, aus der eine Partie fortgesetzt werden kann.
+_Avoid_: Savegame, Speicherstand, Slot
+
+**Schnellspielstand**:
+Der eine Spielstand, den Schnellspeichern überschreibt und Schnellladen lädt.
+_Avoid_: Quicksave
+
+**Autospielstand**:
+Der eine Spielstand, den die Partie zu jedem Tagesbeginn selbst überschreibt.
+_Avoid_: Autosave, Sicherung
+
+**Hauptmenü**:
+Die Ansicht beim Start des Spiels, von der aus eine Partie begonnen, fortgesetzt oder geladen wird.
+_Avoid_: Startbildschirm, Titelbildschirm
+
+**Spielmenü**:
+Die Ansicht während einer Partie (Taste Esc), die die Zeit anhält und Speichern, Laden, Einstellungen und den Weg zum Hauptmenü bietet.
+_Avoid_: Pausenmenü, Optionsmenü
+
+**Szenarioauswahl**:
+Die Ansicht, in der der Spieler für eine neue Partie das Szenario und die Karte (zufällig oder fester Seed) wählt.
+_Avoid_: Levelauswahl, Kartenauswahl
 
 **Takt**:
 Der kleinste Zeitschritt der Spielwelt; alles Geschehen schreitet Takt für Takt voran.
