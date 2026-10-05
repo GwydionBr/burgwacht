@@ -15,7 +15,7 @@ func setup(game_clock: GameClock) -> void:
 			continue
 		for animation: String in entry["animations"]:
 			for direction in 8:
-				var point := Iso.point_to_world(Vector2(19 + direction * 2 + row * 3, 19 - direction * 2 + row * 3))
+				var point := Iso.point_to_world(Vector2(24 + direction + row * 2, 16 - direction + row * 2))
 				_samples.append({"entry": entry, "animation": animation, "direction": direction, "point": point})
 			row += 1
 

@@ -37,6 +37,13 @@ static func create() -> GameWorld:
 		helper.place(world, type_id, Vector2i(x, row_sum - size - x))
 		x += size + GAP
 	_add_deposits(world)
+
+
+	# Uferstreifen oberhalb der Gebäudereihen, mit geraden Kanten und einer Ecke.
+	for terrain_y: int in range(20, 25):
+		for terrain_x: int in range(20, 27):
+			if terrain_x >= 23 or terrain_y >= 23:
+				world.map.set_terrain(Vector2i(terrain_x, terrain_y), "sand")
 	return world
 
 
@@ -48,18 +55,21 @@ static func _row_start(row_sum: int) -> int:
 ## Alle Vorkommen und jede Sprite-Variante stehen vor der Burg, ohne Zufallsauswahl.
 static func _add_deposits(world: GameWorld) -> void:
 	var x := 8
+	var single_x := 8
 	for type_id: String in GameDefs.get_instance().deposits:
 		var def: Dictionary = GameDefs.get_instance().deposits[type_id]
-		for variant in int(def.get("sprite_variants", 1)):
-			# Die Lager der Gründung stehen in der Mitte dieser Reihe.
-			if x >= 18 and x < 24:
-				x = 24
+		var variants := int(def.get("sprite_variants", 1))
+		for variant in variants:
 			var deposit := Deposit.new()
 			deposit.type = type_id
 			deposit.amount = int(def["amount"])
 			deposit.variant = variant
-			world.map.deposits[Vector2i(x, 40 - x)] = deposit
-			x += 3
+			if variants > 1:
+				world.map.deposits[Vector2i(x, 40 - x)] = deposit
+				x += 3
+			else:
+				world.map.deposits[Vector2i(single_x, 44 - single_x)] = deposit
+				single_x += 3
 
 
 ## Ergänzt die Galerie um reine Ansichtsproben, ohne sie der Spielwelt hinzuzufügen.

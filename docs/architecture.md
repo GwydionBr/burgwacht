@@ -127,6 +127,25 @@ Neues Zustandsstück:
 2. Ist alter Spielstand damit nicht mehr ladbar, `SAVE_VERSION` erhöhen.
 3. In `tests/test_save_load.gd` prüfen: speichern → laden → gleicher Zustand und nach N weiteren Takten derselbe Verlauf; dafür das Stück in `world_snapshot()` (`tests/test_case.gd`) aufnehmen.
 
+### Gelände-Sprites der Stilprobe
+
+`terrain.json` nennt für Wiese und Ufer `sprite` und `sprite_variants: 4`; Wiese nennt
+zusätzlich `sprite_transition: "sand"`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
+`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, nicht aus dem Zufall oder
+Spielstand. `transition_mask()` prüft die vier Kantennachbarn (Norden, Osten, Süden, Westen,
+Bits 1/2/4/8); diagonale Nachbarn und der Kartenrand zählen nicht. Jede Wiesenvariante enthält
+16 Bilder nebeneinander, je 128×64 Pixel; Ufer hat je Variante eine einzelne Kachel.
+Die Ansicht zeichnet weiterhin nur nach einer Kartenänderung neu und hält geladene Texturen
+im Speicher. Eine deckende Raute hinter den transparenten Bildrändern schließt feine Nähte.
+
+`tools/render.sh terrain/grass terrain/sand` rendert die vier Varianten und alle Kantenmasken
+mit `terrain.py`, gemeinsamer Kamera, Licht und Palette. Das Kenney-Modell `ground_grass.glb`
+wird auf eine flache Kachel normiert, damit keine Seitenflächen zwischen Nachbarn entstehen.
+Eine räumliche Materialtextur variiert den Farbton und mischt am Ufer weich zur Sandfarbe;
+der Schatten bleibt leer, weil Gelände selbst in der Bodenebene liegt. Die PNGs samt
+Mipmaps-Import sind eingecheckt. `gallery` zeigt einen Uferstreifen mit Ecke oberhalb der
+Gebäudereihen. Die Auswahl wird ohne Grafik getestet; den Look prüft der Screenshot.
+
 ## Tests
 
 - Einzeltests für reine Logik (z. B. `Iso`, Kartengenerator).

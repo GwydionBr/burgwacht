@@ -71,6 +71,10 @@ static func sprites_error(file_name: String, entries: Dictionary) -> String:
 		var entry: Variant = entries[id]
 		if not entry is Dictionary or not (entry as Dictionary).has("sprite"):
 			continue
+		if file_name == "terrain.json" and (entry as Dictionary).has("sprite_transition"):
+			var neighbor: Variant = entry["sprite_transition"]
+			if not neighbor is String or not entries.has(neighbor) or neighbor == id:
+				return "%s, „%s“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen" % [file_name, id]
 		var reason := _sprite_error(entry)
 		if reason != "":
 			return "%s, „%s“: %s" % [file_name, id, reason]

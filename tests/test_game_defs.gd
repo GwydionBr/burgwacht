@@ -73,3 +73,9 @@ func test_missing_figure_animation_frame_is_named() -> void:
 	var entry := {"sprite": "buildings/house", "animations": {"idle": {"frames": 1, "fps": 1}, "walk": {"frames": 1, "fps": 1}}}
 	assert_eq(GameDefs.sprites_error("units.json", {"resident": entry}),
 		"units.json, „resident“: Animationsbild res://assets/sprites/buildings/house_idle_0_0.png fehlt", "Fehler:")
+
+
+func test_terrain_transition_requires_a_known_neighbor_type() -> void:
+	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_transition": "missing"}}
+	assert_eq(GameDefs.sprites_error("terrain.json", entries),
+			"terrain.json, „grass“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen", "Fehler:")
