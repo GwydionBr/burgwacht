@@ -102,6 +102,7 @@ func _spawn(wave: PlannedWave) -> void:
 			if not found.is_empty():
 				combat.add_enemy(type_id, found[0], number)
 				spawned += 1
+	_world.wave_spawned.emit(number)
 	# Ohne einen einzigen Feind (Anzahl 0 oder kein Platz) ist sie sofort abgewehrt.
 	if spawned == 0:
 		_repel(number)

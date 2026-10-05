@@ -3,6 +3,9 @@ extends Node
 ## Die Tonausgabe: eine dünne Schicht, die die Abspielwünsche der Tonregie (`director`) mit einem
 ## Vorrat an Abspielern auf dem Bus Geräusche abspielt und die Musik der Musikrolle der Tonregie
 ## auf dem Bus Musik. Entscheidungen trifft sie keine.
+## Jeder Abspieler hat einen eigenen Bus mit Panner (in den Bus Geräusche), so bekommt jedes
+## Geräusch sein Panorama. Der Tonregie meldet sie den sichtbaren Ausschnitt und jedes
+## ausgeklungene Geräusch.
 ##
 ## Wechselt die Musikrolle, blendet sie über (MUSIC_FADE_SECONDS). Die Musikstücke sind im Import
 ## auf Schleife gestellt; nur die friedlichen spielt sie ohne Schleife, damit nach jedem das
@@ -20,6 +23,7 @@ extends Node
 const PLAYER_COUNT := 16
 ## Sekunden, die eine Überblendung beim Wechsel der Musikrolle dauert.
 const MUSIC_FADE_SECONDS := 2.0
+const DUMMY_DRIVER := "Dummy"
 
 static var _shared: SoundOutput
 
@@ -30,6 +34,9 @@ var _data: SoundData
 ## Tondatei → geladener AudioStream (beim ersten Abspielen geladen).
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
+## Je Abspieler der Panner auf seinem Bus und der Wunsch, den er gerade spielt.
+var _panners: Array[AudioEffectPanner] = []
+var _playing: Array[SoundWish] = []
 ## Die Spieluhr der laufenden Partie; ohne (Hauptmenü) steht die Zeit.
 var _clock: GameClock
 ## Die Musikrolle, die gerade läuft ("" = noch keine).
@@ -63,13 +70,17 @@ func _init() -> void:
 	director.wished.connect(_play)
 	for i in PLAYER_COUNT:
 		var player := AudioStreamPlayer.new()
-		player.bus = Settings.SOUND_BUS
+		player.bus = _add_pan_bus("%sPan%d" % [Settings.SOUND_BUS, i])
+		player.finished.connect(_on_finished.bind(i))
 		add_child(player)
 		_players.append(player)
+		_playing.append(null)
 
 
 func _process(_delta: float) -> void:
 	director.time_stands = not is_instance_valid(_clock) or _clock.is_time_standing()
+	var viewport := get_viewport()
+	director.visible_area = viewport.get_canvas_transform().affine_inverse() * viewport.get_visible_rect()
 	var role := director.music_role()
 	if role != _music_role:
 		_switch_music(role)
@@ -89,12 +100,31 @@ func follow_clock(clock: GameClock) -> void:
 	_clock = clock
 
 
+## Legt einen Bus mit Panner an, der in den Bus Geräusche geht, und gibt seinen Namen zurück.
+func _add_pan_bus(bus_name: String) -> StringName:
+	var bus := AudioServer.get_bus_index(bus_name)
+	if bus == -1:
+		bus = AudioServer.bus_count
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(bus, bus_name)
+		AudioServer.set_bus_send(bus, Settings.SOUND_BUS)
+		AudioServer.add_bus_effect(bus, AudioEffectPanner.new())
+	_panners.append(AudioServer.get_bus_effect(bus, 0) as AudioEffectPanner)
+	return StringName(bus_name)
+
+
 func _play(wish: SoundWish) -> void:
-	if not is_inside_tree():
+	# Der Dummy-Treiber (headless, Screenshots) mischt nicht: Dort bliebe jedes Geräusch ewig
+	# „laufend“ und über das Programmende hängen, also spielt sie dort nichts.
+	var index := _free_player() if is_inside_tree() and AudioServer.get_driver_name() != DUMMY_DRIVER else -1
+	if index == -1:
+		director.sound_finished(wish)
 		return
-	var player := _free_player()
-	if player == null:
-		return
+	var player := _players[index]
+	# Falls das Ende des vorigen Geräuschs nicht gemeldet wurde, zählt es jetzt als ausgeklungen.
+	_on_finished(index)
+	_playing[index] = wish
+	_panners[index].pan = wish.pan
 	player.stream = _stream_of(_data.file_of(wish.occasion, wish.variant))
 	player.volume_linear = wish.volume
 	player.pitch_scale = wish.pitch
@@ -136,7 +166,7 @@ func _play_piece(piece: String) -> void:
 	# Mit dem Dummy-Audiotreiber (headless, Screenshots) ist nichts zu hören, und ein gestartetes
 	# Musikstück gäbe der Audio-Server beim Beenden oft nicht mehr frei (Fehler im Rauchtest).
 	# Überblendung und Wiedergabeliste laufen trotzdem durch.
-	if AudioServer.get_driver_name() != "Dummy":
+	if AudioServer.get_driver_name() != DUMMY_DRIVER:
 		_music.play()
 
 
@@ -146,11 +176,18 @@ func _stream_of(file: String) -> AudioStream:
 	return _streams[file]
 
 
-func _free_player() -> AudioStreamPlayer:
-	for player in _players:
-		if not player.playing:
-			return player
-	return null
+## Index eines Abspielers, der gerade nichts spielt; -1, wenn alle belegt sind.
+func _free_player() -> int:
+	for i in _players.size():
+		if not _players[i].playing:
+			return i
+	return -1
+
+
+func _on_finished(index: int) -> void:
+	if _playing[index] != null:
+		director.sound_finished(_playing[index])
+		_playing[index] = null
 
 
 func _hook_button(node: Node) -> void:
