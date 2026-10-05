@@ -27,6 +27,10 @@
 		"name": "Ladeansicht aus dem Hauptmenü",
 		"args": ["--menu", "--saves=demo", "--load_view"]
 	},
+	"leave_prompt": {
+		"name": "Rückfrage vor dem Verlassen mit ungespeichertem Fortschritt",
+		"args": ["--seed=1", "--days=1", "--leave"]
+	},
 	"settings": {
 		"name": "Einstellungen aus dem Spielmenü",
 		"args": ["--seed=1", "--days=1", "--settings"]
