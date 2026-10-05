@@ -146,3 +146,59 @@ func test_invalid_seed_is_rejected() -> void:
 	for text: String in ["abc", "-1", "1.5", "12 34", "1e5", "4294967296", "99999999999999999999"]:
 		assert_false(MatchStart.seed_error(text) == "", "„%s“ sollte abgewiesen werden" % text)
 	assert_true(MatchStart.seed_error("abc").contains("Seed"), "Grund nennt den Seed: " + MatchStart.seed_error("abc"))
+
+
+func test_no_unsaved_progress_right_after_start() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	assert_false(game.has_unsaved_progress(), "Direkt nach dem Start ist nichts verloren")
+
+
+func test_successful_command_is_unsaved_progress() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	assert_false(game.execute(Command.build("woodcutter", Vector2i(1, 1))) == "", "Vor der Gründung sollte Bauen scheitern")
+	assert_false(game.has_unsaved_progress(), "Ein abgelehnter Befehl ändert nichts")
+	assert_eq(game.execute(Command.found(game.world.find_founding_site())), "", "Fehler bei der Gründung:")
+	assert_true(game.has_unsaved_progress(), "Nach der Gründung gibt es Fortschritt")
+
+
+func test_ticks_are_unsaved_progress_until_saved() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.execute(Command.found(game.world.find_founding_site()))
+	assert_eq(game.save(SaveGame.Kind.QUICK), "", "Fehler beim Speichern:")
+	assert_false(game.has_unsaved_progress(), "Direkt nach dem Speichern ist nichts verloren")
+	game.world.step()
+	assert_true(game.has_unsaved_progress(), "Nach einem Takt gibt es Fortschritt")
+	assert_eq(game.save(SaveGame.Kind.AUTO), "", "Fehler beim Autospielstand:")
+	assert_false(game.has_unsaved_progress(), "Ein Autospielstand zählt als Speichern")
+
+
+func test_failed_save_keeps_the_unsaved_progress() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.execute(Command.found(game.world.find_founding_site()))
+	game.world.step()
+	assert_false(game.save(SaveGame.Kind.NAMED, "") == "", "Ohne Namen sollte Speichern scheitern")
+	assert_true(game.has_unsaved_progress(), "Fortschritt bleibt ungespeichert")
+
+
+func test_no_unsaved_progress_right_after_loading() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_scenario("tiny"))
+	game.execute(Command.found(game.world.find_founding_site()))
+	game.world.step()
+	game.save(SaveGame.Kind.QUICK)
+	for i in 5:
+		game.world.step()
+	assert_eq(game.start(MatchStart.from_save(game.saves.path_for(SaveGame.Kind.QUICK))), "", "Fehler beim Laden:")
+	assert_false(game.has_unsaved_progress(), "Direkt nach dem Laden ist nichts verloren")
+
+
+func test_no_unsaved_progress_after_defeat() -> void:
+	var game := _match_with_saves()
+	game.start(MatchStart.from_setup("defeat"))
+	game.world.step()
+	assert_true(game.world.is_defeated(), "Testaufbau sollte verloren sein")
+	assert_false(game.has_unsaved_progress(), "Nach der Niederlage wird nicht nachgefragt")

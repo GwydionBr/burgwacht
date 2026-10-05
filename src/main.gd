@@ -80,6 +80,8 @@ var _game_menu := GameMenu.new()
 ## „Speichern“ im Spielmenü; gesperrt, solange die Partie nicht speicherbar ist.
 var _save_entry: Button
 var _settings_view := SettingsView.new(Settings.shared(), true)
+## Rückfrage, bevor die Partie mit ungespeichertem Fortschritt verlassen wird.
+var _leave_dialog := ConfirmDialog.new()
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -131,10 +133,13 @@ func _ready() -> void:
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
 	_hud.recruit_requested.connect(_recruit)
-	_hud.new_game_requested.connect(func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id))
+	_hud.new_game_requested.connect(_leave_match.bind("Neue Partie beginnen?",
+			func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id)))
 	_hud.load_requested.connect(_open_load_view)
-	_hud.main_menu_requested.connect(func() -> void: MainMenu.show_in(get_tree()))
-	_hud.quit_requested.connect(get_tree().quit)
+	_hud.main_menu_requested.connect(_leave_match.bind("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree())))
+	_hud.quit_requested.connect(_leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	# ⌘Q und das Schließen des Fensters kommen als NOTIFICATION_WM_CLOSE_REQUEST an.
+	get_tree().set_auto_accept_quit(false)
 	_match.saves = Presets.save_games()
 	_match.world_changed.connect(_show_world)
 	_build_game_menu()
@@ -152,7 +157,7 @@ func _ready() -> void:
 		return
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
-		world.execute(Command.found(world.find_founding_site()))
+		_match.execute(Command.found(world.find_founding_site()))
 	for i in days * GameWorld.TICKS_PER_DAY:
 		world.step()
 	if args.has("place"):
@@ -160,11 +165,11 @@ func _ready() -> void:
 		var xy := place[1].split(",") if place.size() == 2 else PackedStringArray()
 		var reason := "Format: --place=typ@x,y"
 		if xy.size() == 2:
-			reason = world.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
+			reason = _match.execute(Command.build(place[0], Vector2i(int(xy[0]), int(xy[1]))))
 		if reason != "":
 			printerr("--place: ", reason)
 	if args.has("spawn") and OS.is_debug_build():
-		var spawn_reason := world.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
+		var spawn_reason := _match.execute(Command.spawn_enemy(FighterType.enemy_ids()[0]))
 		if spawn_reason != "":
 			printerr("--spawn: ", spawn_reason)
 	for i in int(args.get("ticks", 0)):
@@ -191,6 +196,11 @@ func _ready() -> void:
 		_open_load_view()
 	if args.has("settings"):
 		_open_settings()
+	if args.has("leave"):
+		_open_game_menu()
+		_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+		if not _leave_dialog.is_open():
+			printerr("--leave: kein ungespeicherter Fortschritt")
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
 	if args.has("barracks"):
 		for building in world.get_buildings():
@@ -238,6 +248,26 @@ func _ready() -> void:
 		_update_preview()
 	if args.has("screenshot"):
 		_save_screenshot_and_quit(args["screenshot"])
+
+
+func _exit_tree() -> void:
+	get_tree().set_auto_accept_quit(true)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_leave_match("Burgwacht beenden?", get_tree().quit)
+
+
+## Verlässt die Partie mit dieser Aktion; gibt es ungespeicherten Fortschritt, erst nach der
+## Rückfrage („Verwerfen“ oder „Abbrechen“). Dafür öffnet sie das Spielmenü, damit die Zeit steht.
+func _leave_match(question: String, action: Callable) -> void:
+	if not _match.has_unsaved_progress():
+		action.call()
+		return
+	if not _game_menu.is_open() and not _settings_view.is_open():
+		_open_game_menu()
+	_leave_dialog.ask(question + " Der Fortschritt seit dem letzten Speichern geht verloren.", "Verwerfen", action)
 
 
 func _process(_delta: float) -> void:
@@ -327,17 +357,17 @@ func _target_under_mouse() -> Vector3i:
 func _left_click() -> void:
 	var reason := ""
 	if world.is_founding():
-		reason = world.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
+		reason = _match.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
 	elif GameWorld.is_line_type(_build_type):
 		_drawing_line = true
 		_line_start = _hovered
 		_update_preview()
 	elif _build_type != "":
-		reason = world.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
+		reason = _match.execute(Command.build(_build_type, _origin_under_mouse(_build_type)))
 	elif _demolishing:
 		var building := world.get_building_at(_hovered)
 		if building != null:
-			reason = world.execute(Command.demolish(building.id))
+			reason = _match.execute(Command.demolish(building.id))
 	else:
 		_selecting = true
 		_left_press = get_viewport().get_mouse_position()
@@ -594,8 +624,10 @@ func _build_game_menu() -> void:
 	_game_menu.add_entry("Einstellungen", _open_settings)
 	add_child(_settings_view)
 	_settings_view.closed.connect(_show_game_menu)
-	_game_menu.add_entry("Zum Hauptmenü", func() -> void: get_tree().change_scene_to_file(MAIN_MENU_SCENE))
-	_game_menu.add_entry("Beenden", get_tree().quit)
+	_game_menu.add_entry("Zum Hauptmenü", _leave_match.bind("Zum Hauptmenü?",
+			get_tree().change_scene_to_file.bind(MAIN_MENU_SCENE)))
+	_game_menu.add_entry("Beenden", _leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	add_child(_leave_dialog)
 
 
 ## Öffnet das Spielmenü: Zeit anhalten, laufende Auswahl oder Mauerlinie verwerfen, Kamera ruhen lassen.
@@ -647,9 +679,10 @@ func _open_load_view() -> void:
 
 ## Lädt den gewählten Spielstand; scheitert es, steht der Grund in der Ladeansicht.
 func _load_chosen(path: String, view: LoadView) -> void:
-	var error := _load_from(path)
-	if error != "":
-		view.show_error(error)
+	_leave_match("Spielstand laden?", func() -> void:
+		var error := _load_from(path)
+		if error != "":
+			view.show_error(error))
 
 
 ## Zurück aus Speichern- oder Ladeansicht ins Spielmenü; nach der Niederlage zur Niederlage-Ansicht.
@@ -699,7 +732,7 @@ func _quick_load() -> void:
 	if not FileAccess.file_exists(path):
 		_hud.show_message("Noch kein Schnellspielstand – erst mit F5 speichern")
 		return
-	_load_from(path)
+	_leave_match("Schnellspielstand laden?", _load_from.bind(path))
 
 
 ## Lädt den Spielstand aus dieser Datei; Fehler als Meldung und als Rückgabe ("" = geladen).
@@ -1041,7 +1074,7 @@ static func _stepped(levels: Array[String], current: String, delta: int) -> Stri
 
 
 func _execute_or_show(command: Command) -> void:
-	var reason := world.execute(command)
+	var reason := _match.execute(command)
 	if reason != "":
 		_hud.show_message(reason)
 
