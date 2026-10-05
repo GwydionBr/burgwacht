@@ -3,8 +3,8 @@ extends TestCase
 
 const SOURCE_DIR := "res://src"
 const CORE_DIR := "res://src/core"
-## Ordner, aus denen core/ nichts kennen darf.
-const OUTER_DIRS: Array[String] = ["res://src/view", "res://src/ui"]
+## Ordner, aus denen core/ nichts kennen darf (auch nichts vom Ton).
+const OUTER_DIRS: Array[String] = ["res://src/view", "res://src/ui", "res://src/audio"]
 
 
 ## Auch Skripte, die kein anderer Test berührt (main.gd, view/, ui/), müssen sich laden
@@ -17,7 +17,7 @@ func test_all_scripts_load() -> void:
 		assert_true(script != null and script.can_instantiate(), "%s lässt sich nicht laden" % path)
 
 
-## core/ ist reine Logik: kein Verweis auf Klassen oder Dateien aus view/ und ui/.
+## core/ ist reine Logik: kein Verweis auf Klassen oder Dateien aus view/, ui/ und audio/.
 func test_core_knows_nothing_of_view_and_ui() -> void:
 	var outer_classes: Array[String] = []
 	for dir in OUTER_DIRS:

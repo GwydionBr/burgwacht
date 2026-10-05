@@ -171,6 +171,21 @@ func world_snapshot(world: GameWorld) -> Dictionary:
 	}
 
 
+## Testaufbau für Ton-Presets: Ein Ereignis soll kurz nach dem Start kommen, nicht schon im
+## Aufbau. Baut die Spielwelt mit make (→ GameWorld) und lässt sie laufen, bis reached (GameWorld
+## → bool) zutrifft (höchstens max_ticks Takte); baut sie dann neu und hält lead Takte davor an.
+## Der Takt ist deterministisch (ADR 0001), also kommt das Ereignis lead Takte nach dem Start.
+func shortly_before(make: Callable, reached: Callable, lead: int, max_ticks: int) -> GameWorld:
+	var trial: GameWorld = make.call()
+	var ticks := 0
+	while not reached.call(trial) and ticks < max_ticks:
+		trial.step()
+		ticks += 1
+	assert(reached.call(trial), "Ereignis nach %d Takten nicht eingetreten" % max_ticks)
+	assert(ticks >= lead, "Ereignis nach %d Takten, früher als %d Takte" % [ticks, lead])
+	return _run_world(make.call(), ticks - lead)
+
+
 func _load_test_scenario(scenario_id: String) -> Scenario:
 	var scenario := Scenario.load_named(scenario_id, TEST_SCENARIO_DIR)
 	assert(scenario.error == "", scenario.error)

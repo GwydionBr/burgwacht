@@ -18,6 +18,7 @@ Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt
 
 - Ziele und Aufträge in Szenarien (das Modell ist dafür vorbereitet)
 - Förster, Reparatur von Gebäuden, Belagerungswaffen
+- Arbeitsgeräusche (Axt, Spitzhacke, Schmiede, Mühle) und Umgebungsgeräusche (Wind, Vögel)
 
 ## Bewusst nicht geplant (vorerst)
 

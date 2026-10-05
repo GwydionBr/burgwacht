@@ -119,12 +119,15 @@ func test_destroyed_storage_vanishes_with_its_goods_without_refund() -> void:
 	put_goods(world, armory, "sword", 4)
 	var wood := world.get_stock("wood")
 	var gold := world.get_treasury()
-	var removed: Array[int] = []
-	world.building_removed.connect(func(id: int) -> void: removed.append(id))
+	var events: Array[String] = []
+	world.building_destroyed.connect(func(id: int) -> void:
+		events.append("zerstört %d, noch da: %s" % [id, world.get_building(id) != null]))
+	world.building_removed.connect(func(id: int) -> void: events.append("entfernt %d" % id))
 	var notices: Array[String] = []
 	world.notice.connect(func(text: String) -> void: notices.append(text))
 	_destroy_by_bandit(world, armory)
-	assert_eq(removed, [armory] as Array[int], "Abgemeldet:")
+	assert_eq(events, ["zerstört %d, noch da: true" % armory, "entfernt %d" % armory] as Array[String],
+			"Zerstörung vor dem Entfernen gemeldet:")
 	assert_true(notices.has("Waffenkammer zerstört"), "Meldung: %s" % str(notices))
 	assert_eq(world.get_stock("sword"), 0, "Lagerinhalt verloren:")
 	assert_eq(world.get_stock("wood"), wood, "Keine Erstattung in Holz:")

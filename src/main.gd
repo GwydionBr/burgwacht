@@ -81,6 +81,10 @@ var _save_entry: Button
 var _settings_view := SettingsView.new(Settings.shared(), true)
 ## Rückfrage, bevor die Partie mit ungespeichertem Fortschritt verlassen wird.
 var _leave_dialog := ConfirmDialog.new()
+## Die Tonregie der gemeinsamen Tonausgabe (SoundOutput.shared()).
+var _sound: SoundDirector
+## Erreichen Ereignisse der Spielwelt die Tonregie? Erst nach dem Aufbau aus den Startparametern.
+var _world_audible := false
 
 var _deposit_views: Dictionary[Vector2i, DepositView] = {}
 var _building_views: Dictionary[int, BuildingView] = {}
@@ -145,6 +149,9 @@ func _ready() -> void:
 	Settings.shared().follow_window(get_window())
 	Settings.shared().changed.connect(_apply_camera_speed)
 	_apply_camera_speed()
+	var sound_output := SoundOutput.shared()
+	sound_output.follow_clock(_clock)
+	_sound = sound_output.director
 	var error := _start(start)
 	if error != "" and start.kind != MatchStart.Kind.SCENARIO:
 		printerr("--load: " if start.kind == MatchStart.Kind.SAVE else "--setup: ", error)
@@ -174,6 +181,10 @@ func _ready() -> void:
 			printerr("--spawn: ", spawn_reason)
 	for i in int(args.get("ticks", 0)):
 		world.step()
+	# Erst nach dem Aufbau aus den Startparametern, damit ein Testzustand nicht mit Geräuschen beginnt.
+	_match.command_executed.connect(_sound.command_executed)
+	_world_audible = true
+	_hear_world()
 	if args.has("build"):
 		_select_build(str(args["build"]))
 	if args.has("demolish"):
@@ -250,10 +261,6 @@ func _ready() -> void:
 		Presets.save_screenshot_and_quit(self, str(args["screenshot"]))
 
 
-func _exit_tree() -> void:
-	get_tree().set_auto_accept_quit(true)
-
-
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_quit()
@@ -266,7 +273,7 @@ func _leave_to_main_menu() -> void:
 
 ## „Beenden“ aus Spielmenü und Niederlage-Ansicht, ebenso ⌘Q und das Schließen des Fensters.
 func _quit() -> void:
-	_leave_match("Burgwacht beenden?", get_tree().quit)
+	_leave_match("Burgwacht beenden?", SoundOutput.shared().quit)
 
 
 ## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es
@@ -531,9 +538,26 @@ func _start(description: MatchStart) -> String:
 	return error
 
 
+## Wellen, Niederlage und Kampf der Spielwelt erreichen die Tonregie (Horn, Trommeln, Fanfare,
+## Niederlage, Pfeile, Schwerthiebe, Tod, Gebäudetreffer, Zerstörung).
+func _hear_world() -> void:
+	world.shot_fired.connect(_sound.arrow_shot)
+	world.melee_hit.connect(_sound.sword_hit)
+	world.fighter_died.connect(_sound.fighter_died)
+	world.building_changed.connect(_sound.building_changed)
+	world.building_destroyed.connect(_sound.building_destroyed)
+	world.building_removed.connect(_sound.building_removed)
+	world.wave_announced.connect(_sound.wave_announced.unbind(1))
+	world.wave_spawned.connect(_sound.wave_spawned.unbind(1))
+	world.wave_repelled.connect(_sound.wave_repelled.unbind(1))
+	world.defeated.connect(_sound.defeated)
+
+
 ## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
 func _show_world() -> void:
 	world = _match.world
+	# Die Musikrolle folgt dieser Spielwelt, auch gleich nach dem Laden.
+	_sound.world = world
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.deposit_changed.connect(_on_deposit_changed)
@@ -557,6 +581,8 @@ func _show_world() -> void:
 	world.notice.connect(_hud.show_message)
 	world.defeated.connect(_on_defeated)
 	world.announcement_changed.connect(_update_wave_marker)
+	if _world_audible:
+		_hear_world()
 	_clock.world = world
 	_close_game_menu()
 	_build_type = ""

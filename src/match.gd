@@ -9,6 +9,9 @@ extends RefCounted
 
 ## Eine neue Spielwelt ist da (Start, neue Karte, geladener Spielstand).
 signal world_changed()
+## Ein Befehl wurde über execute() ausgeführt; error ist sein Ergebnis ("" = Erfolg). Die
+## Tonregie hört darauf.
+signal command_executed(command: Command, error: String)
 
 var world: GameWorld
 ## Das Szenario der Spielwelt; aus ihm entsteht auch eine neue Karte (Taste N im Debug-Build).
@@ -83,6 +86,7 @@ func execute(command: Command) -> String:
 	var error := world.execute(command)
 	if error == "":
 		_commands_since_save = true
+	command_executed.emit(command, error)
 	return error
 
 

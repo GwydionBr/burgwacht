@@ -181,7 +181,7 @@ static func block_faces(base: PackedVector2Array, height: float) -> Array[Packed
 
 ## Ecken der Grundfläche (oben, rechts, unten, links) relativ zu anchor, um inset eingerückt.
 static func footprint_corners(type_id: String, origin: Vector2i, anchor: Vector2, inset: float) -> PackedVector2Array:
-	var last := origin + Building.size_of(type_id) - Vector2i.ONE
+	var last := Building.last_tile_of(type_id, origin)
 	var corners := PackedVector2Array([
 		Iso.tile_polygon(origin)[0],
 		Iso.tile_polygon(Vector2i(last.x, origin.y))[1],

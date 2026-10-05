@@ -16,6 +16,14 @@ const TICKS := 60
 
 
 static func create() -> GameWorld:
+	var world := attack(0)
+	for i in TICKS:
+		world.step()
+	return world
+
+
+## Die Burg mit Mauer und Soldaten, die Räuber (aus Welle wave, 0 = keiner) sind gerade erschienen.
+static func attack(wave: int) -> GameWorld:
 	var helper := TestCase.new()
 	var world := helper.empty_world("tiny_production")
 	_ok(world.execute(Command.found(KEEP_ORIGIN)), "Gründung")
@@ -36,9 +44,7 @@ static func create() -> GameWorld:
 	for i in 400:
 		world.step()
 	for tile in BANDITS:
-		helper.add_enemy(world, "bandit", tile)
-	for i in TICKS:
-		world.step()
+		helper.add_enemy(world, "bandit", tile, wave)
 	return world
 
 

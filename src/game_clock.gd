@@ -92,5 +92,11 @@ func is_paused() -> bool:
 	return _paused
 
 
+## Steht die Zeit? Ohne Spielwelt, in Gründung und Pause, im Spielmenü (hold()) und nach der
+## Niederlage. Die Tonregie lässt dann keine Spielgeräusche entstehen.
+func is_time_standing() -> bool:
+	return world == null or _paused or _held or world.is_defeated()
+
+
 func _is_founding() -> bool:
 	return world != null and world.is_founding()

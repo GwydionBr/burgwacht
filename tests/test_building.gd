@@ -180,3 +180,9 @@ func test_building_works_while_time_runs() -> void:
 	world.step()
 	assert_eq(world.get_tick(), 8, "Takt läuft weiter:")
 	assert_eq(world.get_building_at(SITE).type, "woodcutter", "Gebäude steht:")
+
+
+func test_last_tile_is_the_far_corner_of_the_footprint() -> void:
+	assert_eq(Building.last_tile_of("tower", Vector2i(10, 4)), Vector2i(11, 5), "Turm (2×2):")
+	assert_eq(Building.create(1, "keep", Vector2i(2, 2)).last_tile(), Vector2i(5, 5), "Bergfried (4×4):")
+	assert_eq(Building.create(2, "wall", Vector2i(7, 3)).last_tile(), Vector2i(7, 3), "Mauer (1×1):")

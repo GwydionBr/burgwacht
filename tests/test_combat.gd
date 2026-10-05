@@ -228,6 +228,8 @@ func test_swordsman_hunts_down_the_bandit_every_attack_duration() -> void:
 	var hits: Array[int] = []
 	var removed: Array[int] = []
 	world.enemy_removed.connect(func(id: int) -> void: removed.append(id))
+	var deaths: Array[Vector3i] = []
+	world.fighter_died.connect(deaths.append)
 	for i in 60:
 		var hp := bandit.hp
 		world.step()
@@ -238,6 +240,7 @@ func test_swordsman_hunts_down_the_bandit_every_attack_duration() -> void:
 	assert_eq(hits.size(), 3, "Noch drei Treffer:")
 	assert_eq([hits[1] - hits[0], hits[2] - hits[1]], [10, 10], "Abstand der Treffer:")
 	assert_eq(removed, [1] as Array[int], "Räuber verschwindet:")
+	assert_eq(deaths, [bandit.position()] as Array[Vector3i], "Tod des Räubers mit seiner Position:")
 	assert_eq(world.get_enemies().size(), 0, "Keine Feinde:")
 	# Der Räuber hat zurückgeschlagen; ohne Ziel bleibt der Soldat, wo er ist.
 	assert_true(soldier.hp < 100 and soldier.hp > 0, "Verletzt: %d" % soldier.hp)
@@ -245,6 +248,25 @@ func test_swordsman_hunts_down_the_bandit_every_attack_duration() -> void:
 	_until_still(world, soldier)
 	assert_eq(soldier.post, soldier.position(), "Posten = aktuelle Position:")
 	assert_eq(world.activity_of(soldier), "Schwertkämpfer – auf Posten", "Tätigkeit:")
+
+
+## Jeder Hieb im Nahkampf meldet, wer wen trifft (nur für die Darstellung), in beide Richtungen.
+func test_every_melee_hit_is_reported() -> void:
+	var world := _with_soldiers(["swordsman"] as Array[String])
+	world.execute(Command.spawn_enemy("bandit"))
+	var bandit := world.get_enemy(1)
+	var soldier := world.get_resident(1)
+	_until_still(world, bandit)
+	# Je Hieb: [Lebenspunkte des Räubers, des Schwertkämpfers], gleich nach dem Treffer.
+	var hits: Array[Array] = []
+	world.melee_hit.connect(func(from: Vector3i, to: Vector3i) -> void:
+		var tiles := Vector2i(from.x - to.x, from.y - to.y)
+		assert_true(maxi(absi(tiles.x), absi(tiles.y)) <= 1, "Hieb aus der Nähe: %s → %s" % [from, to])
+		hits.append([bandit.hp, soldier.hp]))
+	world.execute(Command.attack([1] as Array[int], 1))
+	_until(world, func() -> bool: return world.get_enemy(1) == null, "Tod des Räubers")
+	assert_eq(hits.size(), 8, "Hiebe: 4 des Schwertkämpfers (80 / 20) und 4 des Räubers:")
+	assert_eq(hits.back(), [0, 52], "Lebenspunkte nach dem letzten Hieb:")
 
 
 func test_bandit_kills_a_soldier_in_sight() -> void:
@@ -255,6 +277,8 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 	_until_still(world, soldier)
 	var removed: Array[int] = []
 	world.resident_removed.connect(func(id: int) -> void: removed.append(id))
+	var deaths: Array[Vector3i] = []
+	world.fighter_died.connect(deaths.append)
 	world.execute(Command.spawn_enemy("bandit"))
 	var bandit := world.get_enemy(1)
 	_until(world, func() -> bool: return soldier.hp < 50, "Erster Treffer")
@@ -267,6 +291,7 @@ func test_bandit_kills_a_soldier_in_sight() -> void:
 		population = world.get_population()
 		world.step()
 	assert_true(removed.has(1), "Tod gemeldet")
+	assert_eq(deaths, [soldier.position()] as Array[Vector3i], "Tod des Soldaten mit seiner Position:")
 	assert_eq([world.get_population(), world.get_soldier_count()], [population - 1, 0], "Bewohner und Soldaten:")
 	assert_eq(world.get_stock("bow"), bows, "Bogen verloren, nicht zurück in der Waffenkammer:")
 	assert_eq(bandit.target_id, 0, "Räuber ohne Ziel:")
@@ -316,9 +341,12 @@ func test_archer_shoots_from_range() -> void:
 	_until_still(world, bandit)
 	var shots: Array[Array] = []
 	world.shot_fired.connect(func(from: Vector3i, to: Vector3i) -> void: shots.append([from, to]))
+	var melee_hits: Array[Vector3i] = []
+	world.melee_hit.connect(func(_from: Vector3i, to: Vector3i) -> void: melee_hits.append(to))
 	world.execute(Command.attack([1] as Array[int], 1))
 	_until(world, func() -> bool: return world.get_enemy(1) == null, "Tod des Räubers")
 	assert_eq(shots.size(), 8, "Pfeile (80 / 10):")
+	assert_eq(melee_hits, [] as Array[Vector3i], "Ein Schuss ist kein Nahkampftreffer:")
 	var shot: Array = shots[0]
 	var distance := Vector2(shot[0].x - shot[1].x, shot[0].y - shot[1].y).length()
 	assert_true(distance <= 7.0 and distance > 6.0, "Schuss aus Reichweite, außer Sicht des Räubers: %f" % distance)

@@ -95,6 +95,18 @@
 		"name": "Angekündigte Welle: Countdown im HUD und Randmarkierung",
 		"args": ["--setup=wave_announced", "--focus=11,5"]
 	},
+	"wave_horn": {
+		"name": "Ton: Horn der Ankündigung zwei Sekunden nach dem Start",
+		"args": ["--setup=wave_horn", "--focus=11,5"]
+	},
+	"wave_repelled": {
+		"name": "Ton: Welle wird zwei Sekunden nach dem Start abgewehrt (Fanfare)",
+		"args": ["--setup=wave_repelled", "--focus=8,11"]
+	},
+	"keep_falling": {
+		"name": "Ton: Bergfried fällt zwei Sekunden nach dem Start (Niederlage)",
+		"args": ["--setup=keep_falling", "--focus=4,4"]
+	},
 	"milestone7": {
 		"name": "Vorführung Meilenstein 7: Verteidigung",
 		"args": ["--setup=milestone7", "--focus=17,10"]

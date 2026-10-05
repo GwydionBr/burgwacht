@@ -215,6 +215,11 @@ func tiles() -> Array[Vector2i]:
 	return footprint(type, origin)
 
 
+## Die letzte Kachel der Grundfläche (last_tile_of()).
+func last_tile() -> Vector2i:
+	return last_tile_of(type, origin)
+
+
 ## Gebäude ohne Eingang (z. B. das Lagerfeuer) haben keine Kachel davor.
 func has_entrance() -> bool:
 	return has_entrance_type(type)
@@ -277,6 +282,11 @@ static func storage_types() -> Array[String]:
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.
 static func size_of(type_id: String) -> Vector2i:
 	return _vec(GameDefs.get_instance().buildings[type_id]["size"])
+
+
+## Die letzte Kachel der Grundfläche (gegenüber von origin_tile, größtes x und y).
+static func last_tile_of(type_id: String, origin_tile: Vector2i) -> Vector2i:
+	return origin_tile + size_of(type_id) - Vector2i.ONE
 
 
 ## Alle Kacheln der Grundfläche, zeilenweise.

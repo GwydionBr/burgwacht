@@ -34,6 +34,28 @@ _Avoid_: Startbildschirm, Titelbildschirm
 Die Ansicht während einer Partie (Taste Esc), die die Zeit anhält und Speichern, Laden, Einstellungen und den Weg zum Hauptmenü bietet.
 _Avoid_: Pausenmenü, Optionsmenü
 
+**Einstellungen**:
+Die Ansicht aus Hauptmenü und Spielmenü für Anzeige, Kamerageschwindigkeit und Lautstärke; ihre Werte gelten für alle Partien.
+_Avoid_: Optionen
+
+**Lautstärke**:
+Einer der drei Reglerwerte in den Einstellungen – Gesamt, Musik und Geräusche –, je 0–100 %; 0 heißt stumm.
+_Avoid_: Volume, Pegel
+
+**Musik**:
+Hintergrundmusik aus Musikstücken: eigene im Hauptmenü, friedliche in der Partie und Kampfmusik.
+_Avoid_: Soundtrack, Song, Lied
+
+**Musikstück**:
+Ein einzelnes Stück der Musik; die friedlichen laufen nacheinander.
+
+**Kampfmusik**:
+Die Musik, die läuft, solange mindestens ein Feind lebt.
+
+**Geräusch**:
+Kurzer Ton, den ein Ereignis auslöst, etwa ein Klick, ein Schwerthieb oder das Horn einer Ankündigung.
+_Avoid_: Sound, Effekt, SFX
+
 **Szenarioauswahl**:
 Die Ansicht, in der der Spieler für eine neue Partie das Szenario und die Karte (zufällig oder fester Seed) wählt.
 _Avoid_: Levelauswahl, Kartenauswahl
