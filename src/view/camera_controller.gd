@@ -15,6 +15,8 @@ const ZOOM_STEP := 1.12
 const CLICK_DISTANCE := 6.0
 
 var bounds := Rect2()
+## Faktor auf PAN_SPEED für Tastatur und Bildschirmrand (Einstellung Kamerageschwindigkeit).
+var speed_factor := 1.0
 
 ## Rechte bzw. mittlere Taste gedrückt.
 var _dragging := false
@@ -35,7 +37,7 @@ func _process(delta: float) -> void:
 		dir.y += 1
 	dir += _edge_scroll_direction()
 	if dir != Vector2.ZERO:
-		_move_by(dir.normalized() * PAN_SPEED * delta / zoom.x)
+		_move_by(dir.normalized() * PAN_SPEED * speed_factor * delta / zoom.x)
 
 
 func _unhandled_input(event: InputEvent) -> void:

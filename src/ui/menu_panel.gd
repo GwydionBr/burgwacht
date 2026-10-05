@@ -2,8 +2,8 @@ class_name MenuPanel
 extends PanelContainer
 ## Ein Menü im Holz-Gold-Stil der Oberfläche: Titel, Untertitel und eine senkrechte Liste
 ## gleich breiter Knöpfe. Hauptmenü und Spielmenü bauen sich daraus; weitere Einträge kommen
-## mit add_entry() dazu. Rahmen, Knöpfe und Beschriftungen gibt es auch einzeln für Ansichten
-## mit eigenem Aufbau (Szenarioauswahl).
+## mit add_entry() dazu, andere Bedienelemente mit add_control(). Rahmen, Knöpfe und
+## Beschriftungen gibt es auch einzeln für Ansichten mit eigenem Aufbau (Szenarioauswahl).
 
 const ENTRY_SIZE := Vector2(300, 48)
 const ENTRY_FONT_SIZE := 20
@@ -65,6 +65,11 @@ static func make_button(text: String, action: Callable) -> Button:
 	button.add_theme_color_override("font_disabled_color", UiStyle.HINT_COLOR.darkened(0.3))
 	button.pressed.connect(action)
 	return button
+
+
+## Hängt ein beliebiges Bedienelement an (z. B. eine Zeile mit Schieberegler).
+func add_control(control: Control) -> void:
+	_entries.add_child(control)
 
 
 ## Eine zentrierte Beschriftung.
