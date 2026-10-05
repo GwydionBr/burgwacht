@@ -59,6 +59,7 @@
       "files": ["sounds/defeat/defeat_1.ogg"],
       "volume": 1.0,
       "positional": false,
+      "vary_pitch": false,
       "group": "match"
     },
     "sword_hit": {

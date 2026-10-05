@@ -194,5 +194,6 @@ func _wish(occasion: String, volume_factor := 1.0, pan := 0.0) -> void:
 	wish.variant = _rng.randi_range(0, sound.files.size() - 1)
 	wish.volume = sound.volume * volume_factor
 	wish.pan = pan
-	wish.pitch = 1.0 + _rng.randf_range(-_data.pitch_variation, _data.pitch_variation)
+	if sound.vary_pitch:
+		wish.pitch = 1.0 + _rng.randf_range(-_data.pitch_variation, _data.pitch_variation)
 	wished.emit(wish)

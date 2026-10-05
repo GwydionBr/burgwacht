@@ -326,6 +326,15 @@ func test_wave_and_defeat_sound_even_while_time_stands() -> void:
 	assert_eq(_occasions(), ["wave_announced", "wave_spawned", "wave_repelled", "defeat"] as Array[String], "Anlässe bei stehender Zeit:")
 
 
+## Das lange Trauerstück der Niederlage schwankt nicht in der Tonhöhe (Daten: „vary_pitch“).
+func test_defeat_keeps_its_pitch() -> void:
+	var director := _director()
+	for i in 10:
+		director.defeated()
+	for wish in _wishes:
+		assert_eq(wish.pitch, 1.0, "Tonhöhe der Niederlage:")
+
+
 ## Hieb, Tod und Zerstörung: je ihr Geräusch an ihrem Ort, im Ausschnitt voll, rechts im Bild
 ## rechts im Panorama, jenseits der festen Entfernung keines.
 func test_sword_hit_death_and_destruction_wish_their_sound_where_they_happen() -> void:

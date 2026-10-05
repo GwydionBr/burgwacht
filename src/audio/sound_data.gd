@@ -47,6 +47,8 @@ class Sound:
 	## Grundlautstärke als Faktor (1 = so laut wie die Datei).
 	var volume := 1.0
 	var positional := false
+	## Schwankt die Tonhöhe (pitch_variation)? Optional in den Daten, sonst ja.
+	var vary_pitch := true
 	var group := GROUP_CONTROL
 
 
@@ -143,6 +145,10 @@ func _read_sound(occasion: String, raw: Variant) -> String:
 	if not positional is bool:
 		return "„positional“ muss true oder false sein"
 	result.positional = positional
+	var vary_pitch: Variant = entry.get("vary_pitch", true)
+	if not vary_pitch is bool:
+		return "„vary_pitch“ muss true oder false sein"
+	result.vary_pitch = vary_pitch
 	var group: Variant = entry.get("group")
 	if not group in [GROUP_CONTROL, GROUP_GAME, GROUP_MATCH]:
 		return "„group“ muss „%s“, „%s“ oder „%s“ sein" % [GROUP_CONTROL, GROUP_GAME, GROUP_MATCH]
