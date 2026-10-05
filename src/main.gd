@@ -74,8 +74,6 @@ var start: MatchStart
 ## Die Spielwelt der Partie (_match.world), hier kurz für Darstellung und Eingabe.
 var world: GameWorld
 
-const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
-
 var _match := Match.new()
 var _game_menu := GameMenu.new()
 ## „Speichern“ im Spielmenü; gesperrt, solange die Partie nicht speicherbar ist.
@@ -137,8 +135,8 @@ func _ready() -> void:
 	_hud.new_game_requested.connect(_leave_match.bind("Neue Partie beginnen?",
 			func() -> void: MainMenu.show_in(get_tree(), _match.scenario.id)))
 	_hud.load_requested.connect(_open_load_view)
-	_hud.main_menu_requested.connect(_leave_match.bind("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree())))
-	_hud.quit_requested.connect(_leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	_hud.main_menu_requested.connect(_leave_to_main_menu)
+	_hud.quit_requested.connect(_quit)
 	# ⌘Q und das Schließen des Fensters kommen als NOTIFICATION_WM_CLOSE_REQUEST an.
 	get_tree().set_auto_accept_quit(false)
 	_match.saves = Presets.save_games()
@@ -199,7 +197,7 @@ func _ready() -> void:
 		_open_settings()
 	if args.has("leave"):
 		_open_game_menu()
-		_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+		_leave_to_main_menu()
 		if not _leave_dialog.is_open():
 			printerr("--leave: kein ungespeicherter Fortschritt")
 	# Die folgenden Parameter melden es, wenn sie nichts bewirken (der Rauchtest scheitert daran).
@@ -257,7 +255,17 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		_leave_match("Burgwacht beenden?", get_tree().quit)
+		_quit()
+
+
+## „Zum Hauptmenü“ aus Spielmenü und Niederlage-Ansicht, mit Rückfrage bei ungespeichertem Fortschritt.
+func _leave_to_main_menu() -> void:
+	_leave_match("Zum Hauptmenü?", MainMenu.show_in.bind(get_tree()))
+
+
+## „Beenden“ aus Spielmenü und Niederlage-Ansicht, ebenso ⌘Q und das Schließen des Fensters.
+func _quit() -> void:
+	_leave_match("Burgwacht beenden?", get_tree().quit)
 
 
 ## Verlässt die Partie, indem leave aufgerufen wird (Hauptmenü, Laden, Beenden …); gibt es
@@ -626,9 +634,8 @@ func _build_game_menu() -> void:
 	_game_menu.add_entry("Einstellungen", _open_settings)
 	add_child(_settings_view)
 	_settings_view.closed.connect(_show_game_menu)
-	_game_menu.add_entry("Zum Hauptmenü", _leave_match.bind("Zum Hauptmenü?",
-			get_tree().change_scene_to_file.bind(MAIN_MENU_SCENE)))
-	_game_menu.add_entry("Beenden", _leave_match.bind("Burgwacht beenden?", get_tree().quit))
+	_game_menu.add_entry("Zum Hauptmenü", _leave_to_main_menu)
+	_game_menu.add_entry("Beenden", _quit)
 	add_child(_leave_dialog)
 
 
