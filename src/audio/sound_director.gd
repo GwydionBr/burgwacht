@@ -158,7 +158,7 @@ func building_destroyed(building: Building) -> void:
 
 ## Die Mitte der Grundfläche (Kachelkoordinaten).
 static func _center_of(building: Building) -> Vector2:
-	return Vector2(building.origin) + Vector2(Building.size_of(building.type) - Vector2i.ONE) / 2.0
+	return Vector2(building.origin + building.last_tile()) / 2.0
 
 
 ## Wünscht ein ortsabhängiges Geräusch an diesem Punkt (Kachelkoordinaten, auch zwischen

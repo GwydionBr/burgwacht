@@ -261,7 +261,7 @@ func _hit_building(figure: Figure, building: Building) -> void:
 	figure.cooldown = FighterType.attack_ticks(type)
 	building.hp = maxi(building.hp - FighterType.damage_of(type), 0)
 	if not FighterType.is_melee(type):
-		var nearest := figure.tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
+		var nearest := figure.tile.clamp(building.origin, building.last_tile())
 		_world.shot_fired.emit(figure.position(), Figure.ground(nearest))
 	_world.building_changed.emit(building.id)
 	var wave := (figure as Enemy).wave if figure is Enemy else 0
@@ -417,7 +417,7 @@ class _EnemyMap:
 
 ## Abstand einer Kachel zur nächsten Kachel der Grundfläche eines Gebäudes (0 auf ihr).
 static func _distance_to_building(tile: Vector2i, building: Building) -> float:
-	var nearest := tile.clamp(building.origin, building.origin + Building.size_of(building.type) - Vector2i.ONE)
+	var nearest := tile.clamp(building.origin, building.last_tile())
 	return Vector2(tile - nearest).length()
 
 
