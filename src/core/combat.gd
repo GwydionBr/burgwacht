@@ -103,13 +103,15 @@ func _fight(figure: Figure, target: Figure, may_enter := Callable()) -> bool:
 
 
 ## Ein Angriff trifft sofort und ohne Zufall: Schaden abziehen, Angriffsdauer beginnt von vorn.
-## Fernkämpfer melden den Schuss für die Darstellung. Was aus dem Ziel wird, hängt von seiner Art
+## Für die Darstellung melden Nahkämpfer den Hieb, Fernkämpfer den Schuss. Was aus dem Ziel wird, hängt von seiner Art
 ## ab (Figure.report_hit() → soldier_hit() bzw. enemy_hit()).
 func _hit(figure: Figure, target: Figure) -> void:
 	var type := figure.fighter_type()
 	figure.cooldown = FighterType.attack_ticks(type)
 	target.hp = maxi(target.hp - FighterType.damage_of(type), 0)
-	if not FighterType.is_melee(type):
+	if FighterType.is_melee(type):
+		_world.melee_hit.emit(figure.position(), target.position())
+	else:
 		_world.shot_fired.emit(figure.position(), target.position())
 	target.report_hit(self)
 
@@ -120,6 +122,7 @@ func soldier_hit(soldier: Resident) -> void:
 	if soldier.hp > 0:
 		_world.resident_changed.emit(soldier.id)
 		return
+	_world.fighter_died.emit(soldier.position())
 	_world._remove_resident(soldier)
 	_world.notice.emit("Ein %s ist gefallen" % FighterType.name_of(soldier.soldier_type))
 	for enemy in _world.get_enemies():
@@ -133,6 +136,7 @@ func enemy_hit(enemy: Enemy) -> void:
 	if enemy.hp > 0:
 		_world.enemy_changed.emit(enemy.id)
 		return
+	_world.fighter_died.emit(enemy.position())
 	_world._remove_enemy(enemy)
 	for resident in _world.get_residents():
 		if resident.target_id == enemy.id:

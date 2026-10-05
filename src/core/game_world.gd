@@ -45,12 +45,15 @@ signal deposit_changed(tile: Vector2i)
 signal day_started(day: int)
 signal building_added(id: int)
 signal building_removed(id: int)
+## Ein Gebäude ist zerstört (0 Lebenspunkte, nicht der Bergfried); kommt vor building_removed,
+## das Gebäude ist also noch abfragbar. Nur für die Darstellung, der Abriss meldet es nicht.
+signal building_destroyed(id: int)
 ## Die Lebenspunkte eines Gebäudes haben sich geändert.
 signal building_changed(id: int)
 ## Der Inhalt eines Lagers hat sich geändert.
 signal stock_changed(building_id: int)
 signal resident_added(id: int)
-## Ein gehender Bewohner hat die Burg verlassen und ist fort.
+## Ein Bewohner ist fort: ein Gehender am Kartenrand oder ein gefallener Soldat.
 signal resident_removed(id: int)
 ## Tätigkeit oder getragene Ware eines Bewohners hat sich geändert (zugeteilt, angekommen,
 ## Abbau, Verarbeitung, abgeliefert, wieder untätig …).
@@ -62,6 +65,12 @@ signal enemy_removed(id: int)
 signal enemy_changed(id: int)
 ## Ein Fernkämpfer hat geschossen (der Treffer zählt sofort; nur für die Darstellung).
 signal shot_fired(from: Vector3i, to: Vector3i)
+## Ein Nahkämpfer auf from hat den Kämpfer auf to getroffen (der Treffer zählt sofort; nur für die
+## Darstellung). Hiebe gegen Gebäude meldet building_changed.
+signal melee_hit(from: Vector3i, to: Vector3i)
+## Ein Kämpfer (Soldat oder Feind) ist auf dieser Position gestorben (nur für die Darstellung;
+## gleich danach folgt resident_removed bzw. enemy_removed).
+signal fighter_died(position: Vector3i)
 signal founded()
 ## Die Beliebtheit hat sich geändert.
 signal popularity_changed()
@@ -2073,6 +2082,7 @@ func _demolish(id: int) -> String:
 ## Erstattung, und sein Lagerinhalt ist verloren. Wer auf seinem Wehrgang stand, landet auf dem
 ## Boden (_land_from_lost_wall_walk()). Den Bergfried trifft das nie: Sein Fall ist die Niederlage.
 func _destroy(building: Building) -> void:
+	building_destroyed.emit(building.id)
 	_remove_building(building, _land_from_lost_wall_walk)
 	notice.emit("%s zerstört" % _building_name(building.type))
 

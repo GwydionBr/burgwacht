@@ -203,12 +203,15 @@ func test_leaving_resident_walks_to_edge_and_disappears() -> void:
 	var world := _founded("tiny_unpopular")
 	var removed: Array[int] = []
 	world.resident_removed.connect(func(id: int) -> void: removed.append(id))
+	var deaths: Array[Vector3i] = []
+	world.fighter_died.connect(deaths.append)
 	_steps(world, INTERVAL)
 	var leaving := world.get_resident(4)
 	assert_eq(leaving.destination(), EDGE, "Geht zur nächsten Randkachel:")
 	_until_settled(world, 4)
 	assert_eq(world.get_resident(4), null, "Am Rand entfernt:")
 	assert_eq(removed, [4] as Array[int], "Entfernen gemeldet:")
+	assert_eq(deaths, [] as Array[Vector3i], "Ein Gehender stirbt nicht:")
 
 
 func test_workers_of_youngest_workplace_leave_after_idle() -> void:

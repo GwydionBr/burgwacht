@@ -89,6 +89,7 @@ func test_demolish_is_reported() -> void:
 	var events: Array[String] = []
 	world.building_removed.connect(func(building_id: int) -> void: events.append("Gebäude weg %d" % building_id))
 	world.stock_changed.connect(func(building_id: int) -> void: events.append("Bestand %d" % building_id))
+	world.building_destroyed.connect(func(building_id: int) -> void: events.append("Zerstört %d" % building_id))
 	world.execute(Command.demolish(id))
 	assert_eq(events, ["Gebäude weg %d" % id, "Bestand 2"] as Array[String], "Signale:")
 
