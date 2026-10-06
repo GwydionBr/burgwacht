@@ -5,8 +5,8 @@ extends Node2D
 ## Objekt-Container. Der Sortierpunkt liegt zwischen den Kacheln hinter dem Gebäude und
 ## denen vor seinen beiden sichtbaren Wänden, damit Vorkommen davor und dahinter richtig
 ## erscheinen (exakt für quadratische Grundflächen). Das Lagerfeuer ist kein Block, sondern
-## ohne Sprite ein gezeichneter Steinkreis mit Flamme. Gerenderte Flammen folgen der Spieluhr. Gebäude mit "decor": "trees" (Apfelplantage)
-## tragen auf jeder Kachel ein kleines Obstbäumchen, mit "decor": "wheat" (Weizenfarm)
+## ohne Sprite ein gezeichneter Steinkreis mit Flamme. Gerenderte Flammen folgen der Spieluhr. Gebäude mit „decor“: „trees“ (Apfelplantage)
+## tragen auf jeder Kachel ein kleines Obstbäumchen, mit „decor“: „wheat“ (Weizenfarm)
 ## einige Ähren. Gebäude mit Wehrgang (Mauer) stehen ohne Abstand zum Nachbarn, damit eine
 ## Mauerlinie geschlossen wirkt; Gebäude mit einer Kachel (Mauer, Tor, Treppe) tragen keinen Namen.
 ## Ist ein Gebäude mit Wehrgang höher als der Wehrgang (Turm), endet der Block auf Höhe des

@@ -17,7 +17,7 @@
     }
   },
   "swordsman": {
-    "name": "Schwertk\u00e4mpfer",
+    "name": "Schwertkämpfer",
     "kind": "soldier",
     "hp": 100,
     "damage": 20,
@@ -48,7 +48,7 @@
     }
   },
   "archer": {
-    "name": "Bogensch\u00fctze",
+    "name": "Bogenschütze",
     "kind": "soldier",
     "hp": 50,
     "damage": 10,
@@ -79,7 +79,7 @@
     }
   },
   "bandit": {
-    "name": "R\u00e4uber",
+    "name": "Räuber",
     "kind": "enemy",
     "hp": 80,
     "damage": 12,
