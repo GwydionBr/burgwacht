@@ -729,7 +729,7 @@ func _make_card(type_id: String, title: String, hotkey: String, cost: String) ->
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(column)
-	var icon := BuildingIcon.new(type_id)
+	var icon := BuildingIcon.new(type_id, true)
 	icon.custom_minimum_size = Vector2(0, CARD_ICON_HEIGHT)
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(icon)

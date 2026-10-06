@@ -56,7 +56,7 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 | Ordner | Quelle | Urheber | Lizenz | Dateien |
 |---|---|---|---|---|
 | `kenney-fantasy-town/` | Kenney „Fantasy Town Kit“ 2.0 (GLB-Fassung) – <https://kenney.nl/assets/fantasy-town-kit> | Kenney (kenney.nl) | CC0 | `wall.glb`, `wall-door.glb`, `wall-window-shutters.glb`, `roof-high-gable.glb`, `roof-high-gable-end.glb`, dazu die gemeinsame Farbtextur `Textures/colormap.png` und `License.txt`; unverändert |
-| `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `tree_default.glb`, `tree_detailed.glb`, `tree_pineRoundA.glb`, `tree_pineRoundB.glb`, `ground_grass.glb` und `License.txt`; unverändert, die Bäume enthalten ihre Materialien ohne externe Texturen; das Bodenmodell wird flach auf eine Kachel normiert und mit der gemeinsamen Palette sowie einer weichen Ufer-Materialtextur versehen |
+| `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `tree_default.glb`, `tree_detailed.glb`, `tree_pineRoundA.glb`, `tree_pineRoundB.glb`, `ground_grass.glb`, `stone_largeA.glb` bis `stone_largeD.glb` und `License.txt`; unverändert, die Bäume enthalten ihre Materialien ohne externe Texturen; das Geländemodell wird flach auf eine Kachel normiert; fünf Gelände mit je vier Varianten, transparenten Kanten-/Eckübergängen und statischem Wasser mit Ufersaum nutzen die gemeinsame Palette. Die Frontgrenzen werden zur Erdkante extrudiert; Rezepte und Materialtexturen: Burgwacht |
 
 
 ### Bewohner – KayKit Adventurers Character Pack 1.0
@@ -67,3 +67,63 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - Quelle: https://kaylousberg.itch.io/kaykit-adventurers
 - Lizenz: CC0, beigefügt als `tools/render/models/kaykit-adventurers/LICENSE.txt`
 - Umfärbung auf die gemeinsame Palette und Renderrezept: Burgwacht.
+
+### Soldaten und Pfeile (#146)
+
+- **KayKit Adventurers Character Pack 1.0** – Kay Lousberg, CC0,
+  <https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0>.
+  `Knight.glb` ist der unveränderte Schwertkämpfer mit Helm, Rundschild und Einhandschwert;
+  der bereits verwendete `Rogue.glb` bildet den Bogenschützen mit den freigegebenen Proportionen.
+  `quiver.glb`, `arrow_bundle.glb` und `arrow.glb` sind verlustfrei in binäres glTF
+  exportierte Originalmodelle aus demselben Satz. Lizenz: `tools/render/models/kaykit-adventurers/LICENSE.txt`.
+- **Langbogen** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
+  `tools/render/models/burgwacht/bow.blend`, reproduzierbar mit `tools/render/model_bow.py`.
+  Die Bogenhaltung retargetet ausschließlich Armstellungen und verändert Kopf und Körper nicht.
+  Holz, Griff und Sehne nutzen exportierbare Knotenmaterialien; die Farben bleiben beim
+  erneuten Erzeugen des GLB erhalten.
+
+### Burggebäude (#141)
+
+- **Kenney – Fantasy Town Kit 2.0**, CC0: Holzfassaden, Schindeldach, Marktstände und Banner aus [kenney.nl/assets/fantasy-town-kit](https://kenney.nl/assets/fantasy-town-kit). Ausgewählte Modelle unter `tools/render/models/kenney-fantasy-town/`, Lizenz dort.
+- **Kenney – Castle Kit 2.0**, CC0: Bergfried aus quadratischem Sockel, Fenstergeschoss und Zinnen, [kenney.nl/assets/castle-kit](https://kenney.nl/assets/castle-kit). Modelle und Lizenz unter `tools/render/models/kenney-castle/`.
+- **Kenney – Survival Kit 2.0**, CC0: Kisten, Fässer, Holz-/Steinstapel, Arbeitstisch und Axt, [kenney.nl/assets/survival-kit](https://kenney.nl/assets/survival-kit). Modelle und Lizenz unter `tools/render/models/kenney-survival/`.
+- **Kenney – Nature Kit 2.1**, CC0: Lagerfeuer-Steinkreis und Holzscheite, [kenney.nl/assets/nature-kit](https://kenney.nl/assets/nature-kit). Modelle und Lizenz unter `tools/render/models/kenney-nature/`.
+- **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: Waffengestell und Säcke, [Originalrepository](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0). Modelle, Textur und Lizenz unter `tools/render/models/kaykit-medieval/`.
+- **Burgwacht**: eigene Low-Poly-Flammen, modellierte Quelldatei `tools/render/models/burgwacht/campfire-flame.blend`, vier exportierte glTF-Posen. Keine fremden Modelle für die Flamme.
+
+
+### Weitere Vorkommen
+
+| Ordner | Quelle | Urheber | Lizenz | Dateien |
+|---|---|---|---|---|
+| `quaternius-animals/` | Quaternius „Ultimate Animated Animal Pack“ (Juli 2021) – <https://quaternius.com/packs/ultimateanimatedanimals.html> | Quaternius | CC0 | `Deer.glb`, `Stag.glb`, mit Blender 5.2 aus den glTF-Dateien des Originaldownloads exportiert; Herkunft und Lizenzangabe in `SOURCE.txt`. Vier feste Ausrichtungen als Wild-Vorkommen, ohne Bewegung in der Spielwelt |
+| `burgwacht/iron.blend`, `burgwacht/iron.glb` | Eigenes Low-Poly-Modell | Burgwacht | Projektlizenz | Dunkles Gestein mit erhabenen rostfarbenen Eisenadern; Blender-Quelldatei und GLB-Export, vier Ausrichtungen |
+
+### Arbeitsstätten (#142)
+
+- **Kenney – Fantasy Town Kit 2.0**, CC0: Fassaden und Dächer wie beim freigegebenen Wohnhaus; zusätzlich Mühlenflügel (`windmill.glb`), Schornstein und Karren. Quelle und Lizenz: [kenney.nl/assets/fantasy-town-kit](https://kenney.nl/assets/fantasy-town-kit), `tools/render/models/kenney-fantasy-town/License.txt`.
+- **Kenney – Nature Kit 2.1**, CC0: Holzstapel, Zelt, kleine Obstbäume, Weizenähren, Ackerreihen und Fels am Grubeneingang. Quelle und Lizenz: [kenney.nl/assets/nature-kit](https://kenney.nl/assets/nature-kit), `tools/render/models/kenney-nature/License.txt`.
+- **Kenney – Survival Kit 2.0**, CC0: Arbeitstische, Amboss, Axt, Spitzhacke, Hammer, Holz, Stein und offene Kiste. Quelle und Lizenz: [kenney.nl/assets/survival-kit](https://kenney.nl/assets/survival-kit), `tools/render/models/kenney-survival/License.txt`.
+- **Kenney – Food Kit 2.0**, CC0: Äpfel, Brot und Fleisch. Quelle und Lizenz: [kenney.nl/assets/food-kit](https://kenney.nl/assets/food-kit), `tools/render/models/kenney-food/License.txt`. Nur die drei verwendeten Modelle und ihre gemeinsame Textur `Textures/colormap.png` liegen im Repo.
+- **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: die bereits verwendeten Säcke für Mehl und Weizen. Quelle und Lizenz stehen oben bei den Burggebäuden.
+- **Burgwacht**: Backofen, Esse, Holzrahmen des Grubeneingangs, Sägebock und Bogengestell sind eigene Low-Poly-Modelle. Die bearbeitbare Quelle `tools/render/models/burgwacht/trade-fixtures.blend` und das Erzeugungsskript `create_trade_fixtures.py` bleiben erhalten. Der Bogen im Bogengestell sowie bei Jäger und Bogner ist das oben dokumentierte eigene Modell `bow.blend`.
+- **Kenney – Castle Kit 2.0**, CC0: Mittelpfeiler, modulare Mauerarme, Tor mit offenem Durchgang,
+  Steintreppe und Turmsockel mit Ecktürmchen. [kenney.nl/assets/castle-kit](https://kenney.nl/assets/castle-kit).
+  Ausgewählte Modelle und Lizenz unter `tools/render/models/kenney-castle/`; Richtungsrezepte unter
+  `tools/render/recipes/buildings/`.
+
+### Feinde (#147)
+
+- **KayKit Adventurers Character Pack 1.0** – Kay Lousberg, CC0,
+  <https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0>.
+  `Rogue_Hooded.glb` ist das unveränderte Kapuzenmodell für Räuber und Wilderer;
+  Lizenz unter `tools/render/models/kaykit-adventurers/LICENSE.txt`. Originale
+  Steh-, Geh- und Nahkampfanimationen; Kleiderfarben unmittelbar aus `units.json`.
+  Der Wilderer nutzt den eigenen Langbogen und den KayKit-Köcher samt Pfeilen aus #146.
+- **Knüppel** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
+  `tools/render/models/burgwacht/club.blend`, reproduzierbar mit `tools/render/model_club.py`.
+
+
+
+
+Arbeitswerkzeuge und Warenbündel: Kenney Survival Kit (`tool-axe`, `tool-pickaxe`, `resource-stone`), Nature Kit (`log_stack`, `crops_wheatStageB`) und Food Kit (`apple`, `meat-raw`, `bread`), jeweils CC0; KayKit Medieval Hexagon Pack (`sack`) und Adventurers Character Pack 1.0 (`sword_1handed`), Kay Lousberg, CC0. Quellen und Lizenzen liegen bei den bereits verwendeten Modellen unter `tools/render/models/`. Das Bogenbündel verwendet den eigenen Bogen aus `burgwacht/bow.blend`. Werkzeuge folgen der unveränderten Rogue-Animation `1H_Melee_Attack_Chop`; die Warenrezepte liegen unter `tools/render/recipes/goods/`.

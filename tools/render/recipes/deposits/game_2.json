@@ -1,0 +1,14 @@
+{
+  "parts": [
+    {
+      "model": "quaternius-animals/Deer.glb",
+      "scale": 0.075,
+      "rotation": 225,
+      "position": [
+        -0.08,
+        0,
+        0
+      ]
+    }
+  ]
+}

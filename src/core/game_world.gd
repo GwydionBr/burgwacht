@@ -2559,3 +2559,8 @@ func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 				and (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \
 				and _rng.randf() < chance and not standing.has(tile):
 			map.add_deposit(tile, Deposit.create(type, _rng))
+
+
+## Aktuelles Angriffsziel eines stehenden Kämpfers in Reichweite; eine Position oder leer.
+func combat_target(figure: Figure) -> Array[Vector3i]:
+	return _combat().attack_target(figure)

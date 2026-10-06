@@ -1,9 +1,53 @@
 {
-  "tree":  { "sprite": "deposits/tree", "sprite_variants": 4, "name": "Baum",           "yields": "wood",  "amount": 40, "walkable": false, "exclusive": true,
-             "spread": { "interval_ticks": 240, "chance": 0.0 } },
-  "stone": { "name": "Felsen",         "yields": "stone", "amount": 120, "walkable": false, "exclusive": false },
-  "iron":  { "name": "Eisenvorkommen", "yields": "iron",  "amount": 80, "walkable": false, "exclusive": false },
-  "game":  { "name": "Wild",           "yields": "meat",  "amount": 6, "walkable": true, "exclusive": true,
-             "mining_text": "erlegt Wild",
-             "spread": { "interval_ticks": 240, "chance": 0.004, "terrain": ["grass"] } }
+  "tree": {
+    "sprite": "deposits/tree",
+    "sprite_variants": 4,
+    "name": "Baum",
+    "yields": "wood",
+    "amount": 40,
+    "walkable": false,
+    "exclusive": true,
+    "spread": {
+      "interval_ticks": 240,
+      "chance": 0.0
+    },
+    "work_animation": "axe"
+  },
+  "stone": {
+    "name": "Felsen",
+    "yields": "stone",
+    "amount": 120,
+    "walkable": false,
+    "exclusive": false,
+    "sprite": "deposits/stone",
+    "sprite_variants": 4,
+    "work_animation": "pick"
+  },
+  "iron": {
+    "name": "Eisenvorkommen",
+    "yields": "iron",
+    "amount": 80,
+    "walkable": false,
+    "exclusive": false,
+    "sprite": "deposits/iron",
+    "sprite_variants": 4,
+    "work_animation": "pick"
+  },
+  "game": {
+    "name": "Wild",
+    "yields": "meat",
+    "amount": 6,
+    "walkable": true,
+    "exclusive": true,
+    "mining_text": "erlegt Wild",
+    "spread": {
+      "interval_ticks": 240,
+      "chance": 0.004,
+      "terrain": [
+        "grass"
+      ]
+    },
+    "sprite": "deposits/game",
+    "sprite_variants": 4
+  }
 }

@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "model": "kenney-food/meat-raw.glb",
+      "scale": 0.3
+    }
+  ]
+}

@@ -3,7 +3,7 @@ extends Node2D
 ## Halbdurchsichtige Bauvorschau unter der Maus: Grundflächen grün (erlaubt) oder rot,
 ## dazu die Kachel vor dem Eingang. Beim Abriss das Gebäude unter der Maus orange
 ## (abreißbar) oder rot, ohne Eingang. Eine Mauerlinie zeigt je Kachel grün, was entsteht, und
-## rot, was nicht. Kennt nur Typ und Ursprung, keinen Zustand.
+## rot, was nicht. Die Spielwelt liefert bestehende Wehrgänge für die Spriteanschlüsse.
 
 const OK_COLOR := Color(0.35, 0.9, 0.4)
 const BLOCKED_COLOR := Color(0.95, 0.3, 0.25)
@@ -11,6 +11,11 @@ const DEMOLISH_COLOR := Color(1.0, 0.6, 0.15)
 const FILL_ALPHA := 0.35
 const BLOCK_ALPHA := 0.45
 const FRONT_COLOR := Color(1, 0.95, 0.7, 0.8)
+
+## Bestehende Wehrgänge für dieselbe Anschlusswahl wie auf der Karte.
+var world: GameWorld
+## Zeichenbefehle halten Texturen nicht selbst am Leben.
+var _textures: Dictionary[String, Texture2D] = {}
 
 ## Paare [Gebäudetyp, Ursprung].
 var _parts: Array[Array] = []
@@ -55,6 +60,27 @@ func show_demolish(type_id: String, origin: Vector2i, allowed: bool) -> void:
 	queue_redraw()
 
 
+## Dieselben Varianten und Mauerteile wie auf der Karte, ergänzt um gültige geplante Wehrgänge.
+## Ohne verfügbares Hauptbild bleibt die Blockvorschau erhalten.
+func sprite_paths(type_id: String, origin: Vector2i) -> Array[String]:
+	var entry: Dictionary = GameDefs.get_instance().buildings[type_id]
+	var neighbors: Array[Vector2i] = []
+	if world != null:
+		neighbors = WallSprites.neighbors(world, origin)
+	for part in _parts:
+		var planned_type: String = part[0]
+		var planned_origin: Vector2i = part[1]
+		var planned_entry: Dictionary = GameDefs.get_instance().buildings[planned_type]
+		if not _demolish and _tile_allowed.get(planned_origin, _allowed) and bool(planned_entry.get("walkway", false)):
+			for tile in Building.footprint(planned_type, planned_origin):
+				if not neighbors.has(tile):
+					neighbors.append(tile)
+	var paths := WallSprites.paths(entry, origin, neighbors)
+	if not ResourceLoader.exists(paths[0]):
+		return []
+	return paths
+
+
 func _draw() -> void:
 	for part in _parts:
 		var type_id: String = part[0]
@@ -64,7 +90,17 @@ func _draw() -> void:
 			color = DEMOLISH_COLOR if _demolish else OK_COLOR
 		for tile in Building.footprint(type_id, origin):
 			draw_colored_polygon(Iso.tile_polygon(tile), Color(color, FILL_ALPHA))
-		_draw_ghost_block(type_id, origin, color)
+		var paths := sprite_paths(type_id, origin)
+		if paths.is_empty():
+			_draw_ghost_block(type_id, origin, color)
+		else:
+			var center := (Iso.tile_to_world(origin) + Iso.tile_to_world(Building.last_tile_of(type_id, origin))) * 0.5
+			for path in paths:
+				if not _textures.has(path):
+					_textures[path] = load(path)
+				var texture := _textures[path]
+				var image_size := texture.get_size() * BuildingView.SPRITE_SCALE
+				draw_texture_rect(texture, Rect2(center - image_size * 0.5, image_size), false, Color(color, BLOCK_ALPHA))
 		if _demolish or not Building.has_entrance_type(type_id):
 			continue
 		var front := Iso.tile_polygon(Building.front_of_entrance(type_id, origin))

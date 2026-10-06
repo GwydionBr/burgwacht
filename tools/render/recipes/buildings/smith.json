@@ -1,0 +1,227 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/wall-window-shutters.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 0,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 90,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 180,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-door.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 270,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.92,
+        0.88,
+        0.35
+      ],
+      "rotation": 0,
+      "recolor": {
+        "cloth_red": "stone_dark",
+        "roof_brown": "stone_dark",
+        "roof_red": "stone_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        0.0,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.04,
+        0.88,
+        0.35
+      ],
+      "rotation": 0,
+      "recolor": {
+        "cloth_red": "stone_dark",
+        "roof_brown": "stone_dark",
+        "roof_red": "stone_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        -1.0,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.04,
+        0.88,
+        0.35
+      ],
+      "rotation": 180,
+      "recolor": {
+        "cloth_red": "stone_dark",
+        "roof_brown": "stone_dark",
+        "roof_red": "stone_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        -0.5,
+        -1,
+        0.025
+      ],
+      "scale": [
+        0.55,
+        0.42,
+        0.35
+      ],
+      "rotation": 0,
+      "color": "wood_light"
+    },
+    {
+      "model": "burgwacht/forge.glb",
+      "position": [
+        0.5,
+        0.4,
+        0
+      ],
+      "scale": 0.75,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-fantasy-town/chimney.glb",
+      "position": [
+        0.4,
+        0.5,
+        0.5
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        1.1
+      ],
+      "rotation": 0,
+      "color": "stone_dark"
+    },
+    {
+      "model": "kenney-survival/workbench-anvil.glb",
+      "position": [
+        0.5,
+        -0.5,
+        0
+      ],
+      "scale": 2.3,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/tool-hammer.glb",
+      "position": [
+        0.65,
+        -0.5,
+        0.67
+      ],
+      "scale": 1.4,
+      "rotation": 0,
+      "rotation_xyz": [
+        0,
+        90,
+        0
+      ]
+    },
+    {
+      "model": "kenney-survival/resource-stone.glb",
+      "position": [
+        -0.5,
+        0.5,
+        0
+      ],
+      "scale": 2.7,
+      "rotation": 0,
+      "color": "metal"
+    }
+  ]
+}

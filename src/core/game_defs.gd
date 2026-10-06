@@ -41,7 +41,7 @@ static func get_instance() -> GameDefs:
 		_instance.units = _load_json("units.json")
 		_instance.population = _load_json("population.json")
 		_instance.market = _load_json("market.json")
-		_instance.error = _instance._sprites_error()
+		_instance.error = _instance.validate_sprites()
 		if _instance.error != "":
 			push_error("Spieldaten: " + _instance.error)
 	return _instance
@@ -80,9 +80,31 @@ static func sprites_error(file_name: String, entries: Dictionary) -> String:
 			var neighbor: Variant = entry["sprite_transition"]
 			if not neighbor is String or not entries.has(neighbor) or neighbor == id:
 				return "%s, „%s“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen" % [file_name, id]
-		var reason := _sprite_error(entry)
-		if reason != "":
-			return "%s, „%s“: %s" % [file_name, id, reason]
+		var base_reason: String = _sprite_error(entry)
+		if base_reason != "":
+			return "%s, „%s“: %s" % [file_name, id, base_reason]
+		if file_name == "terrain.json":
+			var terrain_reason: String = _terrain_sprite_error(entry)
+			if terrain_reason != "":
+				return "%s, „%s“: %s" % [file_name, id, terrain_reason]
+	return ""
+
+
+static func _terrain_sprite_error(entry: Dictionary) -> String:
+	var priority: Variant = entry.get("sprite_priority", 0)
+	if not (priority is int or priority is float) or float(priority) < 0 or float(priority) != floor(float(priority)):
+		return "„sprite_priority“ muss eine nichtnegative ganze Zahl sein"
+	for field: String in ["sprite_overlay", "sprite_edge"]:
+		if not entry.has(field):
+			continue
+		var value: Variant = entry[field]
+		if not value is String or str(value) == "" or str(value).ends_with(".png"):
+			return "„%s“ muss der Pfad eines Bilds sein (Text, ohne .png)" % field
+		var count: int = int(entry.get("sprite_variants", 1)) if field == "sprite_overlay" else 1
+		for variant: int in count:
+			var path: String = sprite_path({"sprite": value, "sprite_variants": count}, variant)
+			if not ResourceLoader.exists(path):
+				return "%s %s fehlt" % ["Übergangsbild" if field == "sprite_overlay" else "Erdkantenbild", path]
 	return ""
 
 
@@ -99,17 +121,30 @@ static func _sprite_error(entry: Dictionary) -> String:
 			return "Bild %s fehlt" % sprite_path(entry, variant)
 		if not ResourceLoader.exists(shadow_path(entry, variant)):
 			return "Schatten %s fehlt" % shadow_path(entry, variant)
-	return _animation_error(entry)
+	if entry.has("sprite_walk_height"):
+		var floor_height: Variant = entry["sprite_walk_height"]
+		if not (floor_height is int or floor_height is float) or not is_finite(float(floor_height)) or float(floor_height) <= 0.0 or float(floor_height) > float(entry.get("height", 0)):
+			return "„sprite_walk_height“ muss endlich, positiv und höchstens „height“ sein"
+	if bool(entry.get("sprite_connections", false)):
+		for direction in 8:
+			var arm := "res://assets/sprites/%s_arm_%d.png" % [entry["sprite"], direction]
+			if not ResourceLoader.exists(arm):
+				return "Mauerarm %s fehlt" % arm
+			if not ResourceLoader.exists(arm.trim_suffix(".png") + "_shadow.png"):
+				return "Schatten des Mauerarms %s fehlt" % arm
+	var reason := _building_animation_error(entry)
+	return reason if reason != "" else _animation_error(entry)
 
 
-## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
+## Prüft alle Sprite-Datendateien einschließlich Waren in dieser Reihenfolge;
 ## der erste Fehler gewinnt.
-func _sprites_error() -> String:
+func validate_sprites() -> String:
 	var sections: Dictionary[String, Dictionary] = {
 		"terrain.json": terrain,
 		"deposits.json": deposits,
 		"buildings.json": buildings,
 		"units.json": units,
+		"goods.json": goods,
 	}
 	for file_name: String in sections:
 		var reason := sprites_error(file_name, sections[file_name])
@@ -125,14 +160,17 @@ static func _load_json(file_name: String) -> Dictionary:
 	return parsed
 
 
-## Beide Bewegungszustände mit acht Richtungen und sämtlichen Einzelbildern müssen vorhanden sein.
+## Stehen und Gehen sowie jede zusätzliche Animation brauchen acht Richtungen und alle Bilder.
 static func _animation_error(entry: Dictionary) -> String:
 	if not entry.has("animations"):
 		return ""
 	var animations: Variant = entry["animations"]
 	if not animations is Dictionary:
 		return "„animations“ muss Stehen und Gehen beschreiben"
-	for animation: String in ["idle", "walk"]:
+	for required: String in ["idle", "walk"]:
+		if not animations.has(required):
+			return "Animation „%s“ fehlt" % required
+	for animation: String in animations:
 		var settings: Variant = animations.get(animation)
 		if not settings is Dictionary:
 			return "Animation „%s“ fehlt" % animation
@@ -147,4 +185,28 @@ static func _animation_error(entry: Dictionary) -> String:
 				var path := animation_path(entry, animation, direction, frame)
 				if not ResourceLoader.exists(path):
 					return "Animationsbild %s fehlt" % path
+	return ""
+
+
+## Flackernde Gebäudebilder haben keine Blickrichtung; alle Einzelbilder werden geprüft.
+static func building_animation_path(entry: Dictionary, frame: int) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + "_flame_%d.png" % frame if entry.has("sprite") else ""
+
+
+static func _building_animation_error(entry: Dictionary) -> String:
+	if not entry.has("sprite_animation"):
+		return ""
+	var settings: Variant = entry["sprite_animation"]
+	if not settings is Dictionary:
+		return "„sprite_animation“ muss Bildanzahl und Bildrate beschreiben"
+	var frames: Variant = settings.get("frames")
+	var fps: Variant = settings.get("fps")
+	if not (frames is int or frames is float) or float(frames) < 1 or float(frames) != floorf(float(frames)):
+		return "„sprite_animation“ braucht eine positive ganze Bildanzahl"
+	if not (fps is int or fps is float) or float(fps) <= 0:
+		return "„sprite_animation“ braucht eine positive Bildrate"
+	for frame in int(frames):
+		var path := building_animation_path(entry, frame)
+		if not ResourceLoader.exists(path):
+			return "Animationsbild %s fehlt" % path
 	return ""

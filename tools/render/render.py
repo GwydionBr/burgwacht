@@ -33,7 +33,7 @@ import sys
 
 import bpy
 import numpy
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Vector
 
 ## Genau diese Blender-Version (Hauptversion.Unterversion), sonst entstehen leicht andere Bilder.
 REQUIRED_VERSION = (5, 2)
@@ -198,7 +198,7 @@ def add_part(part: dict, palette: dict, materials: dict) -> list:
     scale = Vector(scale) if isinstance(scale, list) else Vector((scale, scale, scale))
     placement = Matrix.LocRotScale(
         Vector(part.get("position", [0, 0, 0])),
-        Matrix.Rotation(math.radians(part.get("rotation", 0)), 4, "Z").to_quaternion(),
+        Euler(tuple(math.radians(value) for value in part["rotation_xyz"]), "XYZ").to_quaternion() if "rotation_xyz" in part else Matrix.Rotation(math.radians(part.get("rotation", 0)), 4, "Z").to_quaternion(),
         scale)
     for obj in imported:
         if obj.parent is None:

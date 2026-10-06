@@ -1,0 +1,9 @@
+{
+  "parts": [
+    {
+      "model": "kenney-nature/log_stack.glb",
+      "scale": 0.24,
+      "color": "wood"
+    }
+  ]
+}

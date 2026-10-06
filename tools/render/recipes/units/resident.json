@@ -10,6 +10,44 @@
         "leaf_light": "plaster",
         "leaf_dark": "plaster"
       }
+    },
+    {
+      "model": "kenney-survival/tool-axe.glb",
+      "bone": "hand.r",
+      "scale": 2.5,
+      "rotation_xyz": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "visible_in": [
+        "axe"
+      ],
+      "upright": true
+    },
+    {
+      "model": "kenney-survival/tool-pickaxe.glb",
+      "bone": "hand.r",
+      "scale": 2.5,
+      "rotation_xyz": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "visible_in": [
+        "pick"
+      ],
+      "upright": true
     }
   ],
   "animations": {
@@ -20,6 +58,16 @@
     "walk": {
       "action": "Walking_A",
       "frames": 8
+    },
+    "axe": {
+      "action": "1H_Melee_Attack_Chop",
+      "frames": 8,
+      "work_pose": true
+    },
+    "pick": {
+      "action": "1H_Melee_Attack_Chop",
+      "frames": 8,
+      "work_pose": true
     }
   },
   "canvas": [

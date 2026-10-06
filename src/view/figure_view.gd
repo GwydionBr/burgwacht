@@ -43,6 +43,8 @@ var covered := false
 
 var facing := 0
 var _textures: Dictionary[String, Texture2D] = {}
+var _attack_until := -1.0
+var _last_cooldown := 0
 var _figure: Figure
 var _clock: GameClock
 ## Um so viel ist die Figur über ihrem Sortierpunkt gezeichnet (auf dem Wehrgang).
@@ -61,6 +63,9 @@ func _init() -> void:
 func setup(figure: Figure, clock: GameClock) -> void:
 	_figure = figure
 	_clock = clock
+	_clock.world.melee_hit.connect(_on_attack)
+	_clock.world.shot_fired.connect(_on_attack)
+	_clock.world.building_changed.connect(_on_building_hit)
 	_update_position()
 	queue_redraw()
 
@@ -74,13 +79,12 @@ func hit_rect() -> Rect2:
 	return Rect2(position + HIT_RECT.position + Vector2(0, -_lift), HIT_RECT.size)
 
 
-## So hoch über dem Boden liegt der Wehrgang: die Höhe ("height") des ersten Gebäudetyps mit
-## Wehrgang in buildings.json (der Mauer).
+## Höhe der gemeinsamen Wehrgangfläche: beim Sprite unter den Zinnen, beim Block dessen Oberseite.
 static func wall_walk_height() -> float:
 	var buildings := GameDefs.get_instance().buildings
 	for type_id: String in buildings:
 		if bool(buildings[type_id].get("walkway", false)):
-			return float(buildings[type_id]["height"])
+			return BuildingSprites.walk_height(buildings[type_id])
 	return 0.0
 
 
@@ -89,14 +93,67 @@ func _update_position() -> void:
 	var level := _figure.level_point(fraction)
 	position = Iso.point_to_world(_figure.tile_point(fraction)) + Vector2(0, WALL_WALK_SORT * level)
 	_lift = (WALL_WALK_SORT + wall_walk_height()) * level
-	if _figure.is_moving():
+	if _figure.is_moving() and animation_name() != "attack":
 		var next: Vector3i = _figure.path[0]
 		facing = FigureAnimation.direction(Vector2i(next.x, next.y) - _figure.tile, facing)
+	_update_facing()
 	covered = _is_covered()
 	_silhouette.visible = covered
 	queue_redraw()
 	if covered:
 		_silhouette.queue_redraw()
+
+
+## Ziele kommen aus der Spielwelt; die Ansicht merkt nur die Dauer und letzte Blickrichtung.
+func _update_facing() -> void:
+	if _figure.is_fighter() and not _figure.is_moving():
+		var targets := _clock.world.combat_target(_figure)
+		if not targets.is_empty():
+			var target: Vector3i = targets[0]
+			facing = FigureAnimation.direction(Vector2i(target.x, target.y) - _figure.tile, facing)
+			if _figure.cooldown > _last_cooldown or _attack_until < 0.0:
+				_attack_until = _clock.world.get_tick() + _figure.cooldown
+	_last_cooldown = _figure.cooldown
+
+
+## Bestehende Treffermeldungen erhalten Blickrichtung und Animation auch beim letzten Hieb.
+func _on_attack(from: Vector3i, to: Vector3i) -> void:
+	if not _figure.is_fighter() or _figure.position() != from:
+		return
+	var targets := _clock.world.combat_target(_figure)
+	if _figure.cooldown != FighterType.attack_ticks(_figure.fighter_type()) or targets.is_empty() or targets[0] != to:
+		return
+	facing = FigureAnimation.direction(Vector2i(to.x, to.y) - _figure.tile, facing)
+	_attack_until = _clock.world.get_tick() + FighterType.attack_ticks(_figure.fighter_type())
+
+
+## Gebäudetreffer melden sich vor der Zerstörung: Das vorhandene Ziel erhält den letzten Hieb,
+## auch wenn das Verschwinden des Hindernisses noch im selben Takt einen neuen Weg eröffnet.
+func _on_building_hit(id: int) -> void:
+	if _figure is Enemy and (_figure as Enemy).target_building_id == id \
+			and _figure.cooldown == FighterType.attack_ticks(_figure.fighter_type()):
+		_update_facing()
+
+
+## Der sichtbare Zustand: Ein begonnener Hieb endet vor der Gehschleife, ohne Bewegung anzuhalten.
+## Unterklassen können für Arbeit einen weiteren Zustand wählen; Angriffe laufen nur einmal.
+func animation_name() -> String:
+	var entry := _sprite_entry()
+	if entry.get("animations", {}).has("attack") and _clock.world.get_tick() + _clock.tick_fraction() < _attack_until:
+		return "attack"
+	if _figure.is_moving():
+		return "walk"
+	return "idle"
+
+
+## Angriffsbilder folgen der Abklingzeit; andere Animationen sind Schleifen der Spielzeit.
+func _animation_frame(animation: String, settings: Dictionary) -> int:
+	if animation == "attack":
+		var remaining := _attack_until - _clock.world.get_tick() - _clock.tick_fraction()
+		var duration := FighterType.attack_ticks(_figure.fighter_type())
+		return FigureAnimation.attack_frame(ceili(remaining), ceili(remaining) - remaining, duration, int(settings["frames"]))
+	var seconds := (_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND)
+	return FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"]))
 
 
 func _is_covered() -> bool:
@@ -184,10 +241,9 @@ func _draw_sprite(canvas: CanvasItem, tint: Color) -> bool:
 		return false
 	var path := GameDefs.sprite_path(entry)
 	if entry.has("animations"):
-		var animation := "walk" if _figure.is_moving() else "idle"
+		var animation := animation_name()
 		var settings: Dictionary = entry["animations"][animation]
-		var seconds := (_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND)
-		var frame := FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"]))
+		var frame := _animation_frame(animation, settings)
 		path = GameDefs.animation_path(entry, animation, facing, frame)
 	if not _textures.has(path):
 		_textures[path] = load(path) as Texture2D

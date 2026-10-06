@@ -1,0 +1,584 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        -0.5,
+        -2,
+        0.025
+      ],
+      "scale": [
+        0.55,
+        0.42,
+        0.35
+      ],
+      "rotation": 0,
+      "color": "wood_light"
+    },
+    {
+      "model": "kaykit-medieval/sack.gltf",
+      "position": [
+        -0.5,
+        -1.45,
+        0
+      ],
+      "scale": 1.5,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -1.5,
+        -1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.72,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.28,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -1.5,
+        -0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.72,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.28,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -1.5,
+        0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.72,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.28,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -1.5,
+        1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.72,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -1.28,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.72,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.28,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -0.5,
+        0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.72,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.28,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        -0.5,
+        1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.72,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        -0.28,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        0.5,
+        -1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.28,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.72,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        0.5,
+        -0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.28,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.72,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        0.5,
+        0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.28,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.72,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        0.5,
+        1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.28,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        0.72,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        1.5,
+        -1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.28,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.72,
+        -1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        1.5,
+        -0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.28,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.72,
+        -0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        1.5,
+        0.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.28,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.72,
+        0.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_dirtRow.glb",
+      "position": [
+        1.5,
+        1.5,
+        0.025
+      ],
+      "scale": [
+        1,
+        0.95,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "wood_dark"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.28,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    },
+    {
+      "model": "kenney-nature/crops_wheatStageB.glb",
+      "position": [
+        1.72,
+        1.5,
+        0.05
+      ],
+      "scale": 0.86,
+      "rotation": 0,
+      "color": "gold"
+    }
+  ]
+}

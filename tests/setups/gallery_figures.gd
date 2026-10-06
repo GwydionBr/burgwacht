@@ -1,6 +1,10 @@
 extends Node2D
-## Galerie der Figurensprites: jeder Typ mit Animation in acht Richtungen, stehend und gehend.
+## Alle Figurentypen und Animationen in acht Richtungen auf der Kontaktübersicht.
 
+const ANIMATION_NAMES: Dictionary[String, String] = {
+	"idle": "Stehen", "walk": "Gehen", "attack": "Angriff",
+	"axe": "Hacken", "pick": "Schlagen",
+}
 var clock: GameClock
 var _samples: Array[Dictionary] = []
 var _textures: Dictionary[String, Texture2D] = {}
@@ -8,15 +12,17 @@ var _textures: Dictionary[String, Texture2D] = {}
 
 func setup(game_clock: GameClock) -> void:
 	clock = game_clock
+	var count := 0
+	for entry: Dictionary in GameDefs.get_instance().units.values():
+		count += entry.get("animations", {}).size()
+	var row_height := minf(40.0, 640.0 / maxi(count, 1))
 	var row := 0
-	for type: String in GameDefs.get_instance().units:
-		var entry: Dictionary = GameDefs.get_instance().units[type]
-		if not entry.has("animations"):
-			continue
-		for animation: String in entry["animations"]:
+	for type_id: String in GameDefs.get_instance().units:
+		var entry: Dictionary = GameDefs.get_instance().units[type_id]
+		for animation: String in entry.get("animations", {}):
 			for direction in 8:
-				var point := Iso.point_to_world(Vector2(24 + direction + row * 2, 16 - direction + row * 2))
-				_samples.append({"entry": entry, "animation": animation, "direction": direction, "point": point})
+				_samples.append({"entry": entry, "animation": animation, "direction": direction,
+					"point": Vector2(190 + direction * 43, 54 + row * row_height), "row": row})
 			row += 1
 
 
@@ -37,4 +43,5 @@ func _draw() -> void:
 		var texture: Texture2D = _textures[path]
 		var point: Vector2 = sample["point"]
 		draw_texture_rect(texture, Rect2(point - texture.get_size() * 0.25, texture.get_size() * 0.5), false)
-		draw_string(ThemeDB.fallback_font, point + Vector2(-16, 14), "Stehen" if animation == "idle" else "Gehen", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color.WHITE)
+		if int(sample["direction"]) == 0:
+			draw_string(ThemeDB.fallback_font, Vector2(0, point.y + 4), "%s · %s" % [entry["name"], ANIMATION_NAMES.get(animation, animation)], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#eadfcb"))

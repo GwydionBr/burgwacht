@@ -606,3 +606,18 @@ func _nearest_opponent(figure: Figure, candidates: Array[Figure], max_length := 
 		if reachable.has(candidate.position()):
 			return candidate
 	return null
+
+
+## Das Ziel eines stehenden Kämpfers in Reichweite; leer, wenn er verfolgt oder kein Ziel hat.
+## Nutzt dieselben Reichweitenabfragen wie der Angriff, ohne die Spielwelt zu verändern.
+func attack_target(figure: Figure) -> Array[Vector3i]:
+	if not figure.is_fighter() or figure.is_moving():
+		return []
+	var target: Figure = _world.get_enemy(figure.target_id) if figure is Resident else _world.get_resident(figure.target_id)
+	if target != null and figure.in_reach(target, _range_bonus(figure)):
+		return [target.position()]
+	if figure is Enemy:
+		var building := _world.get_building((figure as Enemy).target_building_id)
+		if building != null and _in_reach_of_building(figure, building):
+			return [Figure.ground(figure.tile.clamp(building.origin, building.last_tile()))]
+	return []

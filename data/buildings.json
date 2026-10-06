@@ -14,7 +14,8 @@
     "housing": 8,
     "demolish_forbidden": "Der Bergfried kann nicht abgerissen werden.",
     "color": "#8a8478",
-    "height": 64
+    "height": 64,
+    "sprite": "buildings/keep"
   },
   "campfire": {
     "name": "Lagerfeuer",
@@ -24,7 +25,9 @@
     "walkable": true,
     "demolish_forbidden": "Das Lagerfeuer kann nicht abgerissen werden.",
     "color": "#c8641e",
-    "height": 4
+    "height": 4,
+    "sprite": "buildings/campfire",
+    "sprite_animation": { "frames": 4, "fps": 6 }
   },
   "warehouse": {
     "name": "Warenlager",
@@ -40,7 +43,8 @@
     "hotkey": "L",
     "category": "castle",
     "color": "#9a7445",
-    "height": 22
+    "height": 22,
+    "sprite": "buildings/warehouse"
   },
   "granary": {
     "name": "Kornspeicher",
@@ -56,7 +60,8 @@
     "hotkey": "G",
     "category": "castle",
     "color": "#c9a24a",
-    "height": 26
+    "height": 26,
+    "sprite": "buildings/granary"
   },
   "armory": {
     "name": "Waffenkammer",
@@ -72,7 +77,8 @@
     "hotkey": "A",
     "category": "weapons",
     "color": "#6e6a78",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/armory"
   },
   "woodcutter": {
     "name": "Holzfäller",
@@ -91,7 +97,8 @@
     "hotkey": "H",
     "category": "resources",
     "color": "#5f7a3a",
-    "height": 30
+    "height": 30,
+    "sprite": "buildings/woodcutter"
   },
   "quarry": {
     "name": "Steinbruch",
@@ -111,7 +118,8 @@
     "hotkey": "B",
     "category": "resources",
     "color": "#9c9a92",
-    "height": 18
+    "height": 18,
+    "sprite": "buildings/quarry"
   },
   "hunter": {
     "name": "Jäger",
@@ -130,7 +138,8 @@
     "hotkey": "J",
     "category": "food",
     "color": "#6b4a2e",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/hunter"
   },
   "house": {
     "name": "Wohnhaus",
@@ -144,7 +153,8 @@
     "category": "castle",
     "color": "#a8673f",
     "height": 26,
-    "sprite": "buildings/house"
+    "sprite": "buildings/house",
+    "sprite_variants": 2
   },
   "orchard": {
     "name": "Apfelplantage",
@@ -164,7 +174,8 @@
     "category": "food",
     "decor": "trees",
     "color": "#7a9a3a",
-    "height": 6
+    "height": 6,
+    "sprite": "buildings/orchard"
   },
   "wheat_farm": {
     "name": "Weizenfarm",
@@ -184,7 +195,8 @@
     "category": "food",
     "decor": "wheat",
     "color": "#c9a93e",
-    "height": 4
+    "height": 4,
+    "sprite": "buildings/wheat_farm"
   },
   "iron_mine": {
     "name": "Eisenmine",
@@ -204,7 +216,8 @@
     "hotkey": "E",
     "category": "resources",
     "color": "#5a5550",
-    "height": 22
+    "height": 22,
+    "sprite": "buildings/iron_mine"
   },
   "mill": {
     "name": "Mühle",
@@ -224,7 +237,8 @@
     "hotkey": "U",
     "category": "food",
     "color": "#d9d0b8",
-    "height": 34
+    "height": 34,
+    "sprite": "buildings/mill"
   },
   "bakery": {
     "name": "Bäcker",
@@ -244,7 +258,8 @@
     "hotkey": "K",
     "category": "food",
     "color": "#b07a4a",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/bakery"
   },
   "smith": {
     "name": "Schmied",
@@ -264,7 +279,8 @@
     "hotkey": "S",
     "category": "weapons",
     "color": "#4a4440",
-    "height": 26
+    "height": 26,
+    "sprite": "buildings/smith"
   },
   "bowyer": {
     "name": "Bogner",
@@ -284,7 +300,8 @@
     "hotkey": "R",
     "category": "weapons",
     "color": "#8c6a3c",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/bowyer"
   },
   "market": {
     "name": "Markt",
@@ -296,7 +313,8 @@
     "hotkey": "T",
     "category": "castle",
     "color": "#b5523b",
-    "height": 20
+    "height": 20,
+    "sprite": "buildings/market"
   },
   "barracks": {
     "name": "Kaserne",
@@ -308,7 +326,8 @@
     "hotkey": "C",
     "category": "military",
     "color": "#7a3b34",
-    "height": 30
+    "height": 30,
+    "sprite": "buildings/barracks"
   },
   "wall": {
     "name": "Mauer",
@@ -321,7 +340,10 @@
     "hotkey": "Q",
     "category": "military",
     "color": "#8f897d",
-    "height": 28
+    "height": 28,
+    "sprite": "buildings/wall",
+    "sprite_walk_height": 25.221374,
+    "sprite_connections": true
   },
   "stairs": {
     "name": "Treppe",
@@ -334,7 +356,10 @@
     "hotkey": "I",
     "category": "military",
     "color": "#a39d90",
-    "height": 12
+    "height": 12,
+    "sprite": "buildings/stairs",
+    "sprite_variants": 8,
+    "sprite_ramp": true
   },
   "tower": {
     "name": "Turm",
@@ -348,7 +373,9 @@
     "hotkey": "Z",
     "category": "military",
     "color": "#7d776c",
-    "height": 46
+    "height": 46,
+    "sprite": "buildings/tower",
+    "sprite_walk_height": 25.221374
   },
   "gate": {
     "name": "Tor",
@@ -361,6 +388,8 @@
     "hotkey": "Y",
     "category": "military",
     "color": "#857a68",
-    "height": 28
+    "height": 28,
+    "sprite": "buildings/gate",
+    "sprite_walk_height": 25.221374
   }
 }

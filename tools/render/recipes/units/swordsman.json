@@ -1,0 +1,42 @@
+{
+  "parts": [
+    {
+      "model": "kaykit-adventurers/Knight.glb",
+      "scale": 0.3,
+      "recolor": {
+        "cloth_blue": "unit_cloth",
+        "cloth_red": "unit_cloth",
+        "leaf": "unit_cloth",
+        "leaf_light": "unit_cloth",
+        "leaf_dark": "unit_cloth"
+      }
+    }
+  ],
+  "unit_color": "swordsman",
+  "canvas": [
+    80,
+    144
+  ],
+  "hide": [
+    "1H_Sword_Offhand",
+    "Badge_Shield",
+    "Rectangle_Shield",
+    "Spike_Shield",
+    "2H_Sword",
+    "Knight_Cape"
+  ],
+  "animations": {
+    "idle": {
+      "action": "Idle",
+      "frames": 4
+    },
+    "walk": {
+      "action": "Walking_A",
+      "frames": 8
+    },
+    "attack": {
+      "action": "1H_Melee_Attack_Slice_Diagonal",
+      "frames": 8
+    }
+  }
+}

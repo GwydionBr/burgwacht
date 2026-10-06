@@ -1,0 +1,9 @@
+{
+  "parts": [
+    {
+      "model": "kaykit-medieval/sack.gltf",
+      "scale": 0.8,
+      "color": "plaster"
+    }
+  ]
+}

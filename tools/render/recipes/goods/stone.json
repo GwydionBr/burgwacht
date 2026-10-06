@@ -1,0 +1,9 @@
+{
+  "parts": [
+    {
+      "model": "kenney-survival/resource-stone.glb",
+      "scale": 0.7,
+      "color": "stone_light"
+    }
+  ]
+}

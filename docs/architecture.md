@@ -68,9 +68,9 @@ Sprites werden selbst gerendert (ADR 0006); Spiel, Tests, Rauchtest und CI brauc
 - **Kamera und Licht**: orthografisch, 30° Neigung und 45° Drehung, sodass eine Bodenkachel genau eine 2:1-Raute von 128×64 Pixeln ergibt (doppelte Auflösung des Rasters 64×32). Feste Sonne von links oben, dazu Himmelslicht.
 - **Ausgabe**: `assets/sprites/<pfad>.png` und der Schlagschatten `<pfad>_shadow.png` (schwarz, halbtransparent; ein Schattenfänger am Boden, das Modell selbst unsichtbar), beide gleich groß, so groß, dass Modell und Schatten hineinpassen. Die Mitte der Grundfläche liegt genau in der Bildmitte.
 - **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Die Stilprobe verwendet Sprites für das Wohnhaus, Bäume, Wiese, Ufer und Bewohner; ihr Look ist seit dem 6. Oktober 2026 in #138 freigegeben (siehe die verbindlichen Werte unten).
-- **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste zeigen weiter den gezeichneten Block. Typen ohne `"sprite"` sehen aus wie bisher.
-- **Vorkommen**: `DepositView` zeigt Baum-Sprites in vier Varianten; `sprite_variants` nennt die Anzahl. Variante 0 verwendet `<sprite>.png`, weitere Varianten `<sprite>_1.png` usw., mit jeweiligem `_shadow.png`. Die gespeicherte `Deposit.variant` wird modulo Variantenanzahl gewählt; nach dem Laden bleibt das Bild gleich. Die Schatten liegen auch im Hauptmenü unter allen Objekten und verschwinden beim Abbau mit dem Baum. Felsen, Eisen, Wild und Typen ohne Sprite bleiben gezeichnet, die Sortierung bleibt am Kachelmittelpunkt. Neu rendern: `tools/render.sh deposits/tree deposits/tree_1 deposits/tree_2 deposits/tree_3`.
-- **Galerie**: Das Preset `gallery` (`tests/setups/gallery.gd`, Szenario `tests/scenarios/gallery.json`) zeigt jeden Gebäudetyp nebeneinander, mit Sprite oder gezeichnet; neue Typen kommen von selbst dazu. Vor der Burg stehen außerdem alle Vorkommen mit jeder Sprite-Variante.
+- **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste verwenden dieselben Gebäudebilder; ohne verfügbares Hauptbild bleibt der gezeichnete Block. Typen ohne `"sprite"` sehen aus wie bisher.
+- **Vorkommen**: `DepositView` zeigt alle Vorkommen als Sprites in je vier Varianten; `sprite_variants` nennt die Anzahl. Variante 0 verwendet `<sprite>.png`, weitere Varianten `<sprite>_1.png` usw., mit jeweiligem `_shadow.png`. Die gespeicherte `Deposit.variant` wird modulo Variantenanzahl gewählt; nach dem Laden bleibt das Bild gleich. Die Schatten liegen auch im Hauptmenü unter allen Objekten und verschwinden beim Abbau mit dem Vorkommen. Typen ohne Sprite bleiben gezeichnet, die Sortierung bleibt am Kachelmittelpunkt. Neu rendern: `tools/render.sh deposits/tree deposits/tree_1 deposits/tree_2 deposits/tree_3`.
+- **Galerie**: Das Preset `gallery` (`tests/setups/gallery.gd`) zeigt eine beschriftete Kontaktübersicht auf einer eigenen Bildschirmebene. Alle Gebäudetypen und Varianten, Maueranschlüsse, Geländevarianten und -paarungen, Vorkommensvarianten, Figurenanimationen in acht Richtungen und Warenbündel passen gemeinsam auf einen 1600×900-Screenshot. `gallery_board.gd` ordnet die Proben aus den Spieldaten an; Figuren und Lagerfeuer verwenden die gemeinsame Bildauswahl und Spieluhr. HUD und Kamera verdecken diese Übersicht nicht. Gebäudetypen ohne Bild nutzen auch hier `BuildingView`; die übrigen Presets prüfen das Bild im Spiel bei größerer Darstellung.
 
 ### Freigegebener Grafikstil (#138)
 
@@ -98,24 +98,32 @@ Sie gelten auch für die weiteren Grafik-Tickets von #122:
   Animationsbild ungefähr 23–26 Pixel hoch; die Leinwand einschließlich Leerraum ist
   40×72 Pixel groß. Die einfache Kleidung und ausgeblendete Ausrüstung stehen im Rezept.
 
-### Gelände-Sprites der Stilprobe
+### Gelände-Sprites
 
-`terrain.json` nennt für Wiese und Ufer `sprite` und `sprite_variants: 4`; Wiese nennt
-zusätzlich `sprite_transition: "sand"`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
-`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, nicht aus dem Zufall oder
-Spielstand. `transition_mask()` prüft die vier Kantennachbarn (Norden, Osten, Süden, Westen,
-Bits 1/2/4/8); diagonale Nachbarn und der Kartenrand zählen nicht. Jede Wiesenvariante enthält
-16 Bilder nebeneinander, je 128×64 Pixel; Ufer hat je Variante eine einzelne Kachel.
-Die Ansicht zeichnet weiterhin nur nach einer Kartenänderung neu und hält geladene Texturen
-im Speicher. Eine deckende Raute hinter den transparenten Bildrändern schließt feine Nähte.
+Alle fünf Gelände nennen in `terrain.json` `sprite`, vier `sprite_variants`, `sprite_overlay`,
+`sprite_priority` und `sprite_edge`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
+`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, ohne Zufall der Spielwelt
+oder Spielstand. `transition_layers()` liefert für jeden höherrangigen Nachbarn eine eigene
+Schicht: Bits 0–3 für Norden, Osten, Süden, Westen, Bits 4–7 für Nordost, Südost, Südwest,
+Nordwest. Diagonale Ecken werden ergänzt, wenn die zugehörigen Kantennachbarn diese Schicht
+noch nicht abdecken; außerhalb der Karte entsteht kein Übergang. Dadurch bleiben an Kreuzungen
+mit drei oder mehr Geländen alle Übergänge erhalten. Die Datenpriorität legt fest, auf welcher
+Seite einer Grenze gemischt wird. Wasser trägt zusätzlich einen sandfarbenen Ufersaum.
 
-`tools/render.sh terrain/grass terrain/sand` rendert die vier Varianten und alle Kantenmasken
-mit `terrain.py`, gemeinsamer Kamera, Licht und Palette. Das Kenney-Modell `ground_grass.glb`
-wird auf eine flache Kachel normiert, damit keine Seitenflächen zwischen Nachbarn entstehen.
-Eine räumliche Materialtextur variiert den Farbton und mischt am Ufer weich zur Sandfarbe;
-der Schatten bleibt leer, weil Gelände selbst in der Bodenebene liegt. Die PNGs samt
-Mipmaps-Import sind eingecheckt. `gallery` zeigt einen Uferstreifen mit Ecke oberhalb der
-Gebäudereihen. Die Auswahl wird ohne Grafik getestet; den Look prüft der Screenshot.
+`tools/render.sh terrain/grass terrain/sand terrain/meadow terrain/dirt terrain/water` rendert
+die vier Grundvarianten mit `terrain.py`, gemeinsamer Kamera, Licht und Palette; die gleichnamigen
+`*_transition`-Rezepte rendern je Variante acht transparente Kanten- und Eckbilder nebeneinander.
+Das Kenney-Modell `ground_grass.glb` wird auf eine flache Kachel normiert. Die ursprünglichen
+Wiesenatlanten mit 16 Kantenmasken bleiben reproduzierbar; die Ansicht nutzt daraus die erste Zelle.
+Die räumliche Materialtextur variiert den Farbton, Wasser ist statisch. Zwei Pixel deckender
+Farbrand im gerenderten Grundbild und ein Viertelpixel Überstand beim Zeichnen schließen
+Filternähte ohne gezeichnete Raute unter Sprite-Gelände. Schatten der Grundbilder sind leer.
+`terrain/edge` extrudiert die Frontflächen zu einer 18 Pixel hohen Erdkante am vorderen Kartenrand.
+Alle PNGs samt Mipmaps-Import sind eingecheckt; Blender wird zur Laufzeit nicht benötigt.
+
+`gallery` enthält alle zehn Geländepaarungen mit gerader Grenze, Ecke und diagonaler Berührung
+sowie eine Kreuzung mehrerer Gelände. Auswahl und Datenfehler werden ohne Grafik getestet;
+Galerie, mehrere Seeds und unterschiedliche Zoomstufen werden per Screenshot geprüft.
 
 ### Animierte Figuren
 
@@ -200,7 +208,7 @@ Neues Zustandsstück:
 - Einzelne Testdateien: `tools/test.sh test_founding` (Teil des Dateinamens).
 - Ein Test schlägt fehl, wenn eine Prüfung nicht stimmt, wenn er einen Fehler auslöst (Skriptfehler, fehlgeschlagenes `assert()`, `push_error()`) oder wenn er keine einzige Prüfung erreicht.
 - `tests/test_structure.gd` prüft die Regeln des Aufbaus: alle Skripte unter `src/` lassen sich laden, `core/` nennt keine Klasse und keinen Pfad aus `view/` oder `ui/`. Fehlende Typangaben sind Fehler (`untyped_declaration` in `project.godot`).
-- **Rauchtest** (`tools/smoke.sh`, läuft am Ende von `tools/test.sh` ohne Filter): startet das Spiel ohne Fenster in jedem Preset aus `tools/presets.json` (dazu die Soldatenauswahl mit Rahmen) und scheitert an jeder Fehlermeldung – auch daran, dass ein Startparameter wie `--barracks` oder `--select` nichts bewirkt (`main.gd` meldet dann `--barracks: …`). Neue Ansicht oder neuer Startparameter: ein Preset ergänzen. `tests/test_presets.gd` prüft die Datei und die Aufbau-Skripte. Das Preset `wall` zeigt Soldaten auf dem Wehrgang sowie eine Mauerlinien-Vorschau mit freien und belegten Kacheln; `--line=x,y` setzt deren Start, `--hover=x,y` ihr Ende, auch ohne Screenshot. `keep_attack` zeigt Räuber am Bergfried und seinen Lebensbalken, `siege` Räuber, die an einer Mauer hacken (beschädigte Mauerstücke), `defeat` die Niederlage-Ansicht, `main_menu` das Hauptmenü, `game_menu` das Spielmenü (`--game_menu`), `save_view` die Speichern-Ansicht, `save_overwrite` die Rückfrage vor dem Überschreiben, `load_view` die Ladeansicht im Spielmenü und `load_menu` die aus dem Hauptmenü (alle mit `--saves=demo`), `settings` die Einstellungen aus dem Spielmenü (`--settings`), `leave_prompt` die Rückfrage vor dem Verlassen mit ungespeichertem Fortschritt (`--leave`), `wave_announced` eine laufende Ankündigung (Countdown im HUD, Randmarkierung im Norden), `wave_horn`, `wave_repelled` und `keep_falling` je zwei Sekunden vor dem Horn einer Ankündigung, der Fanfare einer abgewehrten Welle bzw. der Niederlage, damit der Ton nach dem Aufbau zu hören ist (Aufbau mit `TestCase.shortly_before()`, `tests/test_presets.gd` prüft den Zeitpunkt), `poacher` Wilderer (mit Bogen und Köcher), die Bogenschützen auf dem Wehrgang beschießen, mit Pfeilen im Flug, `gallery` jeden Gebäudetyp nebeneinander (mit `--zoom=0.7`).
+- **Rauchtest** (`tools/smoke.sh`, läuft am Ende von `tools/test.sh` ohne Filter): startet das Spiel ohne Fenster in jedem Preset aus `tools/presets.json` (dazu die Soldatenauswahl mit Rahmen) und scheitert an jeder Fehlermeldung – auch daran, dass ein Startparameter wie `--barracks` oder `--select` nichts bewirkt (`main.gd` meldet dann `--barracks: …`). Neue Ansicht oder neuer Startparameter: ein Preset ergänzen. `tests/test_presets.gd` prüft die Datei und die Aufbau-Skripte. Das Preset `wall` zeigt Soldaten auf dem Wehrgang sowie eine Mauerlinien-Vorschau mit freien und belegten Kacheln; `--line=x,y` setzt deren Start, `--hover=x,y` ihr Ende, auch ohne Screenshot. `keep_attack` zeigt Räuber am Bergfried und seinen Lebensbalken, `siege` Räuber, die an einer Mauer hacken (beschädigte Mauerstücke), `defeat` die Niederlage-Ansicht, `main_menu` das Hauptmenü, `game_menu` das Spielmenü (`--game_menu`), `save_view` die Speichern-Ansicht, `save_overwrite` die Rückfrage vor dem Überschreiben, `load_view` die Ladeansicht im Spielmenü und `load_menu` die aus dem Hauptmenü (alle mit `--saves=demo`), `settings` die Einstellungen aus dem Spielmenü (`--settings`), `leave_prompt` die Rückfrage vor dem Verlassen mit ungespeichertem Fortschritt (`--leave`), `wave_announced` eine laufende Ankündigung (Countdown im HUD, Randmarkierung im Norden), `wave_horn`, `wave_repelled` und `keep_falling` je zwei Sekunden vor dem Horn einer Ankündigung, der Fanfare einer abgewehrten Welle bzw. der Niederlage, damit der Ton nach dem Aufbau zu hören ist (Aufbau mit `TestCase.shortly_before()`, `tests/test_presets.gd` prüft den Zeitpunkt), `poacher` Wilderer (mit Bogen und Köcher), die Bogenschützen auf dem Wehrgang beschießen, mit Pfeilen im Flug, `gallery` die vollständige beschriftete Grafikübersicht.
 - GitHub Actions (`.github/workflows/tests.yml`) führt `tools/test.sh` bei jedem Pull Request aus.
 - Grafik per Screenshot (`tools/screenshot.sh [bild] [seed] [szenario] [tage] [--found]` oder `tools/screenshot.sh bild preset [weitere Parameter]`; mit Tagen wird gegründet und die Spielwelt läuft vorher so lange, sonst zeigt das Bild die Gründungsvorschau über der Kartenmitte).
 
@@ -215,3 +223,103 @@ Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere W
 - `*.json` steht im Export-Filter für Nicht-Ressourcen, weil Daten, Szenarien und `tools/presets.json` per Dateizugriff gelesen werden.
 - Für die Architektur universal muss „Import ETC2 ASTC“ (`rendering/textures/vram_compression/import_etc2_astc`) in `project.godot` an sein.
 - Debug-Tasten (N, F7, F8) und `--spawn` wirken nur im Debug-Build (`OS.is_debug_build()`), also nicht in der exportierten App.
+
+### Soldatensprites und Angriff (#146)
+
+`units/swordsman` und `units/archer` enthalten Stehen, Gehen und Angriff in acht Richtungen.
+Das Renderrezept liest die Kleidungsfarbe unmittelbar aus `units.json` (`unit_color`);
+Modellmaßstab und Körperproportionen entsprechen der freigegebenen Stilprobe.
+Rezeptteile mit `bone` folgen einem animierten Griffpunkt; `upright` hält Bogen bzw.
+Köcher senkrecht. Die modellierte Bogenquelle und ihr Erzeugerskript sind eingecheckt.
+`bow_pose` retargetet die Arme zum Halten, Ziehen und Lösen der Sehne.
+
+`GameWorld.combat_target()` fragt vorhandene Reichweitenregeln ab. `FigureView` merkt
+Blickrichtung und Dauer aus den bestehenden Treffermeldungen und dem Angriffsziel,
+sodass auch der tödliche Hieb fertig sichtbar bleibt. Die acht Angriffsbilder laufen
+über `attack_ticks` statt einer freien Schleife; ein begonnener Hieb läuft auch bei
+erneuter Bewegung mit seiner bisherigen Blickrichtung aus, bevor die Gehschleife folgt.
+Silhouette und normale Darstellung verwenden dieselbe Animationsauswahl. Ring,
+Lebensbalken, Klickfläche und Wehrgangshöhe bleiben erhalten. `ArrowView` liest die
+Spielzeit aus `GameClock`, fliegt deshalb bei Pause und Spielmenü nicht weiter und
+läuft im Zeitraffer schneller. Das gerenderte Pfeilbild folgt der Flugbahntangente.
+
+### Burggebäude und Lagerfeuer
+
+Bergfried, Warenlager, Kornspeicher, Waffenkammer, Markt und Kaserne sind aus CC0-Einzelteilen zusammengesetzt; jedes Rezept liegt unter `tools/render/recipes/buildings/`. Der Eingang bleibt auf der Kachel aus den Gebäudedaten. Wohnhäuser haben zwei Varianten: `BuildingSprites.variant(origin, count)` wählt sie allein aus der Kachelposition. Karte und Bauvorschau können dieselbe Auswahl verwenden; Bild und Schatten benutzen denselben Variantenindex.
+
+Das Lagerfeuer hat ein statisches Bild mit Schatten und eine eigene Flammenebene. `sprite_animation` beschreibt Bildanzahl und Bildrate; `GameDefs.building_animation_path()` liefert die Einzelbilder und prüft sie beim Laden. `BuildingView.setup(building, shadows, clock)` erhält die Spieluhr. Der Flackerzyklus folgt `(get_tick() + tick_fraction()) / TICKS_PER_SECOND`, steht also bei Pause und im Spielmenü still und läuft mit dem Zeitraffer. Das Lagerfeuer verdeckt weiterhin keine Figuren. Die modellierte Flamme ist als `.blend` erhalten; `tools/render/models/burgwacht/create_flame.py` erzeugt sie und ihre glTF-Posen mit Blender 5.2 neu; die vier glTF-Posen und ihre Rezepte erlauben erneutes Rendern mit unverändertem Licht und Palette.
+
+Das Galerie-Preset zeigt beide Wohnhäuser und alle vier Flammenbilder zusätzlich zu den Burggebäuden. Lebensbalken und Verdeckung der übrigen Gebäude folgen dem Alpha-Umriss ihres gewählten Bilds.
+
+### Vorkommen-Sprites (#140)
+
+Alle vier Vorkommen nutzen `DepositView` mit getrenntem Bodenschatten. Die gespeicherte
+`Deposit.variant` wählt über `GameDefs.sprite_path()` und `shadow_path()` eine von vier
+Varianten; Laden, Abbau und Nachwachsen ändern keine Darstellungsregeln. Felsen verwenden
+vier Kenney-Formen in hellem Stein. Eisen besteht aus dunklem Gestein mit deutlich sichtbaren
+rostfarbenen Adern; Quelle: `tools/render/models/burgwacht/iron.blend`, exportiert als `iron.glb`.
+Wild sind statische Quaternius-Modelle von Hirsch und Reh in vier Ausrichtungen. Die Galerie
+zeigt alle 16 Varianten in beschrifteten Gruppen am unteren Rand der Übersicht. Der gezeichnete Platzhalter bleibt für Definitionen
+ohne Sprite erhalten; die eingecheckten Vorkommen benötigen ihn nicht mehr.
+
+### Arbeitsstätten
+
+Holzfäller, Steinbruch, Jäger, Apfelplantage, Weizenfarm, Eisenmine, Mühle, Bäcker, Schmied und Bogner verwenden dieselben Sprite-, Schatten- und Alpha-Umriss-Funktionen wie die Burggebäude. Es gibt keine zusätzliche Typabfrage in der Ansicht: Das Feld `sprite` in `data/buildings.json` schaltet das Bild ein. Lebensbalken bleiben über der höchsten deckenden Stelle, verdeckte Figuren behalten ihre Silhouette und Klickfläche. Die Galerie nimmt alle Arbeitsstätten automatisch aus den Gebäudedaten auf.
+
+Ihre Rezepte kombinieren die freigegebenen Kenney-Fassaden mit sichtbaren Handwerksmerkmalen: Holzstapel und Axt, Steinblöcke und Spitzhacke, Fleisch und Bogen, Grubeneingang, Mühlenflügel, Backofen und Brot, Esse und Amboss sowie Bogengestell mit Übungsziel. Apfelplantage und Weizenfarm enthalten die Obstbäume mit roten Früchten bzw. die Ähren bereits im gerenderten Bild; die vorhandenen `decor`-Felder bleiben für die Darstellung ohne Sprite erhalten. Eingänge und freie Wege liegen an den Kacheln aus den Gebäudedaten, auch bei den offenen Höfen und dem Steinbruch.
+
+Eigen modellierte Ausstattung liegt als `tools/render/models/burgwacht/trade-fixtures.blend` und als glTF vor. `create_trade_fixtures.py` erzeugt beides mit Blender 5.2 neu; es benutzt den vorhandenen Langbogen und die gemeinsame Palette. Zum Rendern aller Arbeitsstätten: `tools/render.sh buildings/woodcutter buildings/quarry buildings/hunter buildings/orchard buildings/wheat_farm buildings/iron_mine buildings/mill buildings/bakery buildings/smith buildings/bowyer`. Das Spiel und die CI benötigen nur die eingecheckten PNGs.
+
+Das Preset `workplaces` zeigt die zehn Arbeitsstätten vergrößert mit reduzierten Lebenspunkten und je einem Bewohner dahinter. Es prüft die bestehenden Umriss- und Lebensbalkenpfade an den neuen Bildern; die Rauchtests laden diesen Aufbau mit. `tools/screenshot.sh /tmp/arbeitsstaetten.png workplaces` erzeugt die Ansichtsprobe.
+### Verbundene Burgmauern
+
+`WallSprites.paths()` wählt den Mittelpfeiler und je einen Arm für die acht angrenzenden
+Wehrgangkacheln; auch jede Kachel einer Turmgrundfläche zählt. Die Ansicht legt die PNGs
+übereinander. `BuildingView.refresh_connections()` ersetzt nach Bau und Abriss die Arme und
+alle zugehörigen Schatten in der Bodenschicht. Der Verdeckungsumriss umfasst alle Teile.
+`sprite_connections` aktiviert die Armdateien `_arm_0` bis `_arm_7` (ab Kachel-x im Uhrzeigersinn).
+`sprite_ramp` richtet die acht Treppenvarianten auf den ersten angrenzenden Wehrgang aus.
+Diese Auswahl ist gemeinsam für Karte und Bauvorschau verfügbar; Spielregeln bleiben unverändert.
+
+`height` bleibt die maximale sichtbare Höhe: Mauer und Tor 28, Turm 46, Treppe 12 Weltpixel.
+`sprite_walk_height` bezeichnet die tatsächliche Standfläche unter den Zinnen. Beim Kenney-Modell
+liegt sie bei Modell-z 1,18, das Maximum bei 1,31; daher beträgt sie `28 × 1,18 / 1,31 = 25,221374`
+Weltpixel. Turm und Tor haben dieselbe Standfläche. `BuildingSprites.walk_height()` liefert diese
+Höhe bei verfügbarem Sprite, sonst die alte Blockhöhe. Figuren und Pfeile verwenden sie gemeinsam;
+die Treppe trifft den zwischen Boden und Wehrgang interpolierten Aufstieg an der Kachelgrenze.
+Die Galerie ergänzt Enden, Geraden, Ecken, T-, Kreuz- und diagonale Verbindungen.
+
+### Feindsprites (#147)
+
+`units/bandit` und `units/poacher` verwenden das originale KayKit-Kapuzenmodell mit
+unveränderten Körperproportionen. Ihre violette bzw. braune Kleidung stammt aus
+`units.json`. Der Räuber führt einen modellierten Knüppel am animierten Handknochen,
+der Wilderer den Langbogen mit Köcher und Pfeilen. Beide haben Stehen, Gehen und
+Angriff in acht Richtungen und nutzen dieselbe Animationsauswahl wie Soldaten.
+
+Ein Gebäudetreffer im Nahkampf hat keine eigene Treffermeldung: `FigureView` fragt
+deshalb `GameWorld.combat_target()` ab und erkennt den Beginn am Anstieg der
+Abklingzeit. Die nächstgelegene Kachel der Grundfläche bestimmt die Blickrichtung
+zum angegriffenen Mauerstück oder Bergfried. Silhouette, Lebensbalken und Klickfläche
+bleiben gemeinsam in `FigureView`; `EnemyView` zeichnet seine Kapuze und Waffen
+nur bei fehlendem Sprite als Platzhalter. Die Galerie nimmt beide Feindtypen samt
+allen Animationen automatisch aus den Spieldaten auf.
+
+
+
+
+Bewohner wählen beim Abbau die Animation aus `work_animation` des Vorkommens (`axe` oder `pick`); `ResidentAnimation` richtet sie zu `deposit_tile` aus. Die Schleifen verwenden dieselbe Spielzeit wie Stehen und Gehen. Der alte Versatz beim Abbau bleibt nur für Figuren ohne Arbeitsanimation. Die Werkzeuge sind an `hand.r` angebunden; die Armhaltung wird für sichtbares Heben und Schlagen retargetet, ohne die ursprünglichen KayKit-Proportionen oder Gliederlängen zu verändern. Waren dürfen `sprite` setzen und werden beim Laden wie die übrigen Sprite-Einträge geprüft (`GameDefs.validate_sprites()`). Der Träger zeichnet das Warenbild auf dem Rücken entgegen seiner Blickrichtung; ohne Bild bleibt das gezeichnete Bündel. Die Galerie zeigt jede Arbeitsrichtung und alle zehn Bündel; das Preset `workers_graphics` zeigt zwei Arbeiter und Waren vergrößert.
+
+### Bauleiste und Bauvorschau (#143)
+
+`BuildingIcon` passt mit `use_sprite=true` das erste Gebäudebild proportional in die Baukarte ein;
+die Lagerzähler im HUD behalten ihre gezeichneten Symbole. Beschriftung,
+Taste, Kosten und das gezeichnete Abriss-Symbol bleiben erhalten. `PlacementPreview` verwendet
+`BuildingSprites.variant()` für Wohnhäuser und `WallSprites.paths()` für Mauerteile und
+Treppenrichtung. Bestehende Wehrgänge kommen aus `WallSprites.neighbors(world, origin)`;
+nur erlaubte geplante Wehrgangkacheln ergänzen die Anschlüsse. Die Gültigkeit stammt weiter
+aus `founding_error()`, `build_error()` und `line_plan()`, bei der Mauerlinie je Kachel.
+Sprites sind halbtransparent grün bzw. rot, die Grundfläche und Eingangsmarkierung bleiben
+sichtbar. Beim Abriss gilt weiterhin Orange bzw. Rot. Zeichenbefehle behalten die Texturen
+in der Ansicht, damit auch noch nicht gebaute Typen sichtbar bleiben. Die Presets
+`founding`, `build`, `build_free`, `build_blocked` und `wall` prüfen diese Ansichten.

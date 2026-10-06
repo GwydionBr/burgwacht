@@ -1,0 +1,7 @@
+{
+  "terrain": {
+    "model": "kenney-nature/ground_grass.glb",
+    "color": "water",
+    "variants": 4
+  }
+}

@@ -6,19 +6,31 @@
     "buildable": true,
     "sprite": "terrain/grass",
     "sprite_variants": 4,
-    "sprite_transition": "sand"
+    "sprite_priority": 0,
+    "sprite_overlay": "terrain/grass_transition",
+    "sprite_edge": "terrain/edge"
   },
   "meadow": {
     "name": "Blumenwiese",
     "color": "#6f9a45",
     "walkable": true,
-    "buildable": true
+    "buildable": true,
+    "sprite": "terrain/meadow",
+    "sprite_variants": 4,
+    "sprite_priority": 1,
+    "sprite_overlay": "terrain/meadow_transition",
+    "sprite_edge": "terrain/edge"
   },
   "dirt": {
     "name": "Erde",
     "color": "#7d6a45",
     "walkable": true,
-    "buildable": true
+    "buildable": true,
+    "sprite": "terrain/dirt",
+    "sprite_variants": 4,
+    "sprite_priority": 2,
+    "sprite_overlay": "terrain/dirt_transition",
+    "sprite_edge": "terrain/edge"
   },
   "sand": {
     "name": "Ufer",
@@ -26,12 +38,20 @@
     "walkable": true,
     "buildable": false,
     "sprite": "terrain/sand",
-    "sprite_variants": 4
+    "sprite_variants": 4,
+    "sprite_priority": 3,
+    "sprite_overlay": "terrain/sand_transition",
+    "sprite_edge": "terrain/edge"
   },
   "water": {
     "name": "Wasser",
     "color": "#3b6c9e",
     "walkable": false,
-    "buildable": false
+    "buildable": false,
+    "sprite": "terrain/water",
+    "sprite_variants": 4,
+    "sprite_priority": 4,
+    "sprite_overlay": "terrain/water_transition",
+    "sprite_edge": "terrain/edge"
   }
 }

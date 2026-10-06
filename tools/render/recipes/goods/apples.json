@@ -1,0 +1,9 @@
+{
+  "parts": [
+    {
+      "model": "kenney-food/apple.glb",
+      "scale": 0.6,
+      "color": "cloth_red"
+    }
+  ]
+}

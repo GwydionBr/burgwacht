@@ -43,6 +43,14 @@
 		"name": "Baumodus mit Verwaltung",
 		"args": ["--seed=1", "--found", "--build=woodcutter", "--admin"]
 	},
+	"build_free": {
+		"name": "Bauvorschau: freies Wohnhaus mit Sprite",
+		"args": ["--setup=wall", "--build=house", "--hover=4,8", "--focus=8,12"]
+	},
+	"build_blocked": {
+		"name": "Bauvorschau: belegtes Wohnhaus mit Sprite",
+		"args": ["--setup=wall", "--build=house", "--hover=6,12", "--focus=8,12"]
+	},
 	"workers": {
 		"name": "Holzfäller bei der Arbeit, Markt offen",
 		"args": ["--seed=1", "--days=3", "--place=woodcutter@46,41", "--ticks=25", "--market"]
@@ -85,7 +93,7 @@
 	},
 	"poacher": {
 		"name": "Wilderer beschießen Bogenschützen auf dem Wehrgang, Pfeile im Flug",
-		"args": ["--setup=poacher", "--ticks=15", "--focus=6,9", "--hover=8,10"]
+		"args": ["--setup=poacher", "--ticks=4", "--focus=6,9", "--hover=8,10"]
 	},
 	"defeat": {
 		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",
@@ -108,11 +116,19 @@
 		"args": ["--setup=keep_falling", "--focus=4,4"]
 	},
 	"gallery": {
-		"name": "Galerie: jeder Gebäudetyp nebeneinander, mit Sprite oder gezeichnet",
-		"args": ["--setup=gallery", "--focus=30,26", "--zoom=0.7"]
+		"name": "Grafikübersicht: alle Typen, Varianten, Übergänge und Animationen",
+		"args": ["--setup=gallery", "--ticks=4"]
+	},
+	"workplaces": {
+		"name": "Arbeitsstätten: alle Sprites, Lebensbalken und verdeckte Bewohner",
+		"args": ["--setup=workplaces", "--focus=22,22", "--zoom=0.85"]
 	},
 	"milestone7": {
 		"name": "Vorführung Meilenstein 7: Verteidigung",
 		"args": ["--setup=milestone7", "--focus=17,10"]
+	},
+	"workers_graphics": {
+		"name": "Arbeiter: Hacken, Schlagen und alle Warenbündel",
+		"args": ["--setup=workers", "--focus=19,14", "--zoom=1.5"]
 	}
 }

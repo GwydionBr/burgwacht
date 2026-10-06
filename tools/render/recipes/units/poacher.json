@@ -1,0 +1,97 @@
+{
+  "parts": [
+    {
+      "model": "kaykit-adventurers/Rogue_Hooded.glb",
+      "scale": 0.3,
+      "recolor": {
+        "cloth_blue": "unit_cloth",
+        "cloth_red": "unit_cloth",
+        "leaf": "unit_cloth",
+        "leaf_light": "unit_cloth",
+        "leaf_dark": "unit_cloth"
+      }
+    },
+    {
+      "model": "burgwacht/bow.glb",
+      "bone": "hand.l",
+      "upright": true,
+      "scale": 1,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "draw_string": true
+    },
+    {
+      "model": "kaykit-adventurers/quiver.glb",
+      "bone": "chest",
+      "upright": true,
+      "scale": 0.6,
+      "position": [
+        0.08,
+        0.3,
+        -0.3
+      ]
+    },
+    {
+      "model": "kaykit-adventurers/arrow_bundle.glb",
+      "bone": "chest",
+      "upright": true,
+      "scale": 0.6,
+      "position": [
+        0.08,
+        0.3,
+        -0.3
+      ]
+    },
+    {
+      "model": "kaykit-adventurers/arrow.glb",
+      "bone": "hand.l",
+      "upright": true,
+      "visible_in": [
+        "attack"
+      ],
+      "rotation_xyz": [
+        -90,
+        0,
+        0
+      ],
+      "scale": 0.55,
+      "position": [
+        -0.02,
+        -0.18,
+        0
+      ],
+      "hide_after": 0.75
+    }
+  ],
+  "animations": {
+    "idle": {
+      "action": "Idle",
+      "frames": 4
+    },
+    "walk": {
+      "action": "Walking_A",
+      "frames": 8
+    },
+    "attack": {
+      "action": "Idle",
+      "frames": 8,
+      "bow_pose": true
+    }
+  },
+  "canvas": [
+    80,
+    144
+  ],
+  "hide": [
+    "Knife_Offhand",
+    "1H_Crossbow",
+    "2H_Crossbow",
+    "Knife",
+    "Throwable",
+    "Rogue_Cape"
+  ],
+  "unit_color": "poacher"
+}
