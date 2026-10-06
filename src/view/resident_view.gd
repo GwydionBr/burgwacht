@@ -42,7 +42,7 @@ func _body_color() -> Color:
 func _draw_extras() -> void:
 	if _resident.carried_amount > 0:
 		_draw_bundle(Color(str(GameDefs.get_instance().goods[_resident.carried_good]["color"])))
-	if _resident.is_soldier():
+	if _resident.is_soldier() and not _sprite_entry().has("sprite"):
 		_draw_weapon()
 
 

@@ -382,3 +382,15 @@ func test_save_and_load_keeps_scenario_bandits_before_founding() -> void:
 	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
 	loaded.execute(Command.found(KEEP_ORIGIN))
 	assert_eq(loaded.get_enemies().size(), 1, "Räuber nach der Gründung:")
+
+
+func test_combat_target_reports_only_an_attack_in_reach() -> void:
+	var world := _with_soldiers(["archer"])
+	var soldier := world.get_resident(1)
+	var enemy := Enemy.create(1, "bandit", Vector2i(10, 5))
+	world._enemies[enemy.id] = enemy
+	soldier.place_at(Figure.ground(Vector2i(15, 5)))
+	soldier.target_id = enemy.id
+	assert_eq(world.combat_target(soldier), [enemy.position()], "Ziel in Reichweite:")
+	enemy.place_at(Figure.ground(Vector2i(1, 15)))
+	assert_eq(world.combat_target(soldier), [], "Verfolgung ist kein Angriff:")

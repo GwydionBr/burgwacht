@@ -17,7 +17,7 @@
     }
   },
   "swordsman": {
-    "name": "Schwertkämpfer",
+    "name": "Schwertk\u00e4mpfer",
     "kind": "soldier",
     "hp": 100,
     "damage": 20,
@@ -30,10 +30,25 @@
       "sword": 1,
       "gold": 10
     },
-    "color": "#b8323a"
+    "color": "#b8323a",
+    "sprite": "units/swordsman",
+    "animations": {
+      "idle": {
+        "frames": 4,
+        "fps": 4
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 8
+      },
+      "attack": {
+        "frames": 8,
+        "fps": 8.0
+      }
+    }
   },
   "archer": {
-    "name": "Bogenschütze",
+    "name": "Bogensch\u00fctze",
     "kind": "soldier",
     "hp": 50,
     "damage": 10,
@@ -46,10 +61,25 @@
       "bow": 1,
       "gold": 5
     },
-    "color": "#3f7a3a"
+    "color": "#3f7a3a",
+    "sprite": "units/archer",
+    "animations": {
+      "idle": {
+        "frames": 4,
+        "fps": 4
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 8
+      },
+      "attack": {
+        "frames": 8,
+        "fps": 5.333333333333333
+      }
+    }
   },
   "bandit": {
-    "name": "Räuber",
+    "name": "R\u00e4uber",
     "kind": "enemy",
     "hp": 80,
     "damage": 12,

@@ -79,3 +79,10 @@ func test_terrain_transition_requires_a_known_neighbor_type() -> void:
 	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_transition": "missing"}}
 	assert_eq(GameDefs.sprites_error("terrain.json", entries),
 			"terrain.json, „grass“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen", "Fehler:")
+
+
+func test_optional_attack_animation_is_validated() -> void:
+	var resident: Dictionary = GameDefs.get_instance().units["resident"].duplicate(true)
+	resident["animations"]["attack"] = {"frames": 1, "fps": 8}
+	assert_eq(GameDefs.sprites_error("units.json", {"resident": resident}),
+		"units.json, „resident“: Animationsbild res://assets/sprites/units/resident_attack_0_0.png fehlt", "Angriff wird geprüft:")

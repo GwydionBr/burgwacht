@@ -85,7 +85,7 @@
 	},
 	"poacher": {
 		"name": "Wilderer beschießen Bogenschützen auf dem Wehrgang, Pfeile im Flug",
-		"args": ["--setup=poacher", "--ticks=15", "--focus=6,9", "--hover=8,10"]
+		"args": ["--setup=poacher", "--ticks=4", "--focus=6,9", "--hover=8,10"]
 	},
 	"defeat": {
 		"name": "Der Bergfried ist gefallen: Niederlage-Ansicht",

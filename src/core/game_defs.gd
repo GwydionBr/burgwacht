@@ -125,14 +125,17 @@ static func _load_json(file_name: String) -> Dictionary:
 	return parsed
 
 
-## Beide Bewegungszustände mit acht Richtungen und sämtlichen Einzelbildern müssen vorhanden sein.
+## Stehen und Gehen sowie jede zusätzliche Animation brauchen acht Richtungen und alle Bilder.
 static func _animation_error(entry: Dictionary) -> String:
 	if not entry.has("animations"):
 		return ""
 	var animations: Variant = entry["animations"]
 	if not animations is Dictionary:
 		return "„animations“ muss Stehen und Gehen beschreiben"
-	for animation: String in ["idle", "walk"]:
+	for required: String in ["idle", "walk"]:
+		if not animations.has(required):
+			return "Animation „%s“ fehlt" % required
+	for animation: String in animations:
 		var settings: Variant = animations.get(animation)
 		if not settings is Dictionary:
 			return "Animation „%s“ fehlt" % animation

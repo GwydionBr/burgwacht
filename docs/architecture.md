@@ -215,3 +215,21 @@ Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere W
 - `*.json` steht im Export-Filter für Nicht-Ressourcen, weil Daten, Szenarien und `tools/presets.json` per Dateizugriff gelesen werden.
 - Für die Architektur universal muss „Import ETC2 ASTC“ (`rendering/textures/vram_compression/import_etc2_astc`) in `project.godot` an sein.
 - Debug-Tasten (N, F7, F8) und `--spawn` wirken nur im Debug-Build (`OS.is_debug_build()`), also nicht in der exportierten App.
+
+### Soldatensprites und Angriff (#146)
+
+`units/swordsman` und `units/archer` enthalten Stehen, Gehen und Angriff in acht Richtungen.
+Das Renderrezept liest die Kleidungsfarbe unmittelbar aus `units.json` (`unit_color`);
+Modellmaßstab und Körperproportionen entsprechen der freigegebenen Stilprobe.
+Rezeptteile mit `bone` folgen einem animierten Griffpunkt; `upright` hält Bogen bzw.
+Köcher senkrecht. Die modellierte Bogenquelle und ihr Erzeugerskript sind eingecheckt.
+`bow_pose` retargetet die Arme zum Halten, Ziehen und Lösen der Sehne.
+
+`GameWorld.combat_target()` fragt vorhandene Reichweitenregeln ab. `FigureView` merkt
+Blickrichtung und Dauer aus den bestehenden Treffermeldungen und dem Angriffsziel,
+sodass auch der tödliche Hieb fertig sichtbar bleibt. Die acht Angriffsbilder laufen
+über `attack_ticks` statt einer freien Schleife; Bewegung beendet die Darstellung.
+Silhouette und normale Darstellung verwenden dieselbe Animationsauswahl. Ring,
+Lebensbalken, Klickfläche und Wehrgangshöhe bleiben erhalten. `ArrowView` liest die
+Spielzeit aus `GameClock`, fliegt deshalb bei Pause und Spielmenü nicht weiter und
+läuft im Zeitraffer schneller. Das gerenderte Pfeilbild folgt der Flugbahntangente.

@@ -67,3 +67,15 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - Quelle: https://kaylousberg.itch.io/kaykit-adventurers
 - Lizenz: CC0, beigefügt als `tools/render/models/kaykit-adventurers/LICENSE.txt`
 - Umfärbung auf die gemeinsame Palette und Renderrezept: Burgwacht.
+
+### Soldaten und Pfeile (#146)
+
+- **KayKit Adventurers Character Pack 1.0** – Kay Lousberg, CC0,
+  <https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0>.
+  `Knight.glb` ist der unveränderte Schwertkämpfer mit Helm, Rundschild und Einhandschwert;
+  der bereits verwendete `Rogue.glb` bildet den Bogenschützen mit den freigegebenen Proportionen.
+  `quiver.glb`, `arrow_bundle.glb` und `arrow.glb` sind verlustfrei in binäres glTF
+  exportierte Originalmodelle aus demselben Satz. Lizenz: `tools/render/models/kaykit-adventurers/LICENSE.txt`.
+- **Langbogen** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
+  `tools/render/models/burgwacht/bow.blend`, reproduzierbar mit `tools/render/model_bow.py`.
+  Die Bogenhaltung retargetet ausschließlich Armstellungen und verändert Kopf und Körper nicht.

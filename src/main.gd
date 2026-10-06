@@ -924,7 +924,7 @@ func _on_enemy_changed(_id: int) -> void:
 func _on_shot_fired(from: Vector3i, to: Vector3i) -> void:
 	var arrow := ArrowView.new()
 	arrow.z_index = 1
-	arrow.setup(from, to)
+	arrow.setup(from, to, _clock)
 	add_child(arrow)
 
 

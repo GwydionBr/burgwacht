@@ -34,3 +34,11 @@ func test_pause_menu_and_double_speed_drive_animation_time() -> void:
 	assert_eq(clock.advance(0.5), 0, "Spielmenü:")
 	assert_eq(FigureAnimation.frame((world.get_tick() + clock.tick_fraction()) / 10.0, 8, 8), 5, "Bild im Menü bleibt:")
 	clock.free()
+
+
+func test_attack_frame_spans_exact_simulation_duration_without_looping() -> void:
+	assert_eq(FigureAnimation.attack_frame(10, 0.0, 10, 8), 0, "Schwerthieb beginnt:")
+	assert_eq(FigureAnimation.attack_frame(5, 0.0, 10, 8), 4, "Halber Schwerthieb:")
+	assert_eq(FigureAnimation.attack_frame(1, 0.99, 10, 8), 7, "Letztes Bild:")
+	assert_eq(FigureAnimation.attack_frame(0, 0.0, 10, 8), 7, "Keine neue Schleife ohne Angriff:")
+	assert_eq(FigureAnimation.attack_frame(10, 0.0, 15, 8), 2, "Bogenschuss dauert länger:")
