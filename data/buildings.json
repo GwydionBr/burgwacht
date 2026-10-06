@@ -14,7 +14,8 @@
     "housing": 8,
     "demolish_forbidden": "Der Bergfried kann nicht abgerissen werden.",
     "color": "#8a8478",
-    "height": 64
+    "height": 64,
+    "sprite": "buildings/keep"
   },
   "campfire": {
     "name": "Lagerfeuer",
@@ -24,7 +25,9 @@
     "walkable": true,
     "demolish_forbidden": "Das Lagerfeuer kann nicht abgerissen werden.",
     "color": "#c8641e",
-    "height": 4
+    "height": 4,
+    "sprite": "buildings/campfire",
+    "sprite_animation": { "frames": 4, "fps": 6 }
   },
   "warehouse": {
     "name": "Warenlager",
@@ -40,7 +43,8 @@
     "hotkey": "L",
     "category": "castle",
     "color": "#9a7445",
-    "height": 22
+    "height": 22,
+    "sprite": "buildings/warehouse"
   },
   "granary": {
     "name": "Kornspeicher",
@@ -56,7 +60,8 @@
     "hotkey": "G",
     "category": "castle",
     "color": "#c9a24a",
-    "height": 26
+    "height": 26,
+    "sprite": "buildings/granary"
   },
   "armory": {
     "name": "Waffenkammer",
@@ -72,7 +77,8 @@
     "hotkey": "A",
     "category": "weapons",
     "color": "#6e6a78",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/armory"
   },
   "woodcutter": {
     "name": "Holzfäller",
@@ -144,7 +150,8 @@
     "category": "castle",
     "color": "#a8673f",
     "height": 26,
-    "sprite": "buildings/house"
+    "sprite": "buildings/house",
+    "sprite_variants": 2
   },
   "orchard": {
     "name": "Apfelplantage",
@@ -296,7 +303,8 @@
     "hotkey": "T",
     "category": "castle",
     "color": "#b5523b",
-    "height": 20
+    "height": 20,
+    "sprite": "buildings/market"
   },
   "barracks": {
     "name": "Kaserne",
@@ -308,7 +316,8 @@
     "hotkey": "C",
     "category": "military",
     "color": "#7a3b34",
-    "height": 30
+    "height": 30,
+    "sprite": "buildings/barracks"
   },
   "wall": {
     "name": "Mauer",

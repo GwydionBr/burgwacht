@@ -1,0 +1,219 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/wall-wood-window-shutters.glb",
+      "position": [
+        0.5,
+        0.5,
+        0
+      ],
+      "rotation": 0,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood.glb",
+      "position": [
+        0.5,
+        -0.5,
+        0
+      ],
+      "rotation": 0,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood-door.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "rotation": 270,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood-window-shutters.glb",
+      "position": [
+        0.5,
+        -0.5,
+        0
+      ],
+      "rotation": 270,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood.glb",
+      "position": [
+        -0.5,
+        0.5,
+        0
+      ],
+      "rotation": 180,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "rotation": 180,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood.glb",
+      "position": [
+        0.5,
+        0.5,
+        0
+      ],
+      "rotation": 90,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-wood.glb",
+      "position": [
+        -0.5,
+        0.5,
+        0
+      ],
+      "rotation": 90,
+      "scale": [
+        1,
+        1,
+        0.75
+      ],
+      "recolor": {
+        "wood_light": "wood",
+        "wood": "wood_dark",
+        "stone": "plaster"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        1.006,
+        0,
+        0.75
+      ],
+      "rotation": 0,
+      "scale": [
+        0.08,
+        1.8,
+        0.9
+      ],
+      "recolor": {
+        "cloth_red": "roof_brown",
+        "roof_brown": "wood_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark",
+        "roof_red": "roof_brown"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        -1.006,
+        0,
+        0.75
+      ],
+      "rotation": 180,
+      "scale": [
+        0.08,
+        1.8,
+        0.9
+      ],
+      "recolor": {
+        "cloth_red": "roof_brown",
+        "roof_brown": "wood_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark",
+        "roof_red": "roof_brown"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable.glb",
+      "position": [
+        0,
+        0,
+        0.75
+      ],
+      "rotation": 0,
+      "scale": [
+        1.9,
+        1.8,
+        0.9
+      ],
+      "recolor": {
+        "cloth_red": "roof_brown",
+        "roof_brown": "wood_dark",
+        "wood": "plaster",
+        "wood_light": "wood_dark",
+        "roof_red": "roof_brown"
+      }
+    }
+  ]
+}

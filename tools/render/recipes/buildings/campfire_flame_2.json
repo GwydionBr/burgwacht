@@ -1,0 +1,12 @@
+{
+  "parts": [
+    {
+      "model": "burgwacht/campfire-flame-2.glb",
+      "scale": 1,
+      "recolor": {
+        "roof_red": "cloth_red",
+        "gold": "gold"
+      }
+    }
+  ]
+}

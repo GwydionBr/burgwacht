@@ -241,3 +241,11 @@ Silhouette und normale Darstellung verwenden dieselbe Animationsauswahl. Ring,
 Lebensbalken, Klickfläche und Wehrgangshöhe bleiben erhalten. `ArrowView` liest die
 Spielzeit aus `GameClock`, fliegt deshalb bei Pause und Spielmenü nicht weiter und
 läuft im Zeitraffer schneller. Das gerenderte Pfeilbild folgt der Flugbahntangente.
+
+### Burggebäude und Lagerfeuer
+
+Bergfried, Warenlager, Kornspeicher, Waffenkammer, Markt und Kaserne sind aus CC0-Einzelteilen zusammengesetzt; jedes Rezept liegt unter `tools/render/recipes/buildings/`. Der Eingang bleibt auf der Kachel aus den Gebäudedaten. Wohnhäuser haben zwei Varianten: `BuildingSprites.variant(origin, count)` wählt sie allein aus der Kachelposition. Karte und Bauvorschau können dieselbe Auswahl verwenden; Bild und Schatten benutzen denselben Variantenindex.
+
+Das Lagerfeuer hat ein statisches Bild mit Schatten und eine eigene Flammenebene. `sprite_animation` beschreibt Bildanzahl und Bildrate; `GameDefs.building_animation_path()` liefert die Einzelbilder und prüft sie beim Laden. `BuildingView.setup(building, shadows, clock)` erhält die Spieluhr. Der Flackerzyklus folgt `(get_tick() + tick_fraction()) / TICKS_PER_SECOND`, steht also bei Pause und im Spielmenü still und läuft mit dem Zeitraffer. Das Lagerfeuer verdeckt weiterhin keine Figuren. Die modellierte Flamme ist als `.blend` erhalten; `tools/render/models/burgwacht/create_flame.py` erzeugt sie und ihre glTF-Posen mit Blender 5.2 neu; die vier glTF-Posen und ihre Rezepte erlauben erneutes Rendern mit unverändertem Licht und Palette.
+
+Das Galerie-Preset zeigt beide Wohnhäuser und alle vier Flammenbilder zusätzlich zu den Burggebäuden. Lebensbalken und Verdeckung der übrigen Gebäude folgen dem Alpha-Umriss ihres gewählten Bilds.

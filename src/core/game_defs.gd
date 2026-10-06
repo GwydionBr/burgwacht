@@ -121,7 +121,8 @@ static func _sprite_error(entry: Dictionary) -> String:
 			return "Bild %s fehlt" % sprite_path(entry, variant)
 		if not ResourceLoader.exists(shadow_path(entry, variant)):
 			return "Schatten %s fehlt" % shadow_path(entry, variant)
-	return _animation_error(entry)
+	var reason := _building_animation_error(entry)
+	return reason if reason != "" else _animation_error(entry)
 
 
 ## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
@@ -172,4 +173,28 @@ static func _animation_error(entry: Dictionary) -> String:
 				var path := animation_path(entry, animation, direction, frame)
 				if not ResourceLoader.exists(path):
 					return "Animationsbild %s fehlt" % path
+	return ""
+
+
+## Flackernde Gebäudebilder haben keine Blickrichtung; alle Einzelbilder werden geprüft.
+static func building_animation_path(entry: Dictionary, frame: int) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + "_flame_%d.png" % frame if entry.has("sprite") else ""
+
+
+static func _building_animation_error(entry: Dictionary) -> String:
+	if not entry.has("sprite_animation"):
+		return ""
+	var settings: Variant = entry["sprite_animation"]
+	if not settings is Dictionary:
+		return "„sprite_animation“ muss Bildanzahl und Bildrate beschreiben"
+	var frames: Variant = settings.get("frames")
+	var fps: Variant = settings.get("fps")
+	if not (frames is int or frames is float) or float(frames) < 1 or float(frames) != floorf(float(frames)):
+		return "„sprite_animation“ braucht eine positive ganze Bildanzahl"
+	if not (fps is int or fps is float) or float(fps) <= 0:
+		return "„sprite_animation“ braucht eine positive Bildrate"
+	for frame in int(frames):
+		var path := building_animation_path(entry, frame)
+		if not ResourceLoader.exists(path):
+			return "Animationsbild %s fehlt" % path
 	return ""

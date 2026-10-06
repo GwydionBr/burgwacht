@@ -14,7 +14,7 @@ func test_house_has_a_sprite_and_a_shadow() -> void:
 
 
 func test_type_without_sprite_has_no_path() -> void:
-	var keep: Dictionary = GameDefs.get_instance().buildings["keep"]
+	var keep: Dictionary = {"name": "Gebäude ohne Bild"}
 	assert_eq(GameDefs.sprite_path(keep), "", "Bild:")
 	assert_eq(GameDefs.shadow_path(keep), "", "Schatten:")
 
@@ -58,9 +58,9 @@ func test_sprite_variant_count_must_be_a_positive_integer() -> void:
 
 
 func test_missing_variant_sprite_is_named() -> void:
-	var entries := {"tree": {"sprite": "buildings/house", "sprite_variants": 2}}
+	var entries := {"tree": {"sprite": "buildings/house", "sprite_variants": 3}}
 	assert_eq(GameDefs.sprites_error("deposits.json", entries),
-			"deposits.json, „tree“: Bild res://assets/sprites/buildings/house_1.png fehlt", "Fehler:")
+			"deposits.json, „tree“: Bild res://assets/sprites/buildings/house_2.png fehlt", "Fehler:")
 
 
 func test_sprite_paths_choose_variant_and_wrap_seed() -> void:
@@ -105,3 +105,9 @@ func test_terrain_priority_must_be_a_nonnegative_integer() -> void:
 		var entries := {"grass": {"sprite": "terrain/grass", "sprite_priority": value}}
 		assert_eq(GameDefs.sprites_error("terrain.json", entries),
 			"terrain.json, „grass“: „sprite_priority“ muss eine nichtnegative ganze Zahl sein", "Fehler:")
+
+
+func test_missing_building_flame_frame_is_named() -> void:
+	var entry := {"sprite": "buildings/house", "sprite_animation": {"frames": 2, "fps": 6}}
+	assert_eq(GameDefs.sprites_error("buildings.json", {"campfire": entry}),
+		"buildings.json, „campfire“: Animationsbild res://assets/sprites/buildings/house_flame_0.png fehlt", "Fehler:")

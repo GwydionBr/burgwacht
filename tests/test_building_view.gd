@@ -5,13 +5,19 @@ extends TestCase
 const KEEP_ORIGIN := Vector2i(10, 10)
 
 
-func _covers(type_id: String, tile: Vector2i) -> bool:
+func _covers(type_id: String, tile: Vector2i, without_sprite: bool = false) -> bool:
+	var definition: Dictionary = GameDefs.get_instance().buildings[type_id]
+	var saved_sprite: Variant = definition.get("sprite")
+	if without_sprite:
+		definition.erase("sprite")
 	var foot := Iso.tile_to_world(tile)
 	var rect := Rect2(foot + FigureView.HIT_RECT.position, FigureView.HIT_RECT.size)
 	var view := BuildingView.new()
 	view.setup(Building.create(1, type_id, KEEP_ORIGIN))
 	var covered := view.covers_figure(rect, foot.y)
 	view.free()
+	if without_sprite and saved_sprite != null:
+		definition["sprite"] = saved_sprite
 	return covered
 
 
@@ -38,7 +44,7 @@ func test_campfire_covers_nothing() -> void:
 func test_figure_behind_house_roof_is_covered() -> void:
 	var behind_roof := Vector2i(8, 9)
 	assert_true(_covers("house", behind_roof), "hinter dem Dach des Wohnhauses:")
-	assert_false(_covers("hunter", behind_roof), "über dem Block des Jägers:")
+	assert_false(_covers("hunter", behind_roof, true), "über dem Block des Jägers:")
 
 
 func test_figure_in_front_of_house_is_not_covered() -> void:
@@ -64,10 +70,15 @@ func test_house_shows_its_sprite_and_shadow() -> void:
 
 
 func test_type_without_sprite_has_no_sprite() -> void:
+	var definition: Dictionary = GameDefs.get_instance().buildings["hunter"]
+	var saved_sprite: Variant = definition.get("sprite")
+	definition.erase("sprite")
 	var view := BuildingView.new()
-	view.setup(Building.create(1, "keep", KEEP_ORIGIN))
-	assert_true(view.get_sprite() == null, "Bergfried ohne Sprite:")
+	view.setup(Building.create(1, "hunter", KEEP_ORIGIN))
+	assert_true(view.get_sprite() == null, "Jäger ohne Sprite:")
 	view.free()
+	if saved_sprite != null:
+		definition["sprite"] = saved_sprite
 
 
 ## Ein zweites setup() ersetzt Bild und Schatten, statt die alten liegen zu lassen.
@@ -92,6 +103,7 @@ func test_second_setup_replaces_shadow() -> void:
 ## Fehlt die Bilddatei, erscheint der Block wie bei einem Typ ohne Sprite.
 func test_missing_sprite_file_falls_back_to_block() -> void:
 	var hunter: Dictionary = GameDefs.get_instance().buildings["hunter"]
+	var saved_sprite: Variant = hunter.get("sprite")
 	hunter["sprite"] = "buildings/gibt_es_nicht"
 	var shadows := Node2D.new()
 	var view := BuildingView.new()
@@ -101,7 +113,10 @@ func test_missing_sprite_file_falls_back_to_block() -> void:
 	view.free()
 	shadows.free()
 	var covered := _covers("hunter", Vector2i(9, 9))
-	hunter.erase("sprite")
+	if saved_sprite != null:
+		hunter["sprite"] = saved_sprite
+	else:
+		hunter.erase("sprite")
 	assert_true(sprite == null, "kein Bild:")
 	assert_eq(shadow_count, 0, "kein Schatten:")
 	assert_true(covered, "der Block verdeckt die Figur dahinter:")

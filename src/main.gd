@@ -816,7 +816,7 @@ func _on_deposit_changed(tile: Vector2i) -> void:
 
 func _add_building_view(id: int) -> void:
 	var view := BuildingView.new()
-	view.setup(world.get_building(id), _shadows)
+	view.setup(world.get_building(id), _shadows, _clock)
 	_objects.add_child(view)
 	_building_views[id] = view
 

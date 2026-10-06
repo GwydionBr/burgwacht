@@ -79,3 +79,12 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - **Langbogen** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
   `tools/render/models/burgwacht/bow.blend`, reproduzierbar mit `tools/render/model_bow.py`.
   Die Bogenhaltung retargetet ausschließlich Armstellungen und verändert Kopf und Körper nicht.
+
+### Burggebäude (#141)
+
+- **Kenney – Fantasy Town Kit 2.0**, CC0: Holzfassaden, Schindeldach, Marktstände und Banner aus [kenney.nl/assets/fantasy-town-kit](https://kenney.nl/assets/fantasy-town-kit). Ausgewählte Modelle unter `tools/render/models/kenney-fantasy-town/`, Lizenz dort.
+- **Kenney – Castle Kit 2.0**, CC0: Bergfried aus quadratischem Sockel, Fenstergeschoss und Zinnen, [kenney.nl/assets/castle-kit](https://kenney.nl/assets/castle-kit). Modelle und Lizenz unter `tools/render/models/kenney-castle/`.
+- **Kenney – Survival Kit 2.0**, CC0: Kisten, Fässer, Holz-/Steinstapel, Arbeitstisch und Axt, [kenney.nl/assets/survival-kit](https://kenney.nl/assets/survival-kit). Modelle und Lizenz unter `tools/render/models/kenney-survival/`.
+- **Kenney – Nature Kit 2.1**, CC0: Lagerfeuer-Steinkreis und Holzscheite, [kenney.nl/assets/nature-kit](https://kenney.nl/assets/nature-kit). Modelle und Lizenz unter `tools/render/models/kenney-nature/`.
+- **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: Waffengestell und Säcke, [Originalrepository](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0). Modelle, Textur und Lizenz unter `tools/render/models/kaykit-medieval/`.
+- **Burgwacht**: eigene Low-Poly-Flammen, modellierte Quelldatei `tools/render/models/burgwacht/campfire-flame.blend`, vier exportierte glTF-Posen. Keine fremden Modelle für die Flamme.

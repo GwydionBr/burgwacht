@@ -37,6 +37,7 @@ static func create() -> GameWorld:
 		helper.place(world, type_id, Vector2i(x, row_sum - size - x))
 		x += size + GAP
 	_add_deposits(world)
+	_add_castle_variants(world)
 	_add_terrain(world)
 
 	return world
@@ -73,6 +74,15 @@ static func decorate(scene: Node2D, clock: GameClock) -> void:
 	var figures: Node2D = script.new()
 	figures.call("setup", clock)
 	scene.add_child(figures)
+	# Alle Flammenbilder nebeneinander; das Lagerfeuer der Gründung läuft mit der Uhr.
+	var fire: Dictionary = GameDefs.get_instance().buildings["campfire"]
+	for frame in int(fire["sprite_animation"]["frames"]):
+		var flame := Sprite2D.new()
+		flame.texture = load(GameDefs.building_animation_path(fire, frame))
+		flame.scale = Vector2(0.5, 0.5)
+		flame.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		flame.position = Iso.tile_to_world(Vector2i(12 + frame, 24 - frame))
+		scene.add_child(flame)
 
 
 ## Jede Geländepaarung mit gerader Kante, Ecke und diagonaler Berührung; zuletzt eine Kreuzung.
@@ -92,3 +102,10 @@ static func _add_terrain(world: GameWorld) -> void:
 	for y: int in 6:
 		for x: int in 8:
 			world.map.set_terrain(Vector2i(37 + x, 12 + y), str(ids[(x / 2 + y / 2) % ids.size()]))
+
+
+## Beide Wohnhausvarianten auf benachbarten Positionen vor der Gründung.
+static func _add_castle_variants(world: GameWorld) -> void:
+	var helper := TestCase.new()
+	helper.place(world, "house", Vector2i(9, 15))
+	helper.place(world, "house", Vector2i(12, 15))

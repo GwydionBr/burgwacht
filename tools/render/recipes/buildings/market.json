@@ -1,0 +1,44 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/stall-red.glb",
+      "position": [
+        -0.8,
+        0.25,
+        0
+      ],
+      "scale": 1.4,
+      "rotation": 270
+    },
+    {
+      "model": "kenney-fantasy-town/stall.glb",
+      "position": [
+        0.8,
+        0.25,
+        0
+      ],
+      "scale": 1.4,
+      "rotation": 270
+    },
+    {
+      "model": "kenney-survival/barrel.glb",
+      "position": [
+        1,
+        -1,
+        0
+      ],
+      "scale": 1.9799999999999998,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/box.glb",
+      "position": [
+        -1,
+        -1,
+        0
+      ],
+      "scale": 1.9799999999999998,
+      "rotation": 0
+    }
+  ]
+}

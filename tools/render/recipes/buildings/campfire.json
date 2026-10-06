@@ -1,0 +1,26 @@
+{
+  "parts": [
+    {
+      "model": "kenney-nature/campfire_stones.glb",
+      "position": [
+        0,
+        0,
+        0.075
+      ],
+      "scale": 1.5,
+      "rotation": 0,
+      "color": "stone"
+    },
+    {
+      "model": "kenney-nature/campfire_logs.glb",
+      "position": [
+        0,
+        0,
+        0.075
+      ],
+      "scale": 1.5,
+      "rotation": 0,
+      "color": "wood_dark"
+    }
+  ]
+}
