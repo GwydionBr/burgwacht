@@ -1,8 +1,9 @@
 {
   "parts": [
     {
-      "model": "kenney-survival/resource-wood.glb",
-      "scale": 0.5
+      "model": "kenney-nature/log_stack.glb",
+      "scale": 0.24,
+      "color": "wood"
     }
   ]
 }

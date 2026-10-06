@@ -91,5 +91,5 @@ func _draw_carried_good() -> void:
 		_textures[path] = load(path) as Texture2D
 	var texture: Texture2D = _textures[path]
 	# Der Rücken liegt entgegen der Blickrichtung; die Ware sitzt oberhalb des Fußpunkts.
-	var back := -Iso.point_to_world(Vector2.from_angle(facing * PI / 4.0)).normalized() * 4.0 + Vector2(0, -12)
+	var back := -Iso.point_to_world(Vector2.from_angle(facing * PI / 4.0)).normalized() * 7.0 + Vector2(0, -10)
 	draw_texture_rect(texture, Rect2(back - texture.get_size() * 0.25, texture.get_size() * 0.5), false)
