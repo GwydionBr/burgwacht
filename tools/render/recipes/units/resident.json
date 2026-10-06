@@ -2,18 +2,13 @@
   "parts": [
     {
       "model": "kaykit-adventurers/Rogue.glb",
-      "scale": 0.275,
+      "scale": 0.3,
       "recolor": {
         "cloth_blue": "plaster",
         "cloth_red": "plaster",
         "leaf": "plaster",
         "leaf_light": "plaster",
-        "leaf_dark": "plaster",
-        "roof_red": "wood_dark",
-        "roof_brown": "wood_dark",
-        "stone_light": "wood",
-        "stone": "wood",
-        "metal": "wood"
+        "leaf_dark": "plaster"
       }
     }
   ],
@@ -37,16 +32,6 @@
     "2H_Crossbow",
     "Knife",
     "Throwable",
-    "Rogue_Cape",
-    "Icosphere"
-  ],
-  "proportions": {
-    "head_mesh": "Rogue_Head",
-    "head_bone": "head",
-    "head_scale": 0.42,
-    "body_width": 0.82,
-    "hip_height": 0.55,
-    "leg_length": 1.85,
-    "torso_length": 1.12
-  }
+    "Rogue_Cape"
+  ]
 }
