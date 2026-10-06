@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "model": "kenney-food/apple.glb",
+      "scale": 0.6
+    }
+  ]
+}

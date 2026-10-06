@@ -1,7 +1,7 @@
 class_name ResidentView
 extends FigureView
 ## Zeichnet einen Bewohner (Figur, Ring und Lebensbalken: FigureView). Getragene Ware als Bündel
-## auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
+## auf dem Rücken, beim Abbau arbeitet er zum Vorkommen hin, in der Arbeitsstätte ist er unsichtbar.
 ## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen).
 
 ## Wippen beim Abbau: Höhe in Pixeln und Schläge pro Sekunde (Spielzeit, nur Optik).
@@ -26,9 +26,21 @@ func _update_position() -> void:
 
 
 func _bob() -> float:
-	if _resident.task != Resident.Task.MINING:
+	if _resident.task != Resident.Task.MINING or _animation_name() != "idle":
 		return 0.0
 	return BOB_HEIGHT * absf(sin((_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND) * BOB_RATE * PI))
+
+
+func _update_facing() -> void:
+	super._update_facing()
+	facing = ResidentAnimation.work_direction(_resident, facing)
+
+
+func _animation_name() -> String:
+	var work := ResidentAnimation.work_animation(_resident, _clock.world)
+	if _sprite_entry().get("animations", {}).has(work):
+		return work
+	return super._animation_name()
 
 
 ## Kittel in der Farbe des Soldatentyps, sonst in der des Bewohners. Jedes Mal neu gelesen:
@@ -41,7 +53,7 @@ func _body_color() -> Color:
 
 func _draw_extras() -> void:
 	if _resident.carried_amount > 0:
-		_draw_bundle(Color(str(GameDefs.get_instance().goods[_resident.carried_good]["color"])))
+		_draw_carried_good()
 	if _resident.is_soldier() and not _sprite_entry().has("sprite"):
 		_draw_weapon()
 
@@ -67,3 +79,17 @@ func _draw_bundle(color: Color) -> void:
 func _sprite_entry() -> Dictionary:
 	var type := _resident.soldier_type if _resident.is_soldier() else "resident"
 	return GameDefs.get_instance().units[type]
+
+
+func _draw_carried_good() -> void:
+	var good: Dictionary = GameDefs.get_instance().goods[_resident.carried_good]
+	if not good.has("sprite"):
+		_draw_bundle(Color(str(good["color"])))
+		return
+	var path := GameDefs.sprite_path(good)
+	if not _textures.has(path):
+		_textures[path] = load(path) as Texture2D
+	var texture: Texture2D = _textures[path]
+	# Der Rücken liegt entgegen der Blickrichtung; die Ware sitzt oberhalb des Fußpunkts.
+	var back := -Iso.point_to_world(Vector2.from_angle(facing * PI / 4.0)).normalized() * 4.0 + Vector2(0, -12)
+	draw_texture_rect(texture, Rect2(back - texture.get_size() * 0.25, texture.get_size() * 0.5), false)

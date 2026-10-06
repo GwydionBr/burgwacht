@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "model": "kenney-survival/resource-wood.glb",
+      "scale": 0.5
+    }
+  ]
+}

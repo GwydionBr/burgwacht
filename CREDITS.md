@@ -122,3 +122,8 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
   Der Wilderer nutzt den eigenen Langbogen und den KayKit-Köcher samt Pfeilen aus #146.
 - **Knüppel** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
   `tools/render/models/burgwacht/club.blend`, reproduzierbar mit `tools/render/model_club.py`.
+
+
+
+
+Arbeitswerkzeuge und Warenbündel: Kenney Survival Kit (`tool-axe`, `tool-pickaxe`, `resource-wood`, `resource-stone`), Nature Kit (`crops_wheatStageB`) und Food Kit (`apple`, `meat-raw`, `bread`), jeweils CC0; KayKit Medieval Hexagon Pack (`sack`) und Adventurers Character Pack 1.0 (`sword_1handed`), Kay Lousberg, CC0. Quellen und Lizenzen liegen bei den bereits verwendeten Modellen unter `tools/render/models/`. Das Bogenbündel verwendet den eigenen Bogen aus `burgwacht/bow.blend`. Werkzeuge folgen der unveränderten Rogue-Animation `1H_Melee_Attack_Chop`; die Warenrezepte liegen unter `tools/render/recipes/goods/`.

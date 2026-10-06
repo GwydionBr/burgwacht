@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "model": "kenney-food/bread.glb",
+      "scale": 0.4
+    }
+  ]
+}

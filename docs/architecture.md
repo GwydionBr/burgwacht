@@ -303,3 +303,8 @@ zum angegriffenen Mauerstück oder Bergfried. Silhouette, Lebensbalken und Klick
 bleiben gemeinsam in `FigureView`; `EnemyView` zeichnet seine Kapuze und Waffen
 nur bei fehlendem Sprite als Platzhalter. Die Galerie nimmt beide Feindtypen samt
 allen Animationen automatisch aus den Spieldaten auf.
+
+
+
+
+Bewohner wählen beim Abbau die Animation aus `work_animation` des Vorkommens (`axe` oder `pick`); `ResidentAnimation` richtet sie zu `deposit_tile` aus. Die Schleifen verwenden dieselbe Spielzeit wie Stehen und Gehen. Der alte Versatz beim Abbau bleibt nur für Figuren ohne Arbeitsanimation. Die Werkzeuge sind an `hand.r` angebunden; die Armhaltung wird für sichtbares Heben und Schlagen retargetet, ohne die ursprünglichen KayKit-Proportionen oder Gliederlängen zu verändern. Waren dürfen `sprite` setzen und werden beim Laden wie die übrigen Sprite-Einträge geprüft (`GameDefs.validate_sprites()`). Der Träger zeichnet das Warenbild auf dem Rücken entgegen seiner Blickrichtung; ohne Bild bleibt das gezeichnete Bündel. Die Galerie zeigt jede Arbeitsrichtung und alle zehn Bündel; das Preset `workers` zeigt zwei Arbeiter und Waren vergrößert.

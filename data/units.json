@@ -13,6 +13,14 @@
       "walk": {
         "frames": 8,
         "fps": 8
+      },
+      "axe": {
+        "frames": 8,
+        "fps": 8
+      },
+      "pick": {
+        "frames": 8,
+        "fps": 8
       }
     }
   },

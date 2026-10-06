@@ -1,0 +1,13 @@
+{
+  "parts": [
+    {
+      "model": "burgwacht/bow.glb",
+      "scale": 0.16,
+      "rotation_xyz": [
+        0,
+        45,
+        0
+      ]
+    }
+  ]
+}

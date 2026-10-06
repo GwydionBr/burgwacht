@@ -41,7 +41,7 @@ static func get_instance() -> GameDefs:
 		_instance.units = _load_json("units.json")
 		_instance.population = _load_json("population.json")
 		_instance.market = _load_json("market.json")
-		_instance.error = _instance._sprites_error()
+		_instance.error = _instance.validate_sprites()
 		if _instance.error != "":
 			push_error("Spieldaten: " + _instance.error)
 	return _instance
@@ -136,14 +136,15 @@ static func _sprite_error(entry: Dictionary) -> String:
 	return reason if reason != "" else _animation_error(entry)
 
 
-## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
+## Prüft alle Sprite-Datendateien einschließlich Waren in dieser Reihenfolge;
 ## der erste Fehler gewinnt.
-func _sprites_error() -> String:
+func validate_sprites() -> String:
 	var sections: Dictionary[String, Dictionary] = {
 		"terrain.json": terrain,
 		"deposits.json": deposits,
 		"buildings.json": buildings,
 		"units.json": units,
+		"goods.json": goods,
 	}
 	for file_name: String in sections:
 		var reason := sprites_error(file_name, sections[file_name])

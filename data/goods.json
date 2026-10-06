@@ -1,12 +1,87 @@
 {
-  "wood":  { "name": "Holz",  "storage": "warehouse", "color": "#8b5a2b", "buy": 4, "sell": 2 },
-  "stone": { "name": "Stein", "storage": "warehouse", "color": "#a8a59c", "buy": 8, "sell": 4 },
-  "iron":  { "name": "Eisen", "storage": "warehouse", "color": "#5e6268", "buy": 20, "sell": 10 },
-  "wheat": { "name": "Weizen", "storage": "warehouse", "color": "#d8b64a", "buy": 8, "sell": 4 },
-  "flour": { "name": "Mehl", "storage": "warehouse", "color": "#ece3cf", "buy": 16, "sell": 8 },
-  "apples": { "name": "Äpfel", "storage": "granary", "food": true, "color": "#c0392b", "buy": 8, "sell": 4 },
-  "meat":   { "name": "Fleisch", "storage": "granary", "food": true, "color": "#9e3b3b", "buy": 8, "sell": 4 },
-  "bread":  { "name": "Brot", "storage": "granary", "food": true, "color": "#b9803d", "buy": 8, "sell": 4 },
-  "sword": { "name": "Schwert", "storage": "armory", "missing_text": "Kein Schwert in der Waffenkammer", "color": "#c4ccd4", "buy": 60, "sell": 30 },
-  "bow":   { "name": "Bogen", "storage": "armory", "missing_text": "Kein Bogen in der Waffenkammer", "color": "#7a4e24", "buy": 30, "sell": 15 }
+  "wood": {
+    "name": "Holz",
+    "storage": "warehouse",
+    "color": "#8b5a2b",
+    "buy": 4,
+    "sell": 2,
+    "sprite": "goods/wood"
+  },
+  "stone": {
+    "name": "Stein",
+    "storage": "warehouse",
+    "color": "#a8a59c",
+    "buy": 8,
+    "sell": 4,
+    "sprite": "goods/stone"
+  },
+  "iron": {
+    "name": "Eisen",
+    "storage": "warehouse",
+    "color": "#5e6268",
+    "buy": 20,
+    "sell": 10,
+    "sprite": "goods/iron"
+  },
+  "wheat": {
+    "name": "Weizen",
+    "storage": "warehouse",
+    "color": "#d8b64a",
+    "buy": 8,
+    "sell": 4,
+    "sprite": "goods/wheat"
+  },
+  "flour": {
+    "name": "Mehl",
+    "storage": "warehouse",
+    "color": "#ece3cf",
+    "buy": 16,
+    "sell": 8,
+    "sprite": "goods/flour"
+  },
+  "apples": {
+    "name": "Äpfel",
+    "storage": "granary",
+    "food": true,
+    "color": "#c0392b",
+    "buy": 8,
+    "sell": 4,
+    "sprite": "goods/apples"
+  },
+  "meat": {
+    "name": "Fleisch",
+    "storage": "granary",
+    "food": true,
+    "color": "#9e3b3b",
+    "buy": 8,
+    "sell": 4,
+    "sprite": "goods/meat"
+  },
+  "bread": {
+    "name": "Brot",
+    "storage": "granary",
+    "food": true,
+    "color": "#b9803d",
+    "buy": 8,
+    "sell": 4,
+    "sprite": "goods/bread"
+  },
+  "sword": {
+    "name": "Schwert",
+    "storage": "armory",
+    "missing_text": "Kein Schwert in der Waffenkammer",
+    "color": "#c4ccd4",
+    "buy": 60,
+    "sell": 30,
+    "sprite": "goods/sword"
+  },
+  "bow": {
+    "name": "Bogen",
+    "storage": "armory",
+    "missing_text": "Kein Bogen in der Waffenkammer",
+    "color": "#7a4e24",
+    "buy": 30,
+    "sell": 15,
+    "sprite": "goods/bow"
+  }
 }

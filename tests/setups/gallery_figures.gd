@@ -37,4 +37,4 @@ func _draw() -> void:
 		var texture: Texture2D = _textures[path]
 		var point: Vector2 = sample["point"]
 		draw_texture_rect(texture, Rect2(point - texture.get_size() * 0.25, texture.get_size() * 0.5), false)
-		draw_string(ThemeDB.fallback_font, point + Vector2(-16, 14), str({"idle": "Stehen", "walk": "Gehen", "attack": "Angriff"}.get(animation, animation)), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color.WHITE)
+		draw_string(ThemeDB.fallback_font, point + Vector2(-16, 14), str({"idle": "Stehen", "walk": "Gehen", "attack": "Angriff", "axe": "Hacken", "pick": "Schlagen"}.get(animation, animation)), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color.WHITE)

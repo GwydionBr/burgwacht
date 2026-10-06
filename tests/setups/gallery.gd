@@ -71,6 +71,9 @@ static func decorate(scene: Node2D, clock: GameClock) -> void:
 	var figures: Node2D = script.new()
 	figures.call("setup", clock)
 	scene.add_child(figures)
+	var goods: Node2D = load("res://tests/setups/gallery_goods.gd").new()
+	goods.call("setup", clock)
+	scene.add_child(goods)
 	# Alle Flammenbilder nebeneinander; das Lagerfeuer der Gründung läuft mit der Uhr.
 	var fire: Dictionary = GameDefs.get_instance().buildings["campfire"]
 	for frame in int(fire["sprite_animation"]["frames"]):

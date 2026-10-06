@@ -10,7 +10,8 @@
     "spread": {
       "interval_ticks": 240,
       "chance": 0.0
-    }
+    },
+    "work_animation": "axe"
   },
   "stone": {
     "name": "Felsen",
@@ -19,7 +20,8 @@
     "walkable": false,
     "exclusive": false,
     "sprite": "deposits/stone",
-    "sprite_variants": 4
+    "sprite_variants": 4,
+    "work_animation": "pick"
   },
   "iron": {
     "name": "Eisenvorkommen",
@@ -28,7 +30,8 @@
     "walkable": false,
     "exclusive": false,
     "sprite": "deposits/iron",
-    "sprite_variants": 4
+    "sprite_variants": 4,
+    "work_animation": "pick"
   },
   "game": {
     "name": "Wild",

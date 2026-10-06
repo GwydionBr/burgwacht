@@ -47,7 +47,7 @@ def render_figure(recipe, name, palette, pipeline):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     for animation, settings in recipe['animations'].items():
         action = bpy.data.actions[settings['action']]
-        if settings.get('bow_pose'):
+        if settings.get('bow_pose') or settings.get('work_pose'):
             action = action.copy()
         for rig in rigs:
             rig.animation_data.action = action
@@ -62,6 +62,8 @@ def render_figure(recipe, name, palette, pipeline):
                 phase = frame / max(settings['frames'] - 1, 1)
                 if settings.get('bow_pose'):
                     bow_pose(rigs[0], phase)
+                if settings.get('work_pose'):
+                    work_pose(rigs[0], phase)
                 bpy.context.view_layer.update()
                 for obj, part, placement in attachments:
                     rig = rigs[0]
@@ -95,25 +97,42 @@ def bow_pose(rig, phase):
     draw = bow_draw(phase)
     wrists = {'l': Vector((.20, -.47, 1.13)), 'r': Vector((-.10, -.31 + .27*draw, 1.13))}
     for side, wrist in wrists.items():
-        upper = rig.pose.bones['upperarm.'+side]
-        lower = rig.pose.bones['lowerarm.'+side]
-        shoulder = upper.bone.head_local.copy()
-        a, b = upper.bone.length, lower.bone.length
-        axis = (wrist-shoulder).normalized()
-        distance = min((wrist-shoulder).length, a+b-.001)
-        along = (a*a-b*b+distance*distance)/(2*distance)
-        normal = Vector((1 if side=='l' else -1, 0, .25))
-        normal = (normal-axis*normal.dot(axis)).normalized()
-        elbow = shoulder + axis*along + normal*math.sqrt(max(0,a*a-along*along))
-        for name, head, tail in [('upperarm',shoulder,elbow),('lowerarm',elbow,wrist),('wrist',wrist,wrist+Vector((0,-.07,0))),('hand',wrist+Vector((0,-.07,0)),wrist+Vector((0,-.18,0)))]:
-            bone = rig.pose.bones[name+'.'+side]
-            rotation = (tail-head).to_track_quat('Y','Z')
-            bone.rotation_mode = 'QUATERNION'
-            bone.matrix = Matrix.LocRotScale(head, rotation, Vector((1,1,1)))
-            for channel in ['location', 'rotation_quaternion', 'scale']:
-                bone.keyframe_insert(data_path=channel, frame=bpy.context.scene.frame_current)
-            bpy.context.view_layer.update()
+        pose_arm(rig, side, wrist)
 
 
 def bow_draw(phase):
     return min(phase / .65, 1.0) if phase < .75 else max(0, (1-phase) / .25)
+
+
+def work_pose(rig, phase):
+    """Hebt und senkt die Werkzeughand zum Vorkommen, ohne Gliederlängen zu verändern."""
+    swing = (1-math.cos(phase*2*math.pi))/2
+    wrist = Vector((-.20, -.25-.38*swing, 1.75-.80*swing))
+    upper = rig.pose.bones['upperarm.r']
+    lower = rig.pose.bones['lowerarm.r']
+    shoulder = upper.bone.head_local.copy()
+    axis = (wrist-shoulder).normalized()
+    wrist = shoulder + axis*min((wrist-shoulder).length, upper.bone.length+lower.bone.length-.001)
+    pose_arm(rig, 'r', wrist)
+
+
+def pose_arm(rig, side, wrist):
+    """Stellt einen Arm mit unveränderten Gliederlängen auf den Griffpunkt ein."""
+    upper = rig.pose.bones['upperarm.'+side]
+    lower = rig.pose.bones['lowerarm.'+side]
+    shoulder = upper.bone.head_local.copy()
+    a, b = upper.bone.length, lower.bone.length
+    axis = (wrist-shoulder).normalized()
+    distance = min((wrist-shoulder).length, a+b-.001)
+    along = (a*a-b*b+distance*distance)/(2*distance)
+    normal = Vector((1 if side=='l' else -1, 0, .25))
+    normal = (normal-axis*normal.dot(axis)).normalized()
+    elbow = shoulder + axis*along + normal*math.sqrt(max(0,a*a-along*along))
+    for name, head, tail in [('upperarm',shoulder,elbow),('lowerarm',elbow,wrist),('wrist',wrist,wrist+Vector((0,-.07,0))),('hand',wrist+Vector((0,-.07,0)),wrist+Vector((0,-.18,0)))]:
+        bone = rig.pose.bones[name+'.'+side]
+        rotation = (tail-head).to_track_quat('Y','Z')
+        bone.rotation_mode = 'QUATERNION'
+        bone.matrix = Matrix.LocRotScale(head, rotation, Vector((1,1,1)))
+        for channel in ['location', 'rotation_quaternion', 'scale']:
+            bone.keyframe_insert(data_path=channel, frame=bpy.context.scene.frame_current)
+        bpy.context.view_layer.update()

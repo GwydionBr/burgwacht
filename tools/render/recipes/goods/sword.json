@@ -1,0 +1,13 @@
+{
+  "parts": [
+    {
+      "model": "kaykit-adventurers/sword_1handed.glb",
+      "scale": 0.15,
+      "rotation_xyz": [
+        0,
+        45,
+        0
+      ]
+    }
+  ]
+}

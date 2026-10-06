@@ -122,3 +122,13 @@ func test_sprite_walk_height_must_be_positive_finite_and_below_top() -> void:
 	for floor_height: float in [-1.0, 0.0, 29.0, INF, NAN]:
 		var entries := {"bad_floor": {"sprite": "buildings/wall", "height": 28, "sprite_walk_height": floor_height}}
 		assert_true(GameDefs.sprites_error("buildings.json", entries) != "", "Ungültige Standhöhe:")
+
+
+func test_goods_optional_sprite_is_validated_during_loading() -> void:
+	var defs := GameDefs.get_instance()
+	var saved: Dictionary = defs.goods["wood"].duplicate(true)
+	defs.goods["wood"]["sprite"] = 17
+	assert_eq(defs.validate_sprites(), "goods.json, „wood“: „sprite“ muss der Pfad eines Bilds sein (Text, ohne .png)", "Ungültiger Warenpfad:")
+	defs.goods["wood"]["sprite"] = "goods/missing"
+	assert_eq(defs.validate_sprites(), "goods.json, „wood“: Bild res://assets/sprites/goods/missing.png fehlt", "Fehlendes Warenbild:")
+	defs.goods["wood"] = saved
