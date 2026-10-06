@@ -1,0 +1,9 @@
+{
+  "terrain": {
+    "model": "kenney-nature/ground_grass.glb",
+    "color": "water",
+    "variants": 4,
+    "overlay": true,
+    "shore_color": "sand"
+  }
+}

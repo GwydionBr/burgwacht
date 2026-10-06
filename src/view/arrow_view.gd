@@ -15,6 +15,7 @@ var _to := Vector2.ZERO
 var _elapsed := 0.0
 var _started := 0.0
 var _clock: GameClock
+var _world: GameWorld
 var _texture: Texture2D
 
 
@@ -22,6 +23,7 @@ var _texture: Texture2D
 ## so viel höher, wie die Figur dort steht (FigureView.wall_walk_height()).
 func setup(from: Vector3i, to: Vector3i, clock: GameClock) -> void:
 	_clock = clock
+	_world = clock.world
 	_started = _seconds()
 	_texture = load(SPRITE_PATH) as Texture2D
 	_from = _launch_point(from)
@@ -40,6 +42,9 @@ func _seconds() -> float:
 
 
 func _process(_delta: float) -> void:
+	if _clock.world != _world:
+		queue_free()
+		return
 	_elapsed = _seconds() - _started
 	if _elapsed >= FLIGHT_SECONDS:
 		queue_free()

@@ -80,9 +80,31 @@ static func sprites_error(file_name: String, entries: Dictionary) -> String:
 			var neighbor: Variant = entry["sprite_transition"]
 			if not neighbor is String or not entries.has(neighbor) or neighbor == id:
 				return "%s, „%s“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen" % [file_name, id]
-		var reason := _sprite_error(entry)
-		if reason != "":
-			return "%s, „%s“: %s" % [file_name, id, reason]
+		var base_reason: String = _sprite_error(entry)
+		if base_reason != "":
+			return "%s, „%s“: %s" % [file_name, id, base_reason]
+		if file_name == "terrain.json":
+			var terrain_reason: String = _terrain_sprite_error(entry)
+			if terrain_reason != "":
+				return "%s, „%s“: %s" % [file_name, id, terrain_reason]
+	return ""
+
+
+static func _terrain_sprite_error(entry: Dictionary) -> String:
+	var priority: Variant = entry.get("sprite_priority", 0)
+	if not (priority is int or priority is float) or float(priority) < 0 or float(priority) != floor(float(priority)):
+		return "„sprite_priority“ muss eine nichtnegative ganze Zahl sein"
+	for field: String in ["sprite_overlay", "sprite_edge"]:
+		if not entry.has(field):
+			continue
+		var value: Variant = entry[field]
+		if not value is String or str(value) == "" or str(value).ends_with(".png"):
+			return "„%s“ muss der Pfad eines Bilds sein (Text, ohne .png)" % field
+		var count: int = int(entry.get("sprite_variants", 1)) if field == "sprite_overlay" else 1
+		for variant: int in count:
+			var path: String = sprite_path({"sprite": value, "sprite_variants": count}, variant)
+			if not ResourceLoader.exists(path):
+				return "%s %s fehlt" % ["Übergangsbild" if field == "sprite_overlay" else "Erdkantenbild", path]
 	return ""
 
 

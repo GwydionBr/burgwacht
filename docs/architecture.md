@@ -98,24 +98,32 @@ Sie gelten auch für die weiteren Grafik-Tickets von #122:
   Animationsbild ungefähr 23–26 Pixel hoch; die Leinwand einschließlich Leerraum ist
   40×72 Pixel groß. Die einfache Kleidung und ausgeblendete Ausrüstung stehen im Rezept.
 
-### Gelände-Sprites der Stilprobe
+### Gelände-Sprites
 
-`terrain.json` nennt für Wiese und Ufer `sprite` und `sprite_variants: 4`; Wiese nennt
-zusätzlich `sprite_transition: "sand"`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
-`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, nicht aus dem Zufall oder
-Spielstand. `transition_mask()` prüft die vier Kantennachbarn (Norden, Osten, Süden, Westen,
-Bits 1/2/4/8); diagonale Nachbarn und der Kartenrand zählen nicht. Jede Wiesenvariante enthält
-16 Bilder nebeneinander, je 128×64 Pixel; Ufer hat je Variante eine einzelne Kachel.
-Die Ansicht zeichnet weiterhin nur nach einer Kartenänderung neu und hält geladene Texturen
-im Speicher. Eine deckende Raute hinter den transparenten Bildrändern schließt feine Nähte.
+Alle fünf Gelände nennen in `terrain.json` `sprite`, vier `sprite_variants`, `sprite_overlay`,
+`sprite_priority` und `sprite_edge`. Ohne Sprite bleibt die gezeichnete Raute bestehen.
+`TerrainRenderer.variant_index()` wählt allein aus der Kachelposition, ohne Zufall der Spielwelt
+oder Spielstand. `transition_layers()` liefert für jeden höherrangigen Nachbarn eine eigene
+Schicht: Bits 0–3 für Norden, Osten, Süden, Westen, Bits 4–7 für Nordost, Südost, Südwest,
+Nordwest. Diagonale Ecken werden ergänzt, wenn die zugehörigen Kantennachbarn diese Schicht
+noch nicht abdecken; außerhalb der Karte entsteht kein Übergang. Dadurch bleiben an Kreuzungen
+mit drei oder mehr Geländen alle Übergänge erhalten. Die Datenpriorität legt fest, auf welcher
+Seite einer Grenze gemischt wird. Wasser trägt zusätzlich einen sandfarbenen Ufersaum.
 
-`tools/render.sh terrain/grass terrain/sand` rendert die vier Varianten und alle Kantenmasken
-mit `terrain.py`, gemeinsamer Kamera, Licht und Palette. Das Kenney-Modell `ground_grass.glb`
-wird auf eine flache Kachel normiert, damit keine Seitenflächen zwischen Nachbarn entstehen.
-Eine räumliche Materialtextur variiert den Farbton und mischt am Ufer weich zur Sandfarbe;
-der Schatten bleibt leer, weil Gelände selbst in der Bodenebene liegt. Die PNGs samt
-Mipmaps-Import sind eingecheckt. `gallery` zeigt einen Uferstreifen mit Ecke oberhalb der
-Gebäudereihen. Die Auswahl wird ohne Grafik getestet; den Look prüft der Screenshot.
+`tools/render.sh terrain/grass terrain/sand terrain/meadow terrain/dirt terrain/water` rendert
+die vier Grundvarianten mit `terrain.py`, gemeinsamer Kamera, Licht und Palette; die gleichnamigen
+`*_transition`-Rezepte rendern je Variante acht transparente Kanten- und Eckbilder nebeneinander.
+Das Kenney-Modell `ground_grass.glb` wird auf eine flache Kachel normiert. Die ursprünglichen
+Wiesenatlanten mit 16 Kantenmasken bleiben reproduzierbar; die Ansicht nutzt daraus die erste Zelle.
+Die räumliche Materialtextur variiert den Farbton, Wasser ist statisch. Zwei Pixel deckender
+Farbrand im gerenderten Grundbild und ein Viertelpixel Überstand beim Zeichnen schließen
+Filternähte ohne gezeichnete Raute unter Sprite-Gelände. Schatten der Grundbilder sind leer.
+`terrain/edge` extrudiert die Frontflächen zu einer 18 Pixel hohen Erdkante am vorderen Kartenrand.
+Alle PNGs samt Mipmaps-Import sind eingecheckt; Blender wird zur Laufzeit nicht benötigt.
+
+`gallery` enthält alle zehn Geländepaarungen mit gerader Grenze, Ecke und diagonaler Berührung
+sowie eine Kreuzung mehrerer Gelände. Auswahl und Datenfehler werden ohne Grafik getestet;
+Galerie, mehrere Seeds und unterschiedliche Zoomstufen werden per Screenshot geprüft.
 
 ### Animierte Figuren
 

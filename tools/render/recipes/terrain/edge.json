@@ -1,0 +1,8 @@
+{
+  "terrain": {
+    "model": "kenney-nature/ground_grass.glb",
+    "color": "wood_dark",
+    "variants": 1,
+    "edge_depth": 0.4593
+  }
+}
