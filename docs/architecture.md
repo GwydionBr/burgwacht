@@ -258,7 +258,7 @@ Varianten; Laden, Abbau und Nachwachsen ändern keine Darstellungsregeln. Felsen
 vier Kenney-Formen in hellem Stein. Eisen besteht aus dunklem Gestein mit deutlich sichtbaren
 rostfarbenen Adern; Quelle: `tools/render/models/burgwacht/iron.blend`, exportiert als `iron.glb`.
 Wild sind statische Quaternius-Modelle von Hirsch und Reh in vier Ausrichtungen. Die Galerie
-zeigt alle 16 Varianten in vier Reihen links von der Burg. Der gezeichnete Platzhalter bleibt für Definitionen
+zeigt alle 16 Varianten in beschrifteten Gruppen am unteren Rand der Übersicht. Der gezeichnete Platzhalter bleibt für Definitionen
 ohne Sprite erhalten; die eingecheckten Vorkommen benötigen ihn nicht mehr.
 
 ### Arbeitsstätten
@@ -307,7 +307,7 @@ allen Animationen automatisch aus den Spieldaten auf.
 
 
 
-Bewohner wählen beim Abbau die Animation aus `work_animation` des Vorkommens (`axe` oder `pick`); `ResidentAnimation` richtet sie zu `deposit_tile` aus. Die Schleifen verwenden dieselbe Spielzeit wie Stehen und Gehen. Der alte Versatz beim Abbau bleibt nur für Figuren ohne Arbeitsanimation. Die Werkzeuge sind an `hand.r` angebunden; die Armhaltung wird für sichtbares Heben und Schlagen retargetet, ohne die ursprünglichen KayKit-Proportionen oder Gliederlängen zu verändern. Waren dürfen `sprite` setzen und werden beim Laden wie die übrigen Sprite-Einträge geprüft (`GameDefs.validate_sprites()`). Der Träger zeichnet das Warenbild auf dem Rücken entgegen seiner Blickrichtung; ohne Bild bleibt das gezeichnete Bündel. Die Galerie zeigt jede Arbeitsrichtung und alle zehn Bündel; das Preset `workers` zeigt zwei Arbeiter und Waren vergrößert.
+Bewohner wählen beim Abbau die Animation aus `work_animation` des Vorkommens (`axe` oder `pick`); `ResidentAnimation` richtet sie zu `deposit_tile` aus. Die Schleifen verwenden dieselbe Spielzeit wie Stehen und Gehen. Der alte Versatz beim Abbau bleibt nur für Figuren ohne Arbeitsanimation. Die Werkzeuge sind an `hand.r` angebunden; die Armhaltung wird für sichtbares Heben und Schlagen retargetet, ohne die ursprünglichen KayKit-Proportionen oder Gliederlängen zu verändern. Waren dürfen `sprite` setzen und werden beim Laden wie die übrigen Sprite-Einträge geprüft (`GameDefs.validate_sprites()`). Der Träger zeichnet das Warenbild auf dem Rücken entgegen seiner Blickrichtung; ohne Bild bleibt das gezeichnete Bündel. Die Galerie zeigt jede Arbeitsrichtung und alle zehn Bündel; das Preset `workers_graphics` zeigt zwei Arbeiter und Waren vergrößert.
 
 ### Bauleiste und Bauvorschau (#143)
 

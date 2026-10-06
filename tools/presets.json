@@ -127,7 +127,7 @@
 		"name": "Vorführung Meilenstein 7: Verteidigung",
 		"args": ["--setup=milestone7", "--focus=17,10"]
 	},
-	"workers": {
+	"workers_graphics": {
 		"name": "Arbeiter: Hacken, Schlagen und alle Warenbündel",
 		"args": ["--setup=workers", "--focus=19,14", "--zoom=1.5"]
 	}
