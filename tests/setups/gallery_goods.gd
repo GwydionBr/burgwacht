@@ -6,18 +6,20 @@ func setup(clock: GameClock) -> void:
 	var index := 0
 	for good_id: String in GameDefs.get_instance().goods:
 		var resident := Resident.new()
-		var column := index % 5
-		var row := index / 5
-		resident.tile = Vector2i(13 + column * 2 + row * 2, 17 - column * 2 + row * 2)
+		resident.tile = Vector2i.ZERO
+		var point := Vector2(46 + (index % 5) * 110, 28 + (index / 5) * 61)
 		resident.carried_good = good_id
 		resident.carried_amount = 1
 		var view := ResidentView.new()
 		view.setup(resident, clock)
 		view.facing = 3
-		add_child(view)
+		var holder := Node2D.new()
+		holder.position = point
+		add_child(holder)
+		holder.add_child(view)
 		var label := Label.new()
 		label.text = str(GameDefs.get_instance().goods[good_id]["name"])
-		label.add_theme_font_size_override("font_size", 10)
-		label.position = Iso.tile_to_world(resident.tile) + Vector2(-20, 8)
+		label.add_theme_font_size_override("font_size", 12)
+		label.position = point + Vector2(-25, 21)
 		add_child(label)
 		index += 1

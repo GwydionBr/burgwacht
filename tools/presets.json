@@ -116,8 +116,8 @@
 		"args": ["--setup=keep_falling", "--focus=4,4"]
 	},
 	"gallery": {
-		"name": "Galerie: jeder Gebäudetyp nebeneinander, mit Sprite oder gezeichnet",
-		"args": ["--setup=gallery", "--focus=30,26", "--zoom=0.7"]
+		"name": "Grafikübersicht: alle Typen, Varianten, Übergänge und Animationen",
+		"args": ["--setup=gallery", "--ticks=4"]
 	},
 	"workplaces": {
 		"name": "Arbeitsstätten: alle Sprites, Lebensbalken und verdeckte Bewohner",
