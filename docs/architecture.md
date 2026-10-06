@@ -260,3 +260,13 @@ rostfarbenen Adern; Quelle: `tools/render/models/burgwacht/iron.blend`, exportie
 Wild sind statische Quaternius-Modelle von Hirsch und Reh in vier Ausrichtungen. Die Galerie
 zeigt alle 16 Varianten in vier Reihen links von der Burg. Der gezeichnete Platzhalter bleibt für Definitionen
 ohne Sprite erhalten; die eingecheckten Vorkommen benötigen ihn nicht mehr.
+
+### Arbeitsstätten
+
+Holzfäller, Steinbruch, Jäger, Apfelplantage, Weizenfarm, Eisenmine, Mühle, Bäcker, Schmied und Bogner verwenden dieselben Sprite-, Schatten- und Alpha-Umriss-Funktionen wie die Burggebäude. Es gibt keine zusätzliche Typabfrage in der Ansicht: Das Feld `sprite` in `data/buildings.json` schaltet das Bild ein. Lebensbalken bleiben über der höchsten deckenden Stelle, verdeckte Figuren behalten ihre Silhouette und Klickfläche. Die Galerie nimmt alle Arbeitsstätten automatisch aus den Gebäudedaten auf.
+
+Ihre Rezepte kombinieren die freigegebenen Kenney-Fassaden mit sichtbaren Handwerksmerkmalen: Holzstapel und Axt, Steinblöcke und Spitzhacke, Fleisch und Bogen, Grubeneingang, Mühlenflügel, Backofen und Brot, Esse und Amboss sowie Bogengestell mit Übungsziel. Apfelplantage und Weizenfarm enthalten die Obstbäume mit roten Früchten bzw. die Ähren bereits im gerenderten Bild; die vorhandenen `decor`-Felder bleiben für die Darstellung ohne Sprite erhalten. Eingänge und freie Wege liegen an den Kacheln aus den Gebäudedaten, auch bei den offenen Höfen und dem Steinbruch.
+
+Eigen modellierte Ausstattung liegt als `tools/render/models/burgwacht/trade-fixtures.blend` und als glTF vor. `create_trade_fixtures.py` erzeugt beides mit Blender 5.2 neu; es benutzt den vorhandenen Langbogen und die gemeinsame Palette. Zum Rendern aller Arbeitsstätten: `tools/render.sh buildings/woodcutter buildings/quarry buildings/hunter buildings/orchard buildings/wheat_farm buildings/iron_mine buildings/mill buildings/bakery buildings/smith buildings/bowyer`. Das Spiel und die CI benötigen nur die eingecheckten PNGs.
+
+Das Preset `workplaces` zeigt die zehn Arbeitsstätten vergrößert mit reduzierten Lebenspunkten und je einem Bewohner dahinter. Es prüft die bestehenden Umriss- und Lebensbalkenpfade an den neuen Bildern; die Rauchtests laden diesen Aufbau mit. `tools/screenshot.sh /tmp/arbeitsstaetten.png workplaces` erzeugt die Ansichtsprobe.

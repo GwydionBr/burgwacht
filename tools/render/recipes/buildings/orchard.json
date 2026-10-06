@@ -1,0 +1,745 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        -0.5,
+        -2,
+        0.025
+      ],
+      "scale": [
+        0.55,
+        0.42,
+        0.35
+      ],
+      "rotation": 0,
+      "color": "wood_light"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -1.5,
+        -1.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.6,
+        -1.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.38,
+        -1.48,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.46,
+        -1.3299999999999998,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -1.5,
+        -0.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.6,
+        -0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.38,
+        -0.48000000000000004,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.46,
+        -0.33,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -1.5,
+        0.6,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.6,
+        0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.38,
+        0.52,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.46,
+        0.6699999999999999,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -1.5,
+        1.5,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.6,
+        1.4,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.38,
+        1.42,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -1.46,
+        1.57,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -0.5,
+        -0.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.6,
+        -0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.38,
+        -0.48000000000000004,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.46,
+        -0.33,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -0.5,
+        0.6,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.6,
+        0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.38,
+        0.52,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.46,
+        0.6699999999999999,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        -0.5,
+        1.5,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.6,
+        1.4,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.38,
+        1.42,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.46,
+        1.57,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        0.5,
+        -1.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.4,
+        -1.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.62,
+        -1.48,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.54,
+        -1.3299999999999998,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        0.5,
+        -0.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.4,
+        -0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.62,
+        -0.48000000000000004,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.54,
+        -0.33,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        0.5,
+        0.6,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.4,
+        0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.62,
+        0.52,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.54,
+        0.6699999999999999,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        0.5,
+        1.5,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.4,
+        1.4,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.62,
+        1.42,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        0.54,
+        1.57,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        1.5,
+        -1.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.4,
+        -1.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.62,
+        -1.48,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.54,
+        -1.3299999999999998,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        1.5,
+        -0.4,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.4,
+        -0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.62,
+        -0.48000000000000004,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.54,
+        -0.33,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        1.5,
+        0.6,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.4,
+        0.5,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.62,
+        0.52,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.54,
+        0.6699999999999999,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-nature/tree_oak.glb",
+      "position": [
+        1.5,
+        1.5,
+        0.04
+      ],
+      "scale": 0.57,
+      "rotation": 0,
+      "recolor": {
+        "white": "leaf",
+        "plaster": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.4,
+        1.4,
+        0.39
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.62,
+        1.42,
+        0.53
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        1.54,
+        1.57,
+        0.62
+      ],
+      "scale": 0.36,
+      "rotation": 0,
+      "color": "cloth_red"
+    },
+    {
+      "model": "kenney-survival/box-open.glb",
+      "position": [
+        -0.5,
+        -1.35,
+        0
+      ],
+      "scale": 2.0,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-food/apple.glb",
+      "position": [
+        -0.53,
+        -1.36,
+        0.12
+      ],
+      "scale": 0.9,
+      "rotation": 0,
+      "color": "cloth_red"
+    }
+  ]
+}

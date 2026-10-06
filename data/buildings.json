@@ -97,7 +97,8 @@
     "hotkey": "H",
     "category": "resources",
     "color": "#5f7a3a",
-    "height": 30
+    "height": 30,
+    "sprite": "buildings/woodcutter"
   },
   "quarry": {
     "name": "Steinbruch",
@@ -117,7 +118,8 @@
     "hotkey": "B",
     "category": "resources",
     "color": "#9c9a92",
-    "height": 18
+    "height": 18,
+    "sprite": "buildings/quarry"
   },
   "hunter": {
     "name": "Jäger",
@@ -136,7 +138,8 @@
     "hotkey": "J",
     "category": "food",
     "color": "#6b4a2e",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/hunter"
   },
   "house": {
     "name": "Wohnhaus",
@@ -171,7 +174,8 @@
     "category": "food",
     "decor": "trees",
     "color": "#7a9a3a",
-    "height": 6
+    "height": 6,
+    "sprite": "buildings/orchard"
   },
   "wheat_farm": {
     "name": "Weizenfarm",
@@ -191,7 +195,8 @@
     "category": "food",
     "decor": "wheat",
     "color": "#c9a93e",
-    "height": 4
+    "height": 4,
+    "sprite": "buildings/wheat_farm"
   },
   "iron_mine": {
     "name": "Eisenmine",
@@ -211,7 +216,8 @@
     "hotkey": "E",
     "category": "resources",
     "color": "#5a5550",
-    "height": 22
+    "height": 22,
+    "sprite": "buildings/iron_mine"
   },
   "mill": {
     "name": "Mühle",
@@ -231,7 +237,8 @@
     "hotkey": "U",
     "category": "food",
     "color": "#d9d0b8",
-    "height": 34
+    "height": 34,
+    "sprite": "buildings/mill"
   },
   "bakery": {
     "name": "Bäcker",
@@ -251,7 +258,8 @@
     "hotkey": "K",
     "category": "food",
     "color": "#b07a4a",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/bakery"
   },
   "smith": {
     "name": "Schmied",
@@ -271,7 +279,8 @@
     "hotkey": "S",
     "category": "weapons",
     "color": "#4a4440",
-    "height": 26
+    "height": 26,
+    "sprite": "buildings/smith"
   },
   "bowyer": {
     "name": "Bogner",
@@ -291,7 +300,8 @@
     "hotkey": "R",
     "category": "weapons",
     "color": "#8c6a3c",
-    "height": 24
+    "height": 24,
+    "sprite": "buildings/bowyer"
   },
   "market": {
     "name": "Markt",

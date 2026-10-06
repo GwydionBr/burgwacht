@@ -96,3 +96,12 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 |---|---|---|---|---|
 | `quaternius-animals/` | Quaternius „Ultimate Animated Animal Pack“ (Juli 2021) – <https://quaternius.com/packs/ultimateanimatedanimals.html> | Quaternius | CC0 | `Deer.glb`, `Stag.glb`, mit Blender 5.2 aus den glTF-Dateien des Originaldownloads exportiert; Herkunft und Lizenzangabe in `SOURCE.txt`. Vier feste Ausrichtungen als Wild-Vorkommen, ohne Bewegung in der Spielwelt |
 | `burgwacht/iron.blend`, `burgwacht/iron.glb` | Eigenes Low-Poly-Modell | Burgwacht | Projektlizenz | Dunkles Gestein mit erhabenen rostfarbenen Eisenadern; Blender-Quelldatei und GLB-Export, vier Ausrichtungen |
+
+### Arbeitsstätten (#142)
+
+- **Kenney – Fantasy Town Kit 2.0**, CC0: Fassaden und Dächer wie beim freigegebenen Wohnhaus; zusätzlich Mühlenflügel (`windmill.glb`), Schornstein und Karren. Quelle und Lizenz: [kenney.nl/assets/fantasy-town-kit](https://kenney.nl/assets/fantasy-town-kit), `tools/render/models/kenney-fantasy-town/License.txt`.
+- **Kenney – Nature Kit 2.1**, CC0: Holzstapel, Zelt, kleine Obstbäume, Weizenähren, Ackerreihen und Fels am Grubeneingang. Quelle und Lizenz: [kenney.nl/assets/nature-kit](https://kenney.nl/assets/nature-kit), `tools/render/models/kenney-nature/License.txt`.
+- **Kenney – Survival Kit 2.0**, CC0: Arbeitstische, Amboss, Axt, Spitzhacke, Hammer, Holz, Stein und offene Kiste. Quelle und Lizenz: [kenney.nl/assets/survival-kit](https://kenney.nl/assets/survival-kit), `tools/render/models/kenney-survival/License.txt`.
+- **Kenney – Food Kit 2.0**, CC0: Äpfel, Brot und Fleisch. Quelle und Lizenz: [kenney.nl/assets/food-kit](https://kenney.nl/assets/food-kit), `tools/render/models/kenney-food/License.txt`. Nur die drei verwendeten Modelle und ihre gemeinsame Textur `Textures/colormap.png` liegen im Repo.
+- **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: die bereits verwendeten Säcke für Mehl und Weizen. Quelle und Lizenz stehen oben bei den Burggebäuden.
+- **Burgwacht**: Backofen, Esse, Holzrahmen des Grubeneingangs, Sägebock und Bogengestell sind eigene Low-Poly-Modelle. Die bearbeitbare Quelle `tools/render/models/burgwacht/trade-fixtures.blend` und das Erzeugungsskript `create_trade_fixtures.py` bleiben erhalten. Der Bogen im Bogengestell sowie bei Jäger und Bogner ist das oben dokumentierte eigene Modell `bow.blend`.

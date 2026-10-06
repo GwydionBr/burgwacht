@@ -1,0 +1,210 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/wall-window-shutters.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 0,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 90,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 180,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/wall-door.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        0.55
+      ],
+      "rotation": 270,
+      "recolor": {
+        "stone": "plaster",
+        "stone_light": "plaster",
+        "stone_dark": "plaster",
+        "wood_light": "wood_dark",
+        "wood": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable.glb",
+      "position": [
+        -0.5,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.92,
+        0.88,
+        0.35
+      ],
+      "rotation": 0,
+      "recolor": {
+        "cloth_red": "thatch",
+        "roof_brown": "thatch",
+        "roof_red": "thatch",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        0.0,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.04,
+        0.88,
+        0.35
+      ],
+      "rotation": 0,
+      "recolor": {
+        "cloth_red": "thatch",
+        "roof_brown": "thatch",
+        "roof_red": "thatch",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/roof-high-gable-end.glb",
+      "position": [
+        -1.0,
+        -0.5,
+        0.55
+      ],
+      "scale": [
+        0.04,
+        0.88,
+        0.35
+      ],
+      "rotation": 180,
+      "recolor": {
+        "cloth_red": "thatch",
+        "roof_brown": "thatch",
+        "roof_red": "thatch",
+        "wood": "plaster",
+        "wood_light": "wood_dark"
+      }
+    },
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        -0.5,
+        -1,
+        0.025
+      ],
+      "scale": [
+        0.55,
+        0.42,
+        0.35
+      ],
+      "rotation": 0,
+      "color": "wood_light"
+    },
+    {
+      "model": "kenney-nature/log_stack.glb",
+      "position": [
+        0.5,
+        0.4,
+        0.06
+      ],
+      "scale": 2.1,
+      "rotation": 0,
+      "recolor": {
+        "white": "wood",
+        "plaster": "wood_light"
+      }
+    },
+    {
+      "model": "kenney-survival/tree-log.glb",
+      "position": [
+        0.5,
+        -0.4,
+        0.12
+      ],
+      "scale": 0.75,
+      "rotation": 90
+    },
+    {
+      "model": "kenney-survival/tool-axe.glb",
+      "position": [
+        0.55,
+        -0.45,
+        0.15
+      ],
+      "scale": 2.0,
+      "rotation": 15
+    },
+    {
+      "model": "burgwacht/sawbuck.glb",
+      "position": [
+        0.5,
+        -0.5,
+        0
+      ],
+      "scale": 0.65,
+      "rotation": 0
+    }
+  ]
+}

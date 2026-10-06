@@ -111,6 +111,10 @@
 		"name": "Galerie: jeder Gebäudetyp nebeneinander, mit Sprite oder gezeichnet",
 		"args": ["--setup=gallery", "--focus=30,26", "--zoom=0.7"]
 	},
+	"workplaces": {
+		"name": "Arbeitsstätten: alle Sprites, Lebensbalken und verdeckte Bewohner",
+		"args": ["--setup=workplaces", "--focus=22,22", "--zoom=0.85"]
+	},
 	"milestone7": {
 		"name": "Vorführung Meilenstein 7: Verteidigung",
 		"args": ["--setup=milestone7", "--focus=17,10"]

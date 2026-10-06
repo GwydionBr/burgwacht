@@ -1,0 +1,94 @@
+{
+  "parts": [
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "scale": [
+        2.8,
+        2.8,
+        0.3
+      ],
+      "rotation": 0,
+      "color": "stone_light"
+    },
+    {
+      "model": "kenney-fantasy-town/planks.glb",
+      "position": [
+        0,
+        -1.5,
+        0.025
+      ],
+      "scale": [
+        0.55,
+        0.42,
+        0.35
+      ],
+      "rotation": 0,
+      "color": "wood_light"
+    },
+    {
+      "model": "burgwacht/sawbuck.glb",
+      "position": [
+        -0.9,
+        0.8,
+        0
+      ],
+      "scale": 1.2,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/resource-stone-large.glb",
+      "position": [
+        0.65,
+        0.55,
+        0
+      ],
+      "scale": 3.7,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/resource-stone.glb",
+      "position": [
+        0.8,
+        -0.55,
+        0
+      ],
+      "scale": 3.8,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/workbench.glb",
+      "position": [
+        -0.8,
+        -0.6,
+        0
+      ],
+      "scale": 2.6,
+      "rotation": 0
+    },
+    {
+      "model": "kenney-survival/tool-pickaxe.glb",
+      "position": [
+        -0.8,
+        -0.6,
+        0.73
+      ],
+      "scale": 3.0,
+      "rotation": 35
+    },
+    {
+      "model": "kenney-fantasy-town/cart.glb",
+      "position": [
+        -0.1,
+        0.7,
+        0
+      ],
+      "scale": 0.65,
+      "rotation": 0
+    }
+  ]
+}
