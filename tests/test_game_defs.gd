@@ -79,3 +79,22 @@ func test_terrain_transition_requires_a_known_neighbor_type() -> void:
 	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_transition": "missing"}}
 	assert_eq(GameDefs.sprites_error("terrain.json", entries),
 			"terrain.json, „grass“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen", "Fehler:")
+
+
+func test_missing_terrain_overlay_is_named() -> void:
+	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_overlay": "terrain/missing"}}
+	assert_eq(GameDefs.sprites_error("terrain.json", entries),
+		"terrain.json, „grass“: Übergangsbild res://assets/sprites/terrain/missing.png fehlt", "Fehler:")
+
+
+func test_wrong_terrain_overlay_type_is_named() -> void:
+	var entries: Dictionary = {"grass": {"sprite": "terrain/grass", "sprite_overlay": 2}}
+	assert_eq(GameDefs.sprites_error("terrain.json", entries),
+		"terrain.json, „grass“: „sprite_overlay“ muss der Pfad eines Bilds sein (Text, ohne .png)", "Fehler:")
+
+
+func test_terrain_priority_must_be_a_nonnegative_integer() -> void:
+	for value: Variant in [-1, 0.5, "2", true]:
+		var entries := {"grass": {"sprite": "terrain/grass", "sprite_priority": value}}
+		assert_eq(GameDefs.sprites_error("terrain.json", entries),
+			"terrain.json, „grass“: „sprite_priority“ muss eine nichtnegative ganze Zahl sein", "Fehler:")

@@ -37,13 +37,8 @@ static func create() -> GameWorld:
 		helper.place(world, type_id, Vector2i(x, row_sum - size - x))
 		x += size + GAP
 	_add_deposits(world)
+	_add_terrain(world)
 
-
-	# Uferstreifen oberhalb der Gebäudereihen, mit geraden Kanten und einer Ecke.
-	for terrain_y: int in range(20, 25):
-		for terrain_x: int in range(20, 27):
-			if terrain_x >= 23 or terrain_y >= 23:
-				world.map.set_terrain(Vector2i(terrain_x, terrain_y), "sand")
 	return world
 
 
@@ -78,3 +73,22 @@ static func decorate(scene: Node2D, clock: GameClock) -> void:
 	var figures: Node2D = script.new()
 	figures.call("setup", clock)
 	scene.add_child(figures)
+
+
+## Jede Geländepaarung mit gerader Kante, Ecke und diagonaler Berührung; zuletzt eine Kreuzung.
+static func _add_terrain(world: GameWorld) -> void:
+	var ids: Array = GameDefs.get_instance().terrain.keys()
+	var pair_index: int = 0
+	for first: int in ids.size():
+		for second: int in range(first + 1, ids.size()):
+			var origin_x: int = 4 + (pair_index % 5) * 7
+			var origin := Vector2i(origin_x, 34 + (pair_index / 5) * 12 - origin_x)
+			for y: int in 6:
+				for x: int in 6:
+					var type_id: String = str(ids[second] if x >= 3 or y >= 4 else ids[first])
+					world.map.set_terrain(origin + Vector2i(x, y), type_id)
+			world.map.set_terrain(origin + Vector2i(1, 1), str(ids[second]))
+			pair_index += 1
+	for y: int in 6:
+		for x: int in 8:
+			world.map.set_terrain(Vector2i(37 + x, 12 + y), str(ids[(x / 2 + y / 2) % ids.size()]))
