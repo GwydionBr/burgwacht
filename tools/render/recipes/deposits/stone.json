@@ -1,0 +1,10 @@
+{
+  "parts": [
+    {
+      "model": "kenney-nature/stone_largeA.glb",
+      "scale": 0.48,
+      "rotation": 0,
+      "color": "stone_light"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+Ultimate Animated Animal Pack — Quaternius, Juli 2021
+https://quaternius.com/packs/ultimateanimatedanimals.html
+Lizenz: CC0 (Angabe auf der Seite des Urhebers).
+Deer.gltf und Stag.gltf aus dem dort verlinkten glTF-Download,
+mit Blender 5.2 als GLB exportiert; Modelle und Materialien unverändert.

@@ -50,8 +50,7 @@ static func _row_start(row_sum: int) -> int:
 
 ## Alle Vorkommen und jede Sprite-Variante stehen vor der Burg, ohne Zufallsauswahl.
 static func _add_deposits(world: GameWorld) -> void:
-	var x := 8
-	var single_x := 8
+	var row_sum := 27
 	for type_id: String in GameDefs.get_instance().deposits:
 		var def: Dictionary = GameDefs.get_instance().deposits[type_id]
 		var variants := int(def.get("sprite_variants", 1))
@@ -60,12 +59,9 @@ static func _add_deposits(world: GameWorld) -> void:
 			deposit.type = type_id
 			deposit.amount = int(def["amount"])
 			deposit.variant = variant
-			if variants > 1:
-				world.map.deposits[Vector2i(x, 40 - x)] = deposit
-				x += 3
-			else:
-				world.map.deposits[Vector2i(single_x, 44 - single_x)] = deposit
-				single_x += 3
+			var x := (row_sum - 26) / 2 + variant * 2
+			world.map.deposits[Vector2i(x, row_sum - x)] = deposit
+		row_sum += 5
 
 
 ## Ergänzt die Galerie um reine Ansichtsproben, ohne sie der Spielwelt hinzuzufügen.

@@ -56,7 +56,7 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 | Ordner | Quelle | Urheber | Lizenz | Dateien |
 |---|---|---|---|---|
 | `kenney-fantasy-town/` | Kenney „Fantasy Town Kit“ 2.0 (GLB-Fassung) – <https://kenney.nl/assets/fantasy-town-kit> | Kenney (kenney.nl) | CC0 | `wall.glb`, `wall-door.glb`, `wall-window-shutters.glb`, `roof-high-gable.glb`, `roof-high-gable-end.glb`, dazu die gemeinsame Farbtextur `Textures/colormap.png` und `License.txt`; unverändert |
-| `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `tree_default.glb`, `tree_detailed.glb`, `tree_pineRoundA.glb`, `tree_pineRoundB.glb`, `ground_grass.glb` und `License.txt`; unverändert, die Bäume enthalten ihre Materialien ohne externe Texturen; das Geländemodell wird flach auf eine Kachel normiert; fünf Gelände mit je vier Varianten, transparenten Kanten-/Eckübergängen und statischem Wasser mit Ufersaum nutzen die gemeinsame Palette. Die Frontgrenzen werden zur Erdkante extrudiert; Rezepte und Materialtexturen: Burgwacht |
+| `kenney-nature/` | Kenney „Nature Kit“ 2.1 (GLB-Fassung) – <https://kenney.nl/assets/nature-kit> | Kenney (kenney.nl) | CC0 | `tree_default.glb`, `tree_detailed.glb`, `tree_pineRoundA.glb`, `tree_pineRoundB.glb`, `ground_grass.glb`, `stone_largeA.glb` bis `stone_largeD.glb` und `License.txt`; unverändert, die Bäume enthalten ihre Materialien ohne externe Texturen; das Geländemodell wird flach auf eine Kachel normiert; fünf Gelände mit je vier Varianten, transparenten Kanten-/Eckübergängen und statischem Wasser mit Ufersaum nutzen die gemeinsame Palette. Die Frontgrenzen werden zur Erdkante extrudiert; Rezepte und Materialtexturen: Burgwacht |
 
 
 ### Bewohner – KayKit Adventurers Character Pack 1.0
@@ -88,3 +88,11 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - **Kenney – Nature Kit 2.1**, CC0: Lagerfeuer-Steinkreis und Holzscheite, [kenney.nl/assets/nature-kit](https://kenney.nl/assets/nature-kit). Modelle und Lizenz unter `tools/render/models/kenney-nature/`.
 - **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: Waffengestell und Säcke, [Originalrepository](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0). Modelle, Textur und Lizenz unter `tools/render/models/kaykit-medieval/`.
 - **Burgwacht**: eigene Low-Poly-Flammen, modellierte Quelldatei `tools/render/models/burgwacht/campfire-flame.blend`, vier exportierte glTF-Posen. Keine fremden Modelle für die Flamme.
+
+
+### Weitere Vorkommen
+
+| Ordner | Quelle | Urheber | Lizenz | Dateien |
+|---|---|---|---|---|
+| `quaternius-animals/` | Quaternius „Ultimate Animated Animal Pack“ (Juli 2021) – <https://quaternius.com/packs/ultimateanimatedanimals.html> | Quaternius | CC0 | `Deer.glb`, `Stag.glb`, mit Blender 5.2 aus den glTF-Dateien des Originaldownloads exportiert; Herkunft und Lizenzangabe in `SOURCE.txt`. Vier feste Ausrichtungen als Wild-Vorkommen, ohne Bewegung in der Spielwelt |
+| `burgwacht/iron.blend`, `burgwacht/iron.glb` | Eigenes Low-Poly-Modell | Burgwacht | Projektlizenz | Dunkles Gestein mit erhabenen rostfarbenen Eisenadern; Blender-Quelldatei und GLB-Export, vier Ausrichtungen |

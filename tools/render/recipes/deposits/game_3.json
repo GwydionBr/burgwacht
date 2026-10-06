@@ -1,0 +1,14 @@
+{
+  "parts": [
+    {
+      "model": "quaternius-animals/Stag.glb",
+      "scale": 0.075,
+      "rotation": 320,
+      "position": [
+        -0.08,
+        0,
+        0
+      ]
+    }
+  ]
+}
