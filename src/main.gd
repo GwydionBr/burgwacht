@@ -569,6 +569,7 @@ func _hear_world() -> void:
 ## Verbindet die neue Spielwelt der Partie mit Takt, Darstellung und HUD; alte Darstellung fliegt raus.
 func _show_world() -> void:
 	world = _match.world
+	_preview.world = world
 	# Die Musikrolle folgt dieser Spielwelt, auch gleich nach dem Laden.
 	_sound.world = world
 	world.deposit_added.connect(_on_deposit_added)

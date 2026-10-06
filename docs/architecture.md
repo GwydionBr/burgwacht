@@ -68,7 +68,7 @@ Sprites werden selbst gerendert (ADR 0006); Spiel, Tests, Rauchtest und CI brauc
 - **Kamera und Licht**: orthografisch, 30° Neigung und 45° Drehung, sodass eine Bodenkachel genau eine 2:1-Raute von 128×64 Pixeln ergibt (doppelte Auflösung des Rasters 64×32). Feste Sonne von links oben, dazu Himmelslicht.
 - **Ausgabe**: `assets/sprites/<pfad>.png` und der Schlagschatten `<pfad>_shadow.png` (schwarz, halbtransparent; ein Schattenfänger am Boden, das Modell selbst unsichtbar), beide gleich groß, so groß, dass Modell und Schatten hineinpassen. Die Mitte der Grundfläche liegt genau in der Bildmitte.
 - **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Die Stilprobe verwendet Sprites für das Wohnhaus, Bäume, Wiese, Ufer und Bewohner; ihr Look ist seit dem 6. Oktober 2026 in #138 freigegeben (siehe die verbindlichen Werte unten).
-- **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste zeigen weiter den gezeichneten Block. Typen ohne `"sprite"` sehen aus wie bisher.
+- **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste verwenden dieselben Gebäudebilder; ohne verfügbares Hauptbild bleibt der gezeichnete Block. Typen ohne `"sprite"` sehen aus wie bisher.
 - **Vorkommen**: `DepositView` zeigt alle Vorkommen als Sprites in je vier Varianten; `sprite_variants` nennt die Anzahl. Variante 0 verwendet `<sprite>.png`, weitere Varianten `<sprite>_1.png` usw., mit jeweiligem `_shadow.png`. Die gespeicherte `Deposit.variant` wird modulo Variantenanzahl gewählt; nach dem Laden bleibt das Bild gleich. Die Schatten liegen auch im Hauptmenü unter allen Objekten und verschwinden beim Abbau mit dem Vorkommen. Typen ohne Sprite bleiben gezeichnet, die Sortierung bleibt am Kachelmittelpunkt. Neu rendern: `tools/render.sh deposits/tree deposits/tree_1 deposits/tree_2 deposits/tree_3`.
 - **Galerie**: Das Preset `gallery` (`tests/setups/gallery.gd`, Szenario `tests/scenarios/gallery.json`) zeigt jeden Gebäudetyp nebeneinander, mit Sprite oder gezeichnet; neue Typen kommen von selbst dazu. Vor der Burg stehen außerdem alle Vorkommen mit jeder Sprite-Variante.
 
@@ -308,3 +308,17 @@ allen Animationen automatisch aus den Spieldaten auf.
 
 
 Bewohner wählen beim Abbau die Animation aus `work_animation` des Vorkommens (`axe` oder `pick`); `ResidentAnimation` richtet sie zu `deposit_tile` aus. Die Schleifen verwenden dieselbe Spielzeit wie Stehen und Gehen. Der alte Versatz beim Abbau bleibt nur für Figuren ohne Arbeitsanimation. Die Werkzeuge sind an `hand.r` angebunden; die Armhaltung wird für sichtbares Heben und Schlagen retargetet, ohne die ursprünglichen KayKit-Proportionen oder Gliederlängen zu verändern. Waren dürfen `sprite` setzen und werden beim Laden wie die übrigen Sprite-Einträge geprüft (`GameDefs.validate_sprites()`). Der Träger zeichnet das Warenbild auf dem Rücken entgegen seiner Blickrichtung; ohne Bild bleibt das gezeichnete Bündel. Die Galerie zeigt jede Arbeitsrichtung und alle zehn Bündel; das Preset `workers` zeigt zwei Arbeiter und Waren vergrößert.
+
+### Bauleiste und Bauvorschau (#143)
+
+`BuildingIcon` passt mit `use_sprite=true` das erste Gebäudebild proportional in die Baukarte ein;
+die Lagerzähler im HUD behalten ihre gezeichneten Symbole. Beschriftung,
+Taste, Kosten und das gezeichnete Abriss-Symbol bleiben erhalten. `PlacementPreview` verwendet
+`BuildingSprites.variant()` für Wohnhäuser und `WallSprites.paths()` für Mauerteile und
+Treppenrichtung. Bestehende Wehrgänge kommen aus `WallSprites.neighbors(world, origin)`;
+nur erlaubte geplante Wehrgangkacheln ergänzen die Anschlüsse. Die Gültigkeit stammt weiter
+aus `founding_error()`, `build_error()` und `line_plan()`, bei der Mauerlinie je Kachel.
+Sprites sind halbtransparent grün bzw. rot, die Grundfläche und Eingangsmarkierung bleiben
+sichtbar. Beim Abriss gilt weiterhin Orange bzw. Rot. Zeichenbefehle behalten die Texturen
+in der Ansicht, damit auch noch nicht gebaute Typen sichtbar bleiben. Die Presets
+`founding`, `build`, `build_free`, `build_blocked` und `wall` prüfen diese Ansichten.

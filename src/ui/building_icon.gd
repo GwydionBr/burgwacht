@@ -1,7 +1,7 @@
 class_name BuildingIcon
 extends Control
-## Symbol eines Gebäudetyps für die Bauleiste: ein kleiner isometrischer Block wie auf der
-## Karte, mit Grundfläche, Höhe und Farbe aus den Daten, eingepasst in die eigene Fläche.
+## Gebäudebild für die Bauleiste, eingepasst in die eigene Fläche. Ohne Sprite erscheint
+## derselbe isometrische Block wie auf der Karte, mit Größe, Höhe und Farbe aus den Daten.
 ## Ohne Typ (leer) zeigt es das Abriss-Werkzeug: ein Trümmerblock mit rotem Kreuz.
 
 ## Größter Maßstab, damit Gebäude mit einer Kachel (Mauer, Treppe) nicht riesig werden.
@@ -12,11 +12,15 @@ const CROSS_COLOR := Color("#d8553c")
 ## Höhe des Trümmerblocks beim Abriss-Werkzeug.
 const RUBBLE_HEIGHT := 14.0
 
+var _use_sprite: bool
 var _type_id: String
+var _texture: Texture2D
 
 
-func _init(type_id: String) -> void:
+## Sprites nur für Baukarten; Lagerzähler behalten ihr gezeichnetes HUD-Symbol.
+func _init(type_id: String, use_sprite: bool = false) -> void:
 	_type_id = type_id
+	_use_sprite = use_sprite
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
@@ -26,6 +30,14 @@ func _draw() -> void:
 	var color := RUBBLE_COLOR
 	if _type_id != "":
 		var def: Dictionary = GameDefs.get_instance().buildings[_type_id]
+		var path := GameDefs.sprite_path(def)
+		if _use_sprite and ResourceLoader.exists(path):
+			_texture = load(path)
+			var image_size := _texture.get_size() * BuildingView.SPRITE_SCALE
+			var image_scale := minf(MAX_SCALE, minf(size.x / image_size.x, size.y / image_size.y))
+			var displayed_size := image_size * image_scale
+			draw_texture_rect(_texture, Rect2((size - displayed_size) * 0.5, displayed_size), false)
+			return
 		tiles = Building.size_of(_type_id)
 		height = float(def["height"])
 		color = Color(str(def["color"]))
