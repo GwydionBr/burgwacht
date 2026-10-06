@@ -236,7 +236,8 @@ Köcher senkrecht. Die modellierte Bogenquelle und ihr Erzeugerskript sind einge
 `GameWorld.combat_target()` fragt vorhandene Reichweitenregeln ab. `FigureView` merkt
 Blickrichtung und Dauer aus den bestehenden Treffermeldungen und dem Angriffsziel,
 sodass auch der tödliche Hieb fertig sichtbar bleibt. Die acht Angriffsbilder laufen
-über `attack_ticks` statt einer freien Schleife; Bewegung beendet die Darstellung.
+über `attack_ticks` statt einer freien Schleife; ein begonnener Hieb läuft auch bei
+erneuter Bewegung mit seiner bisherigen Blickrichtung aus, bevor die Gehschleife folgt.
 Silhouette und normale Darstellung verwenden dieselbe Animationsauswahl. Ring,
 Lebensbalken, Klickfläche und Wehrgangshöhe bleiben erhalten. `ArrowView` liest die
 Spielzeit aus `GameClock`, fliegt deshalb bei Pause und Spielmenü nicht weiter und
