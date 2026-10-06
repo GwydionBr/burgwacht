@@ -67,10 +67,36 @@ Sprites werden selbst gerendert (ADR 0006); Spiel, Tests, Rauchtest und CI brauc
 - **Palette** `tools/render/palette.json`: Jede Fläche bekommt die nächste Palettenfarbe zu ihrer Farbe in der Textur (OKLab, Helligkeit zählt halb), danach `recolor` bzw. `color`; Flächen flach schattiert, Farben ohne Tonwertkurve (Ansicht „Standard“).
 - **Kamera und Licht**: orthografisch, 30° Neigung und 45° Drehung, sodass eine Bodenkachel genau eine 2:1-Raute von 128×64 Pixeln ergibt (doppelte Auflösung des Rasters 64×32). Feste Sonne von links oben, dazu Himmelslicht.
 - **Ausgabe**: `assets/sprites/<pfad>.png` und der Schlagschatten `<pfad>_shadow.png` (schwarz, halbtransparent; ein Schattenfänger am Boden, das Modell selbst unsichtbar), beide gleich groß, so groß, dass Modell und Schatten hineinpassen. Die Mitte der Grundfläche liegt genau in der Bildmitte.
-- **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Die Stilprobe verwendet Sprites für das Wohnhaus, Bäume, Wiese, Ufer und Bewohner; ihre Optik wartet noch auf die Freigabe in #138.
+- **Daten**: Gelände, Vorkommen, Gebäude und Einheiten dürfen `"sprite": "<pfad>"` haben (relativ zu `assets/sprites/`, ohne `.png`; `GameDefs.sprite_path()`/`shadow_path()`). `GameDefs.sprites_error()` prüft beim Laden: Text ohne Endung, Bild und Schatten vorhanden (`ResourceLoader.exists()`, damit es auch im Export stimmt); Teststelle `tests/test_game_defs.gd`. Die Stilprobe verwendet Sprites für das Wohnhaus, Bäume, Wiese, Ufer und Bewohner; ihr Look ist seit dem 6. Oktober 2026 in #138 freigegeben (siehe die verbindlichen Werte unten).
 - **Darstellung** (bisher Gebäude): `BuildingView` zeigt bei einem Sprite statt des Blocks das Bild als `Sprite2D` (Faktor 0,5, Mipmaps, ohne Namen) auf der Mitte der Grundfläche, hinter seinem Lebensbalken. Den Schatten legt es in die Schattenschicht `Shadows` der Partie-Szene (zwischen Gelände und `Objects`, also unter allen Objekten; er fällt nie über eine Figur) und entfernt ihn mit sich. Verdecken (`covers_figure()`) rechnet mit dem Umriss der deckenden Pixel des Bilds (einmal je Bild berechnet). Bauvorschau, Abriss-Hervorhebung und Bauleiste zeigen weiter den gezeichneten Block. Typen ohne `"sprite"` sehen aus wie bisher.
 - **Vorkommen**: `DepositView` zeigt Baum-Sprites in vier Varianten; `sprite_variants` nennt die Anzahl. Variante 0 verwendet `<sprite>.png`, weitere Varianten `<sprite>_1.png` usw., mit jeweiligem `_shadow.png`. Die gespeicherte `Deposit.variant` wird modulo Variantenanzahl gewählt; nach dem Laden bleibt das Bild gleich. Die Schatten liegen auch im Hauptmenü unter allen Objekten und verschwinden beim Abbau mit dem Baum. Felsen, Eisen, Wild und Typen ohne Sprite bleiben gezeichnet, die Sortierung bleibt am Kachelmittelpunkt. Neu rendern: `tools/render.sh deposits/tree deposits/tree_1 deposits/tree_2 deposits/tree_3`.
 - **Galerie**: Das Preset `gallery` (`tests/setups/gallery.gd`, Szenario `tests/scenarios/gallery.json`) zeigt jeden Gebäudetyp nebeneinander, mit Sprite oder gezeichnet; neue Typen kommen von selbst dazu. Vor der Burg stehen außerdem alle Vorkommen mit jeder Sprite-Variante.
+
+### Freigegebener Grafikstil (#138)
+
+Am 6. Oktober 2026 wurde die Stilprobe mit Wohnhaus, Wiese und Übergang zum Ufer,
+Baumvarianten sowie stehendem und gehendem Bewohner freigegeben. Die nachträglich erprobten
+Erwachsenenproportionen wurden auf Wunsch zurückgenommen; verbindlich sind die ursprünglichen
+KayKit-Proportionen. Die eingecheckten Sprites der Stilprobe entsprechen diesen Renderwerten.
+Sie gelten auch für die weiteren Grafik-Tickets von #122:
+
+- **Licht und Schatten** (`tools/render/render.py`): Sonne von links oben, Azimut 20°
+  (`0°` bedeutet Schatten entlang +x nach rechts unten), Höhe 50°, Stärke 3,2.
+  Himmelslicht mit RGB `(0,52; 0,55; 0,60)` und Stärke 0,9; maximale Deckkraft des
+  gerenderten Schlagschattens 0,45. Figuren behalten vorerst den gezeichneten Bodenschatten
+  mit Deckkraft 0,25.
+- **Palette und Detailgrad**: Verbindlich ist `tools/render/palette.json` mit gedeckten
+  Natur-, Stein-, Holz- und Kleidungsfarben. Einfache Low-Poly-Modelle, flache Schattierung
+  und Ansicht „Standard“; Farbabgleich in OKLab mit Helligkeitsgewicht 0,5.
+- **Maßstab und Schärfe**: Eine Modell-Kachelkante ist eine Blender-Einheit.
+  Orthografische Kamera mit 30° Neigung und 45° Drehung; Bodenkachel als 2:1-Raute
+  mit 128×64 Renderpixeln. Faktor 0,5 im Spiel ergibt das Raster 64×32;
+  Mipmaps bleiben für die üblichen Zoomstufen aktiv.
+- **Bewohnergröße** (`tools/render/recipes/units/resident.json`): originales KayKit-Modell
+  `Rogue.glb` ohne Änderung der Körperproportionen, Modellskalierung 0,3 und feste Leinwand
+  80×144 Renderpixel. Die sichtbare Figur ist im Spiel je nach Blickrichtung und
+  Animationsbild ungefähr 23–26 Pixel hoch; die Leinwand einschließlich Leerraum ist
+  40×72 Pixel groß. Die einfache Kleidung und ausgeblendete Ausrüstung stehen im Rezept.
 
 ### Gelände-Sprites der Stilprobe
 
