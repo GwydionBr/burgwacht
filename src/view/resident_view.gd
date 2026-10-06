@@ -26,7 +26,7 @@ func _update_position() -> void:
 
 
 func _bob() -> float:
-	if _resident.task != Resident.Task.MINING or _animation_name() != "idle":
+	if _resident.task != Resident.Task.MINING or animation_name() != "idle":
 		return 0.0
 	return BOB_HEIGHT * absf(sin((_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND) * BOB_RATE * PI))
 
@@ -36,11 +36,11 @@ func _update_facing() -> void:
 	facing = ResidentAnimation.work_direction(_resident, facing)
 
 
-func _animation_name() -> String:
+func animation_name() -> String:
 	var work := ResidentAnimation.work_animation(_resident, _clock.world)
 	if _sprite_entry().get("animations", {}).has(work):
 		return work
-	return super._animation_name()
+	return super.animation_name()
 
 
 ## Kittel in der Farbe des Soldatentyps, sonst in der des Bewohners. Jedes Mal neu gelesen:

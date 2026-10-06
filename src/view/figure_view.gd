@@ -65,6 +65,7 @@ func setup(figure: Figure, clock: GameClock) -> void:
 	_clock = clock
 	_clock.world.melee_hit.connect(_on_attack)
 	_clock.world.shot_fired.connect(_on_attack)
+	_clock.world.building_changed.connect(_on_building_hit)
 	_update_position()
 	queue_redraw()
 
@@ -92,7 +93,7 @@ func _update_position() -> void:
 	var level := _figure.level_point(fraction)
 	position = Iso.point_to_world(_figure.tile_point(fraction)) + Vector2(0, WALL_WALK_SORT * level)
 	_lift = (WALL_WALK_SORT + wall_walk_height()) * level
-	if _figure.is_moving():
+	if _figure.is_moving() and animation_name() != "attack":
 		var next: Vector3i = _figure.path[0]
 		facing = FigureAnimation.direction(Vector2i(next.x, next.y) - _figure.tile, facing)
 	_update_facing()
@@ -126,13 +127,22 @@ func _on_attack(from: Vector3i, to: Vector3i) -> void:
 	_attack_until = _clock.world.get_tick() + FighterType.attack_ticks(_figure.fighter_type())
 
 
+## Gebäudetreffer melden sich vor der Zerstörung: Das vorhandene Ziel erhält den letzten Hieb,
+## auch wenn das Verschwinden des Hindernisses noch im selben Takt einen neuen Weg eröffnet.
+func _on_building_hit(id: int) -> void:
+	if _figure is Enemy and (_figure as Enemy).target_building_id == id \
+			and _figure.cooldown == FighterType.attack_ticks(_figure.fighter_type()):
+		_update_facing()
+
+
+## Der sichtbare Zustand: Ein begonnener Hieb endet vor der Gehschleife, ohne Bewegung anzuhalten.
 ## Unterklassen können für Arbeit einen weiteren Zustand wählen; Angriffe laufen nur einmal.
-func _animation_name() -> String:
-	if _figure.is_moving():
-		return "walk"
+func animation_name() -> String:
 	var entry := _sprite_entry()
 	if entry.get("animations", {}).has("attack") and _clock.world.get_tick() + _clock.tick_fraction() < _attack_until:
 		return "attack"
+	if _figure.is_moving():
+		return "walk"
 	return "idle"
 
 
@@ -231,7 +241,7 @@ func _draw_sprite(canvas: CanvasItem, tint: Color) -> bool:
 		return false
 	var path := GameDefs.sprite_path(entry)
 	if entry.has("animations"):
-		var animation := _animation_name()
+		var animation := animation_name()
 		var settings: Dictionary = entry["animations"][animation]
 		var frame := _animation_frame(animation, settings)
 		path = GameDefs.animation_path(entry, animation, facing, frame)
