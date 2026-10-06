@@ -100,6 +100,14 @@ Palette und Licht der gemeinsamen Pipeline. Alle Einzelbilder teilen denselben F
 werden doppelt aufgelöst eingecheckt und mit Faktor 0,5 dargestellt. Der Bodenschatten bleibt
 für die Stilprobe gezeichnet, der kompatible Schattenplatzhalter ist transparent.
 
+Das optionale `proportions` im Figurenrezept formt die ausgewertete Skelettpose vor jedem Rendern
+um: `head_mesh` schrumpft um den animierten Ansatz von `head_bone` mit `head_scale`;
+`body_width` verschmälert beide horizontalen Achsen. Bis zur `hip_height` streckt `leg_length`
+die Höhe, darüber `torso_length` den Rumpf, mit stetigem Übergang und festem z=0. Die Werte
+beziehen sich auf die unskalierte Modellgeometrie. Unsichtbare Ausrüstung und deren Kinder
+werden nicht in die Renderpose übernommen. Der Bewohner nutzt 0,42 / 0,82 / 0,55 / 1,85 / 1,12
+bei Modellmaßstab 0,275: erwachsenere Proportionen bei weiterhin etwa 25–27 Pixeln Spielhöhe.
+
 Figurentypen in `units.json` dürfen `sprite` und `animations` mit `frames` und `fps` für `idle`
 und `walk` enthalten. GameDefs prüft jedes Einzelbild in allen acht Richtungen. FigureAnimation
 bestimmt Richtung aus der Kachelbewegung und Bild aus Spielsekunden (Takt plus Uhrbruchteil);
