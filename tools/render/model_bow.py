@@ -12,7 +12,9 @@ def rod(name, start, end, radius, color):
     obj.name = name
     obj.rotation_euler = (Vector(end)-Vector(start)).to_track_quat('Z','Y').to_euler()
     material = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-    material.diffuse_color = (*color, 1)
+    material.use_nodes = True
+    linear = tuple(value / 12.92 if value <= .04045 else ((value + .055) / 1.055) ** 2.4 for value in color)
+    material.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (*linear, 1)
     obj.data.materials.append(material)
 
 

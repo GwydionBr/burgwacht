@@ -79,6 +79,8 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - **Langbogen** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
   `tools/render/models/burgwacht/bow.blend`, reproduzierbar mit `tools/render/model_bow.py`.
   Die Bogenhaltung retargetet ausschließlich Armstellungen und verändert Kopf und Körper nicht.
+  Holz, Griff und Sehne nutzen exportierbare Knotenmaterialien; die Farben bleiben beim
+  erneuten Erzeugen des GLB erhalten.
 
 ### Burggebäude (#141)
 
@@ -109,3 +111,14 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
   Steintreppe und Turmsockel mit Ecktürmchen. [kenney.nl/assets/castle-kit](https://kenney.nl/assets/castle-kit).
   Ausgewählte Modelle und Lizenz unter `tools/render/models/kenney-castle/`; Richtungsrezepte unter
   `tools/render/recipes/buildings/`.
+
+### Feinde (#147)
+
+- **KayKit Adventurers Character Pack 1.0** – Kay Lousberg, CC0,
+  <https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0>.
+  `Rogue_Hooded.glb` ist das unveränderte Kapuzenmodell für Räuber und Wilderer;
+  Lizenz unter `tools/render/models/kaykit-adventurers/LICENSE.txt`. Originale
+  Steh-, Geh- und Nahkampfanimationen; Kleiderfarben unmittelbar aus `units.json`.
+  Der Wilderer nutzt den eigenen Langbogen und den KayKit-Köcher samt Pfeilen aus #146.
+- **Knüppel** – eigene Low-Poly-Modellierung für Burgwacht; Quelle
+  `tools/render/models/burgwacht/club.blend`, reproduzierbar mit `tools/render/model_club.py`.

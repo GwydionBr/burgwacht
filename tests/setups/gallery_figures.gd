@@ -1,5 +1,5 @@
 extends Node2D
-## Galerie der Figurensprites: jeder Typ mit Animation in acht Richtungen, stehend und gehend.
+## Galerie der Figurensprites: jeder Typ mit Animation in acht Richtungen, stehend, gehend und angreifend.
 
 var clock: GameClock
 var _samples: Array[Dictionary] = []

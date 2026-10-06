@@ -287,3 +287,19 @@ Weltpixel. Turm und Tor haben dieselbe Standfläche. `BuildingSprites.walk_heigh
 Höhe bei verfügbarem Sprite, sonst die alte Blockhöhe. Figuren und Pfeile verwenden sie gemeinsam;
 die Treppe trifft den zwischen Boden und Wehrgang interpolierten Aufstieg an der Kachelgrenze.
 Die Galerie ergänzt Enden, Geraden, Ecken, T-, Kreuz- und diagonale Verbindungen.
+
+### Feindsprites (#147)
+
+`units/bandit` und `units/poacher` verwenden das originale KayKit-Kapuzenmodell mit
+unveränderten Körperproportionen. Ihre violette bzw. braune Kleidung stammt aus
+`units.json`. Der Räuber führt einen modellierten Knüppel am animierten Handknochen,
+der Wilderer den Langbogen mit Köcher und Pfeilen. Beide haben Stehen, Gehen und
+Angriff in acht Richtungen und nutzen dieselbe Animationsauswahl wie Soldaten.
+
+Ein Gebäudetreffer im Nahkampf hat keine eigene Treffermeldung: `FigureView` fragt
+deshalb `GameWorld.combat_target()` ab und erkennt den Beginn am Anstieg der
+Abklingzeit. Die nächstgelegene Kachel der Grundfläche bestimmt die Blickrichtung
+zum angegriffenen Mauerstück oder Bergfried. Silhouette, Lebensbalken und Klickfläche
+bleiben gemeinsam in `FigureView`; `EnemyView` zeichnet seine Kapuze und Waffen
+nur bei fehlendem Sprite als Platzhalter. Die Galerie nimmt beide Feindtypen samt
+allen Animationen automatisch aus den Spieldaten auf.

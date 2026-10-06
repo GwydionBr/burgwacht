@@ -1,6 +1,6 @@
 class_name EnemyView
 extends FigureView
-## Zeichnet einen Feind (Figur und Lebensbalken: FigureView) in der Farbe seines Typs aus
+## Zeichnet einen Feind als Sprite oder Platzhalter (Lebensbalken: FigureView) in der Typfarbe aus
 ## units.json, mit Kapuze; Nahkämpfer (Räuber) mit Knüppel, Fernkämpfer (Wilderer) mit Bogen und
 ## Köcher.
 
@@ -21,7 +21,13 @@ func _body_color() -> Color:
 	return FighterType.color_of(_enemy.type)
 
 
+func _sprite_entry() -> Dictionary:
+	return GameDefs.get_instance().units[_enemy.type]
+
+
 func _draw_extras() -> void:
+	if _sprite_entry().has("sprite"):
+		return
 	# Kapuze über dem Kopf.
 	draw_arc(Vector2(0, -22), 4.5, PI, TAU, 10, HOOD_COLOR, 3.0, true)
 	if FighterType.is_melee(_enemy.type):
