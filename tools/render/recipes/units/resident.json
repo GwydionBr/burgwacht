@@ -1,0 +1,37 @@
+{
+  "parts": [
+    {
+      "model": "kaykit-adventurers/Rogue.glb",
+      "scale": 0.3,
+      "recolor": {
+        "cloth_blue": "plaster",
+        "cloth_red": "plaster",
+        "leaf": "plaster",
+        "leaf_light": "plaster",
+        "leaf_dark": "plaster"
+      }
+    }
+  ],
+  "animations": {
+    "idle": {
+      "action": "Idle",
+      "frames": 4
+    },
+    "walk": {
+      "action": "Walking_A",
+      "frames": 8
+    }
+  },
+  "canvas": [
+    80,
+    144
+  ],
+  "hide": [
+    "Knife_Offhand",
+    "1H_Crossbow",
+    "2H_Crossbow",
+    "Knife",
+    "Throwable",
+    "Rogue_Cape"
+  ]
+}

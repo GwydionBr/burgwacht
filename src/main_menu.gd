@@ -90,7 +90,7 @@ func _show_background_map() -> void:
 	_terrain.show_map(map)
 	for tile in map.deposits:
 		var view := DepositView.new()
-		view.setup(tile, map.deposits[tile])
+		view.setup(tile, map.deposits[tile], $Shadows)
 		_objects.add_child(view)
 	_pan_center = Iso.tile_to_world(map.center())
 	_pan_radius = Iso.map_bounds(map.width, map.height).size * PAN_RADIUS_SHARE

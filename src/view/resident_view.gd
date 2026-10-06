@@ -4,7 +4,7 @@ extends FigureView
 ## auf dem Rücken, beim Abbau wippt er, in der Arbeitsstätte ist er unsichtbar.
 ## Soldaten tragen die Farbe ihres Soldatentyps (units.json) und ihre Waffe (Schwert bzw. Bogen).
 
-## Wippen beim Abbau: Höhe in Pixeln und Schläge pro Sekunde (Echtzeit, nur Optik).
+## Wippen beim Abbau: Höhe in Pixeln und Schläge pro Sekunde (Spielzeit, nur Optik).
 const BOB_HEIGHT := 2.5
 const BOB_RATE := 2.0
 ## Klinge des Schwerts.
@@ -28,7 +28,7 @@ func _update_position() -> void:
 func _bob() -> float:
 	if _resident.task != Resident.Task.MINING:
 		return 0.0
-	return BOB_HEIGHT * absf(sin(Time.get_ticks_msec() / 1000.0 * BOB_RATE * PI))
+	return BOB_HEIGHT * absf(sin((_clock.world.get_tick() + _clock.tick_fraction()) / float(GameClock.TICKS_PER_SECOND) * BOB_RATE * PI))
 
 
 ## Kittel in der Farbe des Soldatentyps, sonst in der des Bewohners. Jedes Mal neu gelesen:
@@ -62,3 +62,8 @@ func _draw_bundle(color: Color) -> void:
 	draw_rect(bundle, color)
 	draw_rect(bundle, OUTLINE_COLOR, false, 1.0)
 	draw_line(Vector2(-8, -20.5), Vector2(1, -20.5), OUTLINE_COLOR, 1.0)
+
+
+func _sprite_entry() -> Dictionary:
+	var type := _resident.soldier_type if _resident.is_soldier() else "resident"
+	return GameDefs.get_instance().units[type]

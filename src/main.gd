@@ -165,6 +165,10 @@ func _ready() -> void:
 		set_process_unhandled_key_input(false)
 		get_tree().quit(1)
 		return
+	if start.kind == MatchStart.Kind.SETUP:
+		var setup_script: GDScript = load("res://tests/setups/%s.gd" % start.setup_name)
+		if setup_script.has_method("decorate"):
+			setup_script.call("decorate", self, _clock)
 	var days := int(args.get("days", 0))
 	if args.has("found") or days > 0:
 		_match.execute(Command.found(world.find_founding_site()))
@@ -786,7 +790,7 @@ func _load_from(path: String) -> String:
 
 func _add_deposit_view(tile: Vector2i) -> void:
 	var view := DepositView.new()
-	view.setup(tile, world.map.deposits[tile])
+	view.setup(tile, world.map.deposits[tile], _shadows)
 	_objects.add_child(view)
 	_deposit_views[tile] = view
 

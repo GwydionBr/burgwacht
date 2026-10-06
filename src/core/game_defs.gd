@@ -47,19 +47,26 @@ static func get_instance() -> GameDefs:
 	return _instance
 
 
-## Pfad des Bilds eines Eintrags (Gelände, Vorkommen, Gebäude, Einheit); leer ohne "sprite".
-static func sprite_path(entry: Dictionary) -> String:
-	return _sprite_file(entry, "")
+## Pfad des Bilds eines Eintrags; leer ohne „sprite“. Die Variante wird modulo „sprite_variants“ gewählt.
+static func sprite_path(entry: Dictionary, variant: int = 0) -> String:
+	return _sprite_file(entry, "", variant)
 
 
-## Pfad des Schattenbilds eines Eintrags; leer ohne "sprite".
-static func shadow_path(entry: Dictionary) -> String:
-	return _sprite_file(entry, SHADOW_SUFFIX)
+## Pfad des Schattenbilds derselben Variante; leer ohne „sprite“.
+static func shadow_path(entry: Dictionary, variant: int = 0) -> String:
+	return _sprite_file(entry, SHADOW_SUFFIX, variant)
 
 
-## Pfad zu "sprite" eines Eintrags mit angehängtem Suffix und Endung; leer ohne "sprite".
-static func _sprite_file(entry: Dictionary, suffix: String) -> String:
-	return SPRITE_DIR + str(entry["sprite"]) + suffix + ".png" if entry.has("sprite") else ""
+## Pfad eines Animationsbilds für Bewegungszustand, Blickrichtung und Einzelbild; leer ohne „sprite“.
+static func animation_path(entry: Dictionary, animation: String, direction: int, frame: int) -> String:
+	return SPRITE_DIR + str(entry["sprite"]) + "_%s_%d_%d.png" % [animation, direction, frame] if entry.has("sprite") else ""
+
+
+## Pfad zu „sprite“ eines Eintrags mit angehängtem Suffix und Endung; leer ohne „sprite“.
+static func _sprite_file(entry: Dictionary, suffix: String, variant: int) -> String:
+	var index := posmod(variant, int(entry.get("sprite_variants", 1)))
+	var variant_suffix := "_%d" % index if index > 0 else ""
+	return SPRITE_DIR + str(entry["sprite"]) + variant_suffix + suffix + ".png" if entry.has("sprite") else ""
 
 
 ## Prüft das Feld "sprite" aller Einträge (ID → Dictionary) einer Datendatei: ein Text ohne Endung,
@@ -69,6 +76,10 @@ static func sprites_error(file_name: String, entries: Dictionary) -> String:
 		var entry: Variant = entries[id]
 		if not entry is Dictionary or not (entry as Dictionary).has("sprite"):
 			continue
+		if file_name == "terrain.json" and (entry as Dictionary).has("sprite_transition"):
+			var neighbor: Variant = entry["sprite_transition"]
+			if not neighbor is String or not entries.has(neighbor) or neighbor == id:
+				return "%s, „%s“: „sprite_transition“ muss ein anderes bekanntes Gelände nennen" % [file_name, id]
 		var reason := _sprite_error(entry)
 		if reason != "":
 			return "%s, „%s“: %s" % [file_name, id, reason]
@@ -79,12 +90,16 @@ static func _sprite_error(entry: Dictionary) -> String:
 	var value: Variant = entry["sprite"]
 	if not value is String or str(value) == "" or str(value).ends_with(".png"):
 		return SPRITE_TYPE_ERROR
+	var count: Variant = entry.get("sprite_variants", 1)
+	if not (count is int or count is float) or float(count) < 1 or float(count) != floor(float(count)):
+		return "„sprite_variants“ muss eine positive ganze Zahl sein"
 	# ResourceLoader statt FileAccess: In der exportierten App liegen nur die importierten Dateien.
-	if not ResourceLoader.exists(sprite_path(entry)):
-		return "Bild %s fehlt" % sprite_path(entry)
-	if not ResourceLoader.exists(shadow_path(entry)):
-		return "Schatten %s fehlt" % shadow_path(entry)
-	return ""
+	for variant in int(count):
+		if not ResourceLoader.exists(sprite_path(entry, variant)):
+			return "Bild %s fehlt" % sprite_path(entry, variant)
+		if not ResourceLoader.exists(shadow_path(entry, variant)):
+			return "Schatten %s fehlt" % shadow_path(entry, variant)
+	return _animation_error(entry)
 
 
 ## Prüft die Datendateien, deren Einträge ein Feld "sprite" haben dürfen, in dieser Reihenfolge;
@@ -108,3 +123,28 @@ static func _load_json(file_name: String) -> Dictionary:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	assert(parsed is Dictionary, "Ungültige Datendatei: %s" % path)
 	return parsed
+
+
+## Beide Bewegungszustände mit acht Richtungen und sämtlichen Einzelbildern müssen vorhanden sein.
+static func _animation_error(entry: Dictionary) -> String:
+	if not entry.has("animations"):
+		return ""
+	var animations: Variant = entry["animations"]
+	if not animations is Dictionary:
+		return "„animations“ muss Stehen und Gehen beschreiben"
+	for animation: String in ["idle", "walk"]:
+		var settings: Variant = animations.get(animation)
+		if not settings is Dictionary:
+			return "Animation „%s“ fehlt" % animation
+		var frames: Variant = settings.get("frames")
+		var fps: Variant = settings.get("fps")
+		if not (frames is int or frames is float) or float(frames) < 1 or float(frames) != floorf(float(frames)):
+			return "Animation „%s“ braucht eine positive ganze Bildanzahl" % animation
+		if not (fps is int or fps is float) or float(fps) <= 0:
+			return "Animation „%s“ braucht eine positive Bildrate" % animation
+		for direction in 8:
+			for frame in int(frames):
+				var path := animation_path(entry, animation, direction, frame)
+				if not ResourceLoader.exists(path):
+					return "Animationsbild %s fehlt" % path
+	return ""

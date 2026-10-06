@@ -1,6 +1,6 @@
 class_name DepositView
 extends Node2D
-## Zeichnet ein Vorkommen (Baum, Felsen, Eisen, Wild). Liegt in einem
+## Zeigt ein Vorkommen als Sprite mit getrenntem Bodenschatten oder gezeichneten Platzhalter. Liegt in einem
 ## y-sortierten Container, damit weiter vorne stehende Objekte davor erscheinen.
 
 const SHADOW_COLOR := Color(0, 0, 0, 0.22)
@@ -11,16 +11,51 @@ const ORE_COLOR := Color("#b0562e")
 const GAME_COLOR := Color("#7a5232")
 const GAME_BELLY_COLOR := Color("#c9a77c")
 
+const SPRITE_SCALE := 0.5
+
 var deposit: Deposit
+var _sprite: Sprite2D
+var _shadow: Sprite2D
 
 
-func setup(tile: Vector2i, shown: Deposit) -> void:
+## Die gespeicherte Variante bestimmt das Bild; shadows liegt unter den sortierten Objekten.
+func setup(tile: Vector2i, shown: Deposit, shadows: Node2D = null) -> void:
 	deposit = shown
 	position = Iso.tile_to_world(tile)
+	for old: Sprite2D in [_sprite, _shadow]:
+		if is_instance_valid(old):
+			old.queue_free()
+	_sprite = null
+	_shadow = null
+	var def: Dictionary = GameDefs.get_instance().deposits[deposit.type]
+	var path := GameDefs.sprite_path(def, deposit.variant)
+	if ResourceLoader.exists(path):
+		_sprite = _make_sprite(path)
+		add_child(_sprite)
+		var shadow_path := GameDefs.shadow_path(def, deposit.variant)
+		if shadows != null and ResourceLoader.exists(shadow_path):
+			_shadow = _make_sprite(shadow_path)
+			_shadow.position = position - shadows.global_position
+			shadows.add_child(_shadow)
 	queue_redraw()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_shadow):
+		_shadow.queue_free()
+
+
+static func _make_sprite(path: String) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = load(path)
+	sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return sprite
+
+
 func _draw() -> void:
+	if _sprite != null:
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = deposit.variant
 	match deposit.type:
