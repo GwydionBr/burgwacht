@@ -78,13 +78,12 @@ func hit_rect() -> Rect2:
 	return Rect2(position + HIT_RECT.position + Vector2(0, -_lift), HIT_RECT.size)
 
 
-## So hoch über dem Boden liegt der Wehrgang: die Höhe ("height") des ersten Gebäudetyps mit
-## Wehrgang in buildings.json (der Mauer).
+## Höhe der gemeinsamen Wehrgangfläche: beim Sprite unter den Zinnen, beim Block dessen Oberseite.
 static func wall_walk_height() -> float:
 	var buildings := GameDefs.get_instance().buildings
 	for type_id: String in buildings:
 		if bool(buildings[type_id].get("walkway", false)):
-			return float(buildings[type_id]["height"])
+			return BuildingSprites.walk_height(buildings[type_id])
 	return 0.0
 
 

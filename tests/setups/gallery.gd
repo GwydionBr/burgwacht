@@ -39,6 +39,7 @@ static func create() -> GameWorld:
 	_add_deposits(world)
 	_add_castle_variants(world)
 	_add_terrain(world)
+	_add_wall_connections(world)
 
 	return world
 
@@ -105,3 +106,21 @@ static func _add_castle_variants(world: GameWorld) -> void:
 	var helper := TestCase.new()
 	helper.place(world, "house", Vector2i(9, 15))
 	helper.place(world, "house", Vector2i(12, 15))
+
+
+## Enden, Gerade, Ecke, T, Kreuz und diagonale Verbindungen nebeneinander.
+static func _add_wall_connections(world: GameWorld) -> void:
+	var helper := TestCase.new()
+	var samples: Array[Array] = [
+		[Vector2i(1, 0)],
+		[Vector2i(-1, 0), Vector2i(1, 0)],
+		[Vector2i(1, 0), Vector2i(0, 1)],
+		[Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)],
+		[Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)],
+		[Vector2i(-1, -1), Vector2i(1, 1)],
+	]
+	for index in samples.size():
+		var center := Vector2i(29 + index * 4, 53 - index * 4)
+		helper.place(world, "wall", center)
+		for offset: Vector2i in samples[index]:
+			helper.place(world, "wall", center + offset)

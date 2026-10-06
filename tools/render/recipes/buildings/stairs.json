@@ -1,0 +1,19 @@
+{
+  "parts": [
+    {
+      "model": "kenney-castle/stairs-stone.glb",
+      "scale": [
+        3,
+        1.2,
+        0.45360921162651446
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": 90,
+      "color": "stone"
+    }
+  ]
+}

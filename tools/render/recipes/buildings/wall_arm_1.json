@@ -1,0 +1,19 @@
+{
+  "parts": [
+    {
+      "model": "kenney-castle/wall-half-modular.glb",
+      "scale": [
+        1.1785113019775793,
+        0.3,
+        0.5453698536730994
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": -45.0,
+      "color": "stone"
+    }
+  ]
+}

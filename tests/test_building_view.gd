@@ -120,3 +120,23 @@ func test_missing_sprite_file_falls_back_to_block() -> void:
 	assert_true(sprite == null, "kein Bild:")
 	assert_eq(shadow_count, 0, "kein Schatten:")
 	assert_true(covered, "der Block verdeckt die Figur dahinter:")
+
+
+func test_wall_arm_changes_occlusion_after_neighbor_build_and_removal() -> void:
+	var world := empty_world("gallery")
+	assert_eq(world.execute(Command.found(Vector2i(1, 1))), "", "Gründung:")
+	var building := world.get_building(place(world, "wall", KEEP_ORIGIN))
+	var shadows := Node2D.new()
+	var view := BuildingView.new()
+	view.setup(building, shadows, null, world)
+	var center := Iso.tile_to_world(KEEP_ORIGIN)
+	var behind_arm := Rect2(center + Vector2(-25, -22), Vector2(3, 3))
+	assert_false(view.covers_figure(behind_arm, center.y - 10), "ohne Arm:")
+	var neighbor := place(world, "wall", KEEP_ORIGIN + Vector2i(-1, 1))
+	view.refresh_connections()
+	assert_true(view.covers_figure(behind_arm, center.y - 10), "Arm verdeckt ebenfalls:")
+	assert_eq(world.execute(Command.demolish(neighbor)), "", "Abriss:")
+	view.refresh_connections()
+	assert_false(view.covers_figure(behind_arm, center.y - 10), "Armumriss nach Abriss entfernt:")
+	view.free()
+	shadows.free()

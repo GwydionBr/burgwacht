@@ -1,0 +1,69 @@
+{
+  "parts": [
+    {
+      "model": "kenney-castle/tower-square-base.glb",
+      "scale": [
+        1.98,
+        1.98,
+        0.6371647795388686
+      ],
+      "color": "stone"
+    },
+    {
+      "model": "kenney-castle/wall-pillar.glb",
+      "scale": [
+        0.38,
+        0.38,
+        0.4047155784346175
+      ],
+      "position": [
+        -0.8,
+        0.8,
+        0.6435364273342574
+      ],
+      "color": "stone"
+    },
+    {
+      "model": "kenney-castle/wall-pillar.glb",
+      "scale": [
+        0.38,
+        0.38,
+        0.4047155784346175
+      ],
+      "position": [
+        0.8,
+        0.8,
+        0.6435364273342574
+      ],
+      "color": "stone"
+    },
+    {
+      "model": "kenney-castle/wall-pillar.glb",
+      "scale": [
+        0.38,
+        0.38,
+        0.4047155784346175
+      ],
+      "position": [
+        -0.8,
+        -0.8,
+        0.6435364273342574
+      ],
+      "color": "stone"
+    },
+    {
+      "model": "kenney-castle/wall-pillar.glb",
+      "scale": [
+        0.38,
+        0.38,
+        0.4047155784346175
+      ],
+      "position": [
+        0.8,
+        -0.8,
+        0.6435364273342574
+      ],
+      "color": "stone"
+    }
+  ]
+}

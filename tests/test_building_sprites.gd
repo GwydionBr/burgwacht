@@ -14,3 +14,12 @@ func test_flame_loops_from_simulation_seconds() -> void:
 	assert_eq(BuildingSprites.animation_path(entry, 0.5), "res://assets/sprites/buildings/campfire_flame_3.png", "Spielzeit:")
 	assert_eq(BuildingSprites.animation_path(entry, 0.5), "res://assets/sprites/buildings/campfire_flame_3.png", "Pause:")
 	assert_eq(BuildingSprites.animation_path(entry, 1.0), "res://assets/sprites/buildings/campfire_flame_2.png", "Zeitraffer:")
+
+
+func test_walkway_uses_rendered_floor_and_block_height_without_sprite() -> void:
+	var entry := {"sprite": "buildings/wall", "height": 28, "sprite_walk_height": 25.221374}
+	assert_eq(BuildingSprites.walk_height(entry), 25.221374, "Standfläche unter den Zinnen:")
+	entry["sprite"] = "buildings/missing_wall"
+	assert_eq(BuildingSprites.walk_height(entry), 28.0, "Block ohne Bild:")
+	entry.erase("sprite_walk_height")
+	assert_eq(BuildingSprites.walk_height(entry), 28.0, "Bisherige Daten:")

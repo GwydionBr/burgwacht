@@ -816,7 +816,7 @@ func _on_deposit_changed(tile: Vector2i) -> void:
 
 func _add_building_view(id: int) -> void:
 	var view := BuildingView.new()
-	view.setup(world.get_building(id), _shadows, _clock)
+	view.setup(world.get_building(id), _shadows, _clock, world)
 	_objects.add_child(view)
 	_building_views[id] = view
 
@@ -838,11 +838,17 @@ func _update_wave_marker() -> void:
 
 func _on_building_added(id: int) -> void:
 	_add_building_view(id)
+	_refresh_wall_connections()
 	_update_wave_marker()
 	_update_residents()
 	_update_stock()
 	_update_hover()
 	_update_preview()
+
+
+func _refresh_wall_connections() -> void:
+	for view: BuildingView in _building_views.values():
+		view.refresh_connections()
 
 
 func _on_building_changed(id: int) -> void:
@@ -857,6 +863,7 @@ func _on_building_removed(id: int) -> void:
 	if _building_views.has(id):
 		_building_views[id].queue_free()
 		_building_views.erase(id)
+	_refresh_wall_connections()
 	if id == _barracks_id:
 		_barracks_id = 0
 		_hud.close_barracks()

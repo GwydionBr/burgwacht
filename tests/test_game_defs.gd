@@ -111,3 +111,14 @@ func test_missing_building_flame_frame_is_named() -> void:
 	var entry := {"sprite": "buildings/house", "sprite_animation": {"frames": 2, "fps": 6}}
 	assert_eq(GameDefs.sprites_error("buildings.json", {"campfire": entry}),
 		"buildings.json, „campfire“: Animationsbild res://assets/sprites/buildings/house_flame_0.png fehlt", "Fehler:")
+
+
+func test_wall_sprite_requires_all_connection_images() -> void:
+	var entries := {"missing_arms": {"sprite": "buildings/house", "sprite_connections": true}}
+	assert_true(GameDefs.sprites_error("buildings.json", entries) != "", "Mauerarme fehlen:")
+
+
+func test_sprite_walk_height_must_be_positive_finite_and_below_top() -> void:
+	for floor_height: float in [-1.0, 0.0, 29.0, INF, NAN]:
+		var entries := {"bad_floor": {"sprite": "buildings/wall", "height": 28, "sprite_walk_height": floor_height}}
+		assert_true(GameDefs.sprites_error("buildings.json", entries) != "", "Ungültige Standhöhe:")

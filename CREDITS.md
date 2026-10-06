@@ -105,3 +105,7 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - **Kenney – Food Kit 2.0**, CC0: Äpfel, Brot und Fleisch. Quelle und Lizenz: [kenney.nl/assets/food-kit](https://kenney.nl/assets/food-kit), `tools/render/models/kenney-food/License.txt`. Nur die drei verwendeten Modelle und ihre gemeinsame Textur `Textures/colormap.png` liegen im Repo.
 - **Kay Lousberg – KayKit Medieval Hexagon Pack 1.0**, CC0: die bereits verwendeten Säcke für Mehl und Weizen. Quelle und Lizenz stehen oben bei den Burggebäuden.
 - **Burgwacht**: Backofen, Esse, Holzrahmen des Grubeneingangs, Sägebock und Bogengestell sind eigene Low-Poly-Modelle. Die bearbeitbare Quelle `tools/render/models/burgwacht/trade-fixtures.blend` und das Erzeugungsskript `create_trade_fixtures.py` bleiben erhalten. Der Bogen im Bogengestell sowie bei Jäger und Bogner ist das oben dokumentierte eigene Modell `bow.blend`.
+- **Kenney – Castle Kit 2.0**, CC0: Mittelpfeiler, modulare Mauerarme, Tor mit offenem Durchgang,
+  Steintreppe und Turmsockel mit Ecktürmchen. [kenney.nl/assets/castle-kit](https://kenney.nl/assets/castle-kit).
+  Ausgewählte Modelle und Lizenz unter `tools/render/models/kenney-castle/`; Richtungsrezepte unter
+  `tools/render/recipes/buildings/`.

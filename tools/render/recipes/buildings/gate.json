@@ -1,0 +1,19 @@
+{
+  "parts": [
+    {
+      "model": "kenney-castle/wall-narrow-gate.glb",
+      "scale": [
+        1.5,
+        1,
+        0.5453698536730994
+      ],
+      "position": [
+        -0.2775,
+        0,
+        0
+      ],
+      "rotation": 0,
+      "color": "stone"
+    }
+  ]
+}

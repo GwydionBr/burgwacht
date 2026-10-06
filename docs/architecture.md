@@ -270,3 +270,20 @@ Ihre Rezepte kombinieren die freigegebenen Kenney-Fassaden mit sichtbaren Handwe
 Eigen modellierte Ausstattung liegt als `tools/render/models/burgwacht/trade-fixtures.blend` und als glTF vor. `create_trade_fixtures.py` erzeugt beides mit Blender 5.2 neu; es benutzt den vorhandenen Langbogen und die gemeinsame Palette. Zum Rendern aller Arbeitsstätten: `tools/render.sh buildings/woodcutter buildings/quarry buildings/hunter buildings/orchard buildings/wheat_farm buildings/iron_mine buildings/mill buildings/bakery buildings/smith buildings/bowyer`. Das Spiel und die CI benötigen nur die eingecheckten PNGs.
 
 Das Preset `workplaces` zeigt die zehn Arbeitsstätten vergrößert mit reduzierten Lebenspunkten und je einem Bewohner dahinter. Es prüft die bestehenden Umriss- und Lebensbalkenpfade an den neuen Bildern; die Rauchtests laden diesen Aufbau mit. `tools/screenshot.sh /tmp/arbeitsstaetten.png workplaces` erzeugt die Ansichtsprobe.
+### Verbundene Burgmauern
+
+`WallSprites.paths()` wählt den Mittelpfeiler und je einen Arm für die acht angrenzenden
+Wehrgangkacheln; auch jede Kachel einer Turmgrundfläche zählt. Die Ansicht legt die PNGs
+übereinander. `BuildingView.refresh_connections()` ersetzt nach Bau und Abriss die Arme und
+alle zugehörigen Schatten in der Bodenschicht. Der Verdeckungsumriss umfasst alle Teile.
+`sprite_connections` aktiviert die Armdateien `_arm_0` bis `_arm_7` (ab Kachel-x im Uhrzeigersinn).
+`sprite_ramp` richtet die acht Treppenvarianten auf den ersten angrenzenden Wehrgang aus.
+Diese Auswahl ist gemeinsam für Karte und Bauvorschau verfügbar; Spielregeln bleiben unverändert.
+
+`height` bleibt die maximale sichtbare Höhe: Mauer und Tor 28, Turm 46, Treppe 12 Weltpixel.
+`sprite_walk_height` bezeichnet die tatsächliche Standfläche unter den Zinnen. Beim Kenney-Modell
+liegt sie bei Modell-z 1,18, das Maximum bei 1,31; daher beträgt sie `28 × 1,18 / 1,31 = 25,221374`
+Weltpixel. Turm und Tor haben dieselbe Standfläche. `BuildingSprites.walk_height()` liefert diese
+Höhe bei verfügbarem Sprite, sonst die alte Blockhöhe. Figuren und Pfeile verwenden sie gemeinsam;
+die Treppe trifft den zwischen Boden und Wehrgang interpolierten Aufstieg an der Kachelgrenze.
+Die Galerie ergänzt Enden, Geraden, Ecken, T-, Kreuz- und diagonale Verbindungen.

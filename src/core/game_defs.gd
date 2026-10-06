@@ -121,6 +121,17 @@ static func _sprite_error(entry: Dictionary) -> String:
 			return "Bild %s fehlt" % sprite_path(entry, variant)
 		if not ResourceLoader.exists(shadow_path(entry, variant)):
 			return "Schatten %s fehlt" % shadow_path(entry, variant)
+	if entry.has("sprite_walk_height"):
+		var floor_height: Variant = entry["sprite_walk_height"]
+		if not (floor_height is int or floor_height is float) or not is_finite(float(floor_height)) or float(floor_height) <= 0.0 or float(floor_height) > float(entry.get("height", 0)):
+			return "„sprite_walk_height“ muss endlich, positiv und höchstens „height“ sein"
+	if bool(entry.get("sprite_connections", false)):
+		for direction in 8:
+			var arm := "res://assets/sprites/%s_arm_%d.png" % [entry["sprite"], direction]
+			if not ResourceLoader.exists(arm):
+				return "Mauerarm %s fehlt" % arm
+			if not ResourceLoader.exists(arm.trim_suffix(".png") + "_shadow.png"):
+				return "Schatten des Mauerarms %s fehlt" % arm
 	var reason := _building_animation_error(entry)
 	return reason if reason != "" else _animation_error(entry)
 

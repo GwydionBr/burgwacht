@@ -14,3 +14,10 @@ static func animation_path(entry: Dictionary, seconds: float) -> String:
 	if settings.is_empty():
 		return ""
 	return GameDefs.building_animation_path(entry, FigureAnimation.frame(seconds, int(settings["frames"]), float(settings["fps"])))
+
+
+## Gerenderte Wehrgangfläche unter den Zinnen; ohne verfügbares Sprite gilt die Blockhöhe.
+static func walk_height(entry: Dictionary) -> float:
+	if entry.has("sprite_walk_height") and ResourceLoader.exists(GameDefs.sprite_path(entry)):
+		return float(entry["sprite_walk_height"])
+	return float(entry["height"])

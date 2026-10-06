@@ -340,7 +340,10 @@
     "hotkey": "Q",
     "category": "military",
     "color": "#8f897d",
-    "height": 28
+    "height": 28,
+    "sprite": "buildings/wall",
+    "sprite_walk_height": 25.221374,
+    "sprite_connections": true
   },
   "stairs": {
     "name": "Treppe",
@@ -353,7 +356,10 @@
     "hotkey": "I",
     "category": "military",
     "color": "#a39d90",
-    "height": 12
+    "height": 12,
+    "sprite": "buildings/stairs",
+    "sprite_variants": 8,
+    "sprite_ramp": true
   },
   "tower": {
     "name": "Turm",
@@ -367,7 +373,9 @@
     "hotkey": "Z",
     "category": "military",
     "color": "#7d776c",
-    "height": 46
+    "height": 46,
+    "sprite": "buildings/tower",
+    "sprite_walk_height": 25.221374
   },
   "gate": {
     "name": "Tor",
@@ -380,6 +388,8 @@
     "hotkey": "Y",
     "category": "military",
     "color": "#857a68",
-    "height": 28
+    "height": 28,
+    "sprite": "buildings/gate",
+    "sprite_walk_height": 25.221374
   }
 }

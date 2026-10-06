@@ -62,6 +62,10 @@ var _bounds := Rect2()
 ## Bild und Schatten, wenn der Typ ein Sprite hat; sonst null.
 var _sprite: Sprite2D
 var _shadow: Sprite2D
+var _wall_parts: Array[Sprite2D] = []
+var _wall_shadows: Array[Sprite2D] = []
+var _world: GameWorld
+var _shadows_layer: Node2D
 var _flame: Sprite2D
 var _clock: GameClock
 var _definition: Dictionary
@@ -69,9 +73,11 @@ var _animation_textures: Array[Texture2D] = []
 
 
 ## Zeigt dieses Gebäude; shadows trägt den Schatten, clock steuert seine Animation (ohne: erstes Bild).
-func setup(building: Building, shadows: Node2D = null, clock: GameClock = null) -> void:
+func setup(building: Building, shadows: Node2D = null, clock: GameClock = null, world: GameWorld = null) -> void:
 	set_process(false)
 	_clock = clock
+	_world = world
+	_shadows_layer = shadows
 	_building = building
 	_type = building.type
 	_origin = building.origin
@@ -87,12 +93,14 @@ func setup(building: Building, shadows: Node2D = null, clock: GameClock = null) 
 	for old: Sprite2D in [_sprite, _shadow, _flame]:
 		if is_instance_valid(old):
 			old.queue_free()
+	_clear_wall_parts()
 	_sprite = null
 	_shadow = null
 	_flame = null
 	var variant := BuildingSprites.variant(_origin, int(def.get("sprite_variants", 1)))
 	if ResourceLoader.exists(GameDefs.sprite_path(def, variant)):
 		_show_sprite(def, shadows)
+		_show_wall_parts()
 	elif not _campfire:
 		_outlines.append(_block_outline())
 	_bounds = Rect2(position, Vector2.ZERO)
@@ -108,20 +116,26 @@ func get_sprite() -> Sprite2D:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(_shadow):
-		_shadow.queue_free()
+	if what == NOTIFICATION_PREDELETE:
+		if is_instance_valid(_shadow):
+			_shadow.queue_free()
+		_clear_wall_parts()
 
 
 ## Bild mittig über der Grundfläche, hinter dem Gezeichneten (Lebensbalken); Schatten in shadows.
 func _show_sprite(def: Dictionary, shadows: Node2D) -> void:
 	var center := _footprint_center()
 	var variant := BuildingSprites.variant(_origin, int(def.get("sprite_variants", 1)))
-	_sprite = _make_sprite(GameDefs.sprite_path(def, variant))
+	var path := GameDefs.sprite_path(def, variant)
+	if _world != null:
+		path = WallSprites.paths(def, _origin, WallSprites.neighbors(_world, _origin))[0]
+	_sprite = _make_sprite(path)
 	_sprite.position = center - position
 	_sprite.show_behind_parent = true
 	add_child(_sprite)
-	if shadows != null and ResourceLoader.exists(GameDefs.shadow_path(def, variant)):
-		_shadow = _make_sprite(GameDefs.shadow_path(def, variant))
+	var shadow_path := path.trim_suffix(".png") + "_shadow.png"
+	if shadows != null and ResourceLoader.exists(shadow_path):
+		_shadow = _make_sprite(shadow_path)
 		_shadow.position = center - shadows.global_position
 		shadows.add_child(_shadow)
 	if def.has("sprite_animation"):
@@ -134,7 +148,60 @@ func _show_sprite(def: Dictionary, shadows: Node2D) -> void:
 		set_process(true)
 	if _campfire:
 		return
-	for outline: PackedVector2Array in _sprite_outline(_sprite.texture):
+	_append_outline(_sprite.texture, center)
+
+
+
+## Aktualisiert die Arme nach Bau oder Abriss; Nachbargebäude bleiben dieselben Ansichtsobjekte.
+func refresh_connections() -> void:
+	if bool(_definition.get("sprite_ramp", false)):
+		setup(_building, _shadows_layer, _clock, _world)
+		return
+	if not bool(_definition.get("sprite_connections", false)) or _sprite == null:
+		return
+	_clear_wall_parts()
+	_outlines.clear()
+	_append_outline(_sprite.texture, _footprint_center())
+	_show_wall_parts()
+	_bounds = Rect2(position, Vector2.ZERO)
+	for outline in _outlines:
+		for corner in outline:
+			_bounds = _bounds.expand(corner)
+	queue_redraw()
+
+
+func _clear_wall_parts() -> void:
+	for part: Sprite2D in _wall_parts + _wall_shadows:
+		if is_instance_valid(part):
+			part.queue_free()
+	_wall_parts.clear()
+	_wall_shadows.clear()
+
+
+func _show_wall_parts() -> void:
+	if not bool(_definition.get("sprite_connections", false)) or _world == null:
+		return
+	var paths := WallSprites.paths(_definition, _origin, WallSprites.neighbors(_world, _origin))
+	for index in range(1, paths.size()):
+		var path := paths[index]
+		if not ResourceLoader.exists(path):
+			continue
+		var part := _make_sprite(path)
+		part.position = _sprite.position
+		part.show_behind_parent = true
+		add_child(part)
+		_wall_parts.append(part)
+		_append_outline(part.texture, _footprint_center())
+		var shadow_path := path.trim_suffix(".png") + "_shadow.png"
+		if _shadows_layer != null and ResourceLoader.exists(shadow_path):
+			var shadow := _make_sprite(shadow_path)
+			shadow.position = _footprint_center() - _shadows_layer.global_position
+			_shadows_layer.add_child(shadow)
+			_wall_shadows.append(shadow)
+
+
+func _append_outline(texture: Texture2D, center: Vector2) -> void:
+	for outline: PackedVector2Array in _sprite_outline(texture):
 		var placed := PackedVector2Array()
 		for point in outline:
 			placed.append(point + center)
