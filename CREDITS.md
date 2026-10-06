@@ -67,3 +67,7 @@ Die Sprites unter `assets/sprites/` rendert `tools/render.sh` selbst aus diesen 
 - Quelle: https://kaylousberg.itch.io/kaykit-adventurers
 - Lizenz: CC0, beigefügt als `tools/render/models/kaykit-adventurers/LICENSE.txt`
 - Umfärbung auf die gemeinsame Palette und Renderrezept: Burgwacht.
+- Die Bewohner-Stilrevision verkleinert den Kopf um seinen animierten Halsansatz (Faktor 0,42),
+  verschmälert die Figur (0,82) und verlängert Beine (1,85) sowie Rumpf (1,12).
+  Die Werte stehen im Rezept; die ausgewertete CC0-Geometrie wird für jedes Einzelbild umgeformt.
+  Leinentunika, braunes Haar und Lederteile verwenden die bestehende Palette, ohne neue Modellquelle.
