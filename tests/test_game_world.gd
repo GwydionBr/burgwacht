@@ -90,3 +90,23 @@ func test_deposit_removed_is_reported_by_world() -> void:
 	var tile: Vector2i = world.map.deposits.keys()[0]
 	world.map.remove_deposit(tile)
 	assert_eq(removed, [tile] as Array[Vector2i], "Entfernte Vorkommen:")
+
+
+## Die Wegfindung merkt sich die Begehbarkeit; neue und entfernte Vorkommen und Gebäude gelten
+## trotzdem sofort.
+func test_paths_see_changed_deposits_and_buildings_at_once() -> void:
+	var world := empty_world()
+	var start := Figure.ground(Vector2i(2, 5))
+	var goal := Figure.ground(Vector2i(8, 5))
+	var middle := Vector2i(5, 5)
+	var walker := GameWorld.Walker.GROUND_ONLY
+	assert_true(world._find_path(start, goal, walker).has(Figure.ground(middle)), "Gerade hindurch")
+	var rng := RandomNumberGenerator.new()
+	world.map.add_deposit(middle, Deposit.create("tree", rng))
+	assert_true(not world._find_path(start, goal, walker).has(Figure.ground(middle)), "Um den neuen Baum herum")
+	assert_true(not world._distances(start, walker).has(Figure.ground(middle)), "Auch in den Weglängen")
+	world.map.remove_deposit(middle)
+	assert_true(world._find_path(start, goal, walker).has(Figure.ground(middle)), "Baum fort: wieder gerade")
+	assert_true(world._distances(start, walker).has(Figure.ground(middle)), "Auch in den Weglängen wieder")
+	world._add_building("wall", middle)
+	assert_true(not world._find_path(start, goal, walker).has(Figure.ground(middle)), "Um die neue Mauer herum")

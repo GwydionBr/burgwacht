@@ -56,7 +56,8 @@ func empty_world(scenario_id := "tiny") -> GameWorld:
 
 ## Räumt die Karte einer Welt in Gründung leer: nur Wiese, keine Vorkommen.
 func clear_map(world: GameWorld) -> GameWorld:
-	world.map.deposits.clear()
+	for tile: Vector2i in world.map.deposits.keys():
+		world.map.remove_deposit(tile)
 	for y in world.map.height:
 		for x in world.map.width:
 			world.map.set_terrain(Vector2i(x, y), "grass")

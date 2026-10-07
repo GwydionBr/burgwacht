@@ -7,6 +7,8 @@ signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
 ## Die Menge eines Vorkommens hat sich geändert.
 signal deposit_changed(tile: Vector2i)
+## Das Gelände einer Kachel hat sich geändert (Begehbarkeit kann sich damit ändern).
+signal terrain_changed(tile: Vector2i)
 
 var width: int
 var height: int
@@ -41,7 +43,11 @@ func get_terrain(tile: Vector2i) -> String:
 
 
 func set_terrain(tile: Vector2i, terrain_id: String) -> void:
-	_terrain[tile.y * width + tile.x] = terrain_id
+	var index := tile.y * width + tile.x
+	if _terrain[index] == terrain_id:
+		return
+	_terrain[index] = terrain_id
+	terrain_changed.emit(tile)
 
 
 func get_deposit(tile: Vector2i) -> Deposit:
