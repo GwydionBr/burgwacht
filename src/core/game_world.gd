@@ -1366,7 +1366,7 @@ func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
 	var is_edge := func(position: Vector3i) -> bool: return map.is_edge(Vector2i(position.x, position.y))
-	# Zum Rand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
+	# Zum Kartenrand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
 	var to_edge := func(position: Vector3i) -> float:
 		return float(mini(mini(position.x, position.y), mini(map.width - 1 - position.x, map.height - 1 - position.y)))
 	var distances := _nearest(start, Walker.GROUND_ONLY, is_edge, to_edge)
@@ -1933,6 +1933,8 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 			_is_steppable)
 	if _distance_cache.size() >= MAX_CACHED_DISTANCES:
 		_distance_cache.clear()
+	# Mehrere Aufrufer teilen sich das Ergebnis: Niemand darf es ändern.
+	result.make_read_only()
 	_distance_cache[key] = result
 	return result
 

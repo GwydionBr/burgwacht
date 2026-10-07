@@ -54,7 +54,7 @@ static func find_path_to_any(start: Vector3i, is_goal: Callable, walkable: Calla
 			steppable, extra_cost)
 
 
-## Setzt die Zähler von path_calls / distance_calls zurück.
+## Setzt die Zähler und Dauern (path_calls, distance_calls, path_us, distance_us) zurück.
 static func reset_profile() -> void:
 	path_calls = 0
 	distance_calls = 0
@@ -174,9 +174,10 @@ static func _nearest_uncounted(start: Vector3i, is_goal: Callable, walkable: Cal
 	var closed: Dictionary[Vector3i, bool] = {}
 	var next_positions: Array[Vector3i] = []
 	var no_extra := Callable()
+	var rest_of := estimate if estimate.is_valid() else func(_position: Vector3i) -> float: return 0.0
 	var limit := INF
 	var open := _Heap.new()
-	var start_rest: float = estimate.call(start) if estimate.is_valid() else 0.0
+	var start_rest: float = rest_of.call(start)
 	open.push(start_rest, start_rest, start)
 	while not open.is_empty():
 		var current := open.pop()
@@ -184,7 +185,7 @@ static func _nearest_uncounted(start: Vector3i, is_goal: Callable, walkable: Cal
 			continue
 		closed[current] = true
 		var current_cost: float = cost_so_far[current]
-		var current_rest: float = estimate.call(current) if estimate.is_valid() else 0.0
+		var current_rest: float = rest_of.call(current)
 		# Alles Weitere ist länger als das nächste Ziel (Schranke steigt nie ab).
 		if current_cost + current_rest > limit:
 			break
@@ -200,7 +201,7 @@ static func _nearest_uncounted(start: Vector3i, is_goal: Callable, walkable: Cal
 			if cost > limit or cost_so_far.get(next, INF) <= cost:
 				continue
 			cost_so_far[next] = cost
-			var rest: float = estimate.call(next) if estimate.is_valid() else 0.0
+			var rest: float = rest_of.call(next)
 			open.push(cost + rest, rest, next)
 	return goals
 

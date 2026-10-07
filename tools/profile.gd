@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless-Messung: wächst Taktzeit, Speicher oder die Node-Zahl mit der Spieldauer?
+## Headless-Messung: wächst Taktzeit, Arbeitsspeicher oder die Node-Zahl mit der Spieldauer?
 ## Aufruf: tools/profile.sh [Tage]
 ## Unterscheidet Leak (gleicher Weltumfang, mehr Kosten) von wachsender Simulation.
 
@@ -95,7 +95,7 @@ func _start_view(days: int) -> void:
 class ViewSampler:
 	extends Node
 
-	var days := 12
+	var days := DEFAULT_DAYS
 	var _scene: MatchScene
 	var _clock: GameClock
 	var _phase := 0
