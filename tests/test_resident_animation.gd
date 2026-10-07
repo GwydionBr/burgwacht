@@ -10,7 +10,7 @@ func test_worker_faces_deposit_and_chooses_its_work_animation() -> void:
 	resident.task = Resident.Task.MINING
 	var deposit := Deposit.new()
 	deposit.type = "tree"
-	world.map.deposits[resident.deposit_tile] = deposit
+	world.map.add_deposit(resident.deposit_tile, deposit)
 	assert_eq(ResidentAnimation.work_animation(resident, world), "axe", "Baum bearbeiten:")
 	assert_eq(ResidentAnimation.work_direction(resident, 0), 3, "Zum Vorkommen:")
 	deposit.type = "stone"

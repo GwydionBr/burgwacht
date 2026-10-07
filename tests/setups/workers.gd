@@ -18,7 +18,7 @@ static func create() -> GameWorld:
 		var deposit := Deposit.new()
 		deposit.type = "tree" if index == 0 else "stone"
 		deposit.amount = 100
-		world.map.deposits[resident.deposit_tile] = deposit
+		world.map.add_deposit(resident.deposit_tile, deposit)
 		residents.append(resident.to_data())
 	var data := world.to_data()
 	data["residents"] = residents

@@ -278,3 +278,44 @@ func test_path_to_any_goal_takes_the_cheapest_one() -> void:
 	assert_eq(Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), none, _walkable).size(), 0, "Kein Ziel:")
 	assert_eq(Pathfinder.find_path_to_any(Vector3i(6, 3, GROUND), is_goal, _walkable), [Vector3i(6, 3, GROUND)] as Array[Vector3i],
 			"Schon am Ziel:")
+
+
+func _nearest(from: Vector2i, is_goal: Callable, estimate := Callable()) -> Dictionary[Vector3i, float]:
+	return Pathfinder.nearest(Vector3i(from.x, from.y, GROUND), is_goal, _walkable, Callable(), Callable(), estimate)
+
+
+func test_nearest_gives_only_the_closest_goal() -> void:
+	# Ziele sind die Spalten x = 0 und x = 6; von (2, 3) ist links näher.
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 0 or position.x == 6
+	var found := _nearest(Vector2i(2, 3), is_goal)
+	assert_eq(found.keys(), [Vector3i(0, 3, GROUND)], "Nur das nächste Ziel:")
+	assert_eq(found[Vector3i(0, 3, GROUND)], 2.0, "Seine Weglänge:")
+
+
+func test_nearest_gives_all_equally_close_goals() -> void:
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 0 or position.x == 6
+	var found := _nearest(Vector2i(3, 3), is_goal)
+	assert_eq(found.size(), 2, "Links und rechts gleich weit: %s" % str(found))
+	assert_true(found.has(Vector3i(0, 3, GROUND)) and found.has(Vector3i(6, 3, GROUND)), "Beide Ziele")
+
+
+func test_nearest_matches_distances_around_obstacles() -> void:
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4)])
+	var goal := Vector3i(5, 1, GROUND)
+	var is_goal := func(position: Vector3i) -> bool: return position == goal
+	var found := _nearest(Vector2i(1, 1), is_goal, Pathfinder.free_length.bind(goal))
+	assert_true(Pathfinder.same_length(found[goal], _distances(Vector2i(1, 1))[goal]),
+			"Mit Schätzung wie distances(): %s" % str(found))
+
+
+func test_nearest_is_empty_without_reachable_goal() -> void:
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4), Vector2i(3, 5),
+			Vector2i(3, 6), Vector2i(3, 7), Vector2i(3, 8), Vector2i(3, 9)])
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 6
+	assert_eq(_nearest(Vector2i(1, 1), is_goal).size(), 0, "Hinter der Mauer:")
+
+
+func test_nearest_counts_the_start_as_goal() -> void:
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 2
+	assert_eq(_nearest(Vector2i(2, 3), is_goal), {Vector3i(2, 3, GROUND): 0.0} as Dictionary[Vector3i, float],
+			"Schon am Ziel:")

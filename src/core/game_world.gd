@@ -115,6 +115,11 @@ const GOLD := "gold"
 ## den Wehrgang, den sie über Treppen und Turmeingänge erreichen. Feinde nehmen Treppen, aber
 ## betreten am Boden keine Kachel mit Wehrgang darüber – weder Tor noch Turmeingang.
 enum Walker { GROUND_ONLY, SOLDIER, ENEMY }
+## Einträge in _stand_cache (0: noch nicht geprüft).
+const CACHED_YES := 1
+const CACHED_NO := 2
+## Höchstens so viele gemerkte Weglängen, danach fängt der Zwischenspeicher neu an.
+const MAX_CACHED_DISTANCES := 64
 
 var map: MapData
 
@@ -134,6 +139,10 @@ var _next_building_id := 1
 var _occupied: Dictionary[Vector2i, int] = {}
 ## Abgeleitet: Kacheln vor einem Eingang → Gebäude-ID.
 var _entrance_fronts: Dictionary[Vector2i, int] = {}
+## Weglängen, solange sich die Begehbarkeit nicht ändert (Bau, Abriss, Vorkommen, Gelände).
+var _distance_cache: Dictionary[String, Dictionary] = {}
+## Ebenso _can_stand() je Walker und Position; die Wegfindung fragt jede Position viele Male.
+var _stand_cache := PackedByteArray()
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
@@ -1356,11 +1365,13 @@ func _send_newcomer(newcomer: Resident) -> void:
 func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
-	var distances := _distances(start, Walker.GROUND_ONLY)
+	var is_edge := func(position: Vector3i) -> bool: return map.is_edge(Vector2i(position.x, position.y))
+	# Zum Kartenrand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
+	var to_edge := func(position: Vector3i) -> float:
+		return float(mini(mini(position.x, position.y), mini(map.width - 1 - position.x, map.height - 1 - position.y)))
+	var distances := _nearest(start, Walker.GROUND_ONLY, is_edge, to_edge)
 	for position: Vector3i in distances:
 		var tile := Vector2i(position.x, position.y)
-		if not map.is_edge(tile):
-			continue
 		var length := distances[position]
 		var better := length < best_length and not Pathfinder.same_length(length, best_length)
 		if not better and Pathfinder.same_length(length, best_length):
@@ -1705,12 +1716,26 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 ## das accept (Lager → bool) gilt; bei gleicher Länge das mit der kleineren ID. null, wenn
 ## es keins gibt.
 func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Building:
-	var distances := _distances(resident.plan_start(), Walker.GROUND_ONLY)
+	var candidates: Array[Building] = []
+	var entrances: Dictionary[Vector3i, bool] = {}
+	for storage in _storages(_storage_type_of(good)):
+		if accept.call(storage):
+			candidates.append(storage)
+			entrances[Figure.ground(storage.entrance())] = true
+	if candidates.is_empty():
+		return null
+	var to_nearest := func(position: Vector3i) -> float:
+		var shortest := INF
+		for entrance: Vector3i in entrances:
+			shortest = minf(shortest, Pathfinder.free_length(position, entrance))
+		return shortest
+	var distances := _nearest(resident.plan_start(), Walker.GROUND_ONLY,
+			func(position: Vector3i) -> bool: return entrances.has(position), to_nearest)
 	var best: Building = null
 	var best_length := INF
-	for storage in _storages(_storage_type_of(good)):
+	for storage in candidates:
 		var entrance := Figure.ground(storage.entrance())
-		if not distances.has(entrance) or not accept.call(storage):
+		if not distances.has(entrance):
 			continue
 		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
 		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
@@ -1869,6 +1894,17 @@ static func _walker_of(figure: Figure) -> Walker:
 ## Darf walker auf dieser Position stehen? Bewohner nur am Boden, Soldaten auch auf dem Wehrgang,
 ## Feinde ebenso, aber am Boden nicht unter einem Wehrgang (Tor, Turmeingang).
 func _can_stand(position: Vector3i, walker: Walker) -> bool:
+	if not map.in_bounds(Vector2i(position.x, position.y)) or position.z < 0 or position.z > Figure.Level.WALL_WALK:
+		return false
+	var index := ((walker * (Figure.Level.WALL_WALK + 1) + position.z) * map.height + position.y) * map.width \
+			+ position.x
+	if _stand_cache[index] == 0:
+		_stand_cache[index] = CACHED_YES if _can_stand_uncached(position, walker) else CACHED_NO
+	return _stand_cache[index] == CACHED_YES
+
+
+## _can_stand() ohne Zwischenspeicher.
+func _can_stand_uncached(position: Vector3i, walker: Walker) -> bool:
 	if not _is_walkable_position(position):
 		return false
 	match walker:
@@ -1887,8 +1923,33 @@ func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector
 
 
 ## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
+## Gleiche Frage bei unveränderter Begehbarkeit kommt aus dem Zwischenspeicher.
 func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionary[Vector3i, float]:
-	return Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker), _is_steppable)
+	var key := "%d:%d:%d:%d:%s" % [walker, start.x, start.y, start.z,
+			"inf" if is_inf(max_length) else "%.4f" % max_length]
+	if _distance_cache.has(key):
+		return _distance_cache[key]
+	var result := Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker),
+			_is_steppable)
+	if _distance_cache.size() >= MAX_CACHED_DISTANCES:
+		_distance_cache.clear()
+	# Mehrere Aufrufer teilen sich das Ergebnis: Niemand darf es ändern.
+	result.make_read_only()
+	_distance_cache[key] = result
+	return result
+
+
+## Weglängen für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest()).
+func _nearest(start: Vector3i, walker: Walker, is_goal: Callable, estimate: Callable) -> Dictionary[Vector3i, float]:
+	return Pathfinder.nearest(start, is_goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable,
+			estimate)
+
+
+## Die Begehbarkeit hat sich geändert: gemerkte Weglängen gelten nicht mehr.
+func _forget_paths(_tile: Vector2i = Vector2i.ZERO) -> void:
+	_distance_cache.clear()
+	_stand_cache.resize(Walker.size() * (Figure.Level.WALL_WALK + 1) * map.width * map.height)
+	_stand_cache.fill(0)
 
 
 ## Die Ebenenwechsel für walker: Bewohner wechseln die Ebene nie. Turmeingänge kann ein Feind
@@ -2352,6 +2413,7 @@ func _add_building(type_id: String, origin: Vector2i) -> Building:
 	_next_building_id += 1
 	_buildings[building.id] = building
 	_index_building(building)
+	_forget_paths()
 	building_added.emit(building.id)
 	return building
 
@@ -2361,6 +2423,7 @@ func _rebuild_index() -> void:
 	_entrance_fronts.clear()
 	for building: Building in _buildings.values():
 		_index_building(building)
+	_forget_paths()
 
 
 func _index_building(building: Building) -> void:
@@ -2509,9 +2572,13 @@ func _storages(storage_type: String) -> Array[Building]:
 
 func _set_map(new_map: MapData) -> void:
 	map = new_map
+	_forget_paths()
 	map.deposit_added.connect(deposit_added.emit)
+	map.deposit_added.connect(_forget_paths)
 	map.deposit_removed.connect(deposit_removed.emit)
+	map.deposit_removed.connect(_forget_paths)
 	map.deposit_changed.connect(deposit_changed.emit)
+	map.terrain_changed.connect(_forget_paths)
 
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume, Wild) breiten sich in ihrem Rhythmus aus:
