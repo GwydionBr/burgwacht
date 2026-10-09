@@ -393,3 +393,23 @@ func test_reach_in_stages_gives_the_same_result() -> void:
 		for x in SIZE.x:
 			var position := Vector3i(x, y, GROUND)
 			assert_eq(staged.has(position), whole.has(position), "Erreichbar %s:" % str(position))
+
+
+func test_costly_only_asks_extra_cost_where_it_can_cost() -> void:
+	# Mauer mit Lücke, zwei Kacheln teuer, eine davon schräg neben dem Weg (Eckregel).
+	_costly_wall(2.0)
+	_set_cost(Vector2i(5, 2), 1.0)
+	var asked: Dictionary[Vector2i, bool] = {}
+	var counting := func(from: Vector3i, to: Vector3i) -> float:
+		asked[Vector2i(to.x, to.y)] = true
+		return _extra_cost(from, to)
+	var costly := func(position: Vector3i) -> bool: return _costs.has(Vector2i(position.x, position.y))
+	var graph := Pathfinder.Graph.new(Vector3i(SIZE.x, SIZE.y, 1), _walkable_or_costly, Callable(), Callable(), costly)
+	var start := Vector3i(1, 1, GROUND)
+	var goal := Vector3i(7, 3, GROUND)
+	assert_eq(Pathfinder.find_path(start, goal, graph, counting), _costly_path(Vector2i(1, 1), Vector2i(7, 3)),
+			"Derselbe Weg wie ohne costly:")
+	assert_eq(Pathfinder.distances(start, graph, INF, counting), _costly_distances(Vector2i(1, 1)),
+			"Dieselben Weglängen:")
+	for tile in asked:
+		assert_true(_costs.has(tile), "Nur nach teuren Kacheln gefragt, nicht nach %s" % str(tile))

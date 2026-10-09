@@ -339,7 +339,7 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 ## Begehbar für die Wegplanung der Feinde: wo ein Feind stehen darf oder ein Hindernis steht
 ## (_obstacle_at()). Wie die Ebenenwechsel und Schritte unten unabhängig von Feindtyp und
 ## Lebenspunkten, deshalb teilen sich alle Feinde einen Graph (GameWorld._enemy_plan_graph());
-## nur die Zusatzkosten kommen je Feind von _EnemyMap.
+## nur die Zusatzkosten kommen je Feind von _EnemyMap, und nur auf Hindernissen (costly).
 func plan_passable(position: Vector3i) -> bool:
 	return _world._can_stand(position, GameWorld.Walker.ENEMY) or _obstacle_at(position) != null
 

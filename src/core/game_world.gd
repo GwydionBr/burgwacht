@@ -1987,7 +1987,7 @@ func _graph(walker: Walker) -> Pathfinder.Graph:
 func _enemy_plan_graph() -> Pathfinder.Graph:
 	if _enemy_graph == null:
 		_enemy_graph = Pathfinder.Graph.new(_grid_size(), _enemy_plan_passable, _enemy_plan_ascents,
-				_enemy_plan_steppable)
+				_enemy_plan_steppable, _enemy_plan_costly)
 	return _enemy_graph
 
 
@@ -2001,6 +2001,10 @@ func _enemy_plan_ascents(position: Vector3i) -> Array[Vector3i]:
 
 func _enemy_plan_steppable(from: Vector3i, to: Vector3i) -> bool:
 	return _combat().plan_steppable(from, to)
+
+
+func _enemy_plan_costly(position: Vector3i) -> bool:
+	return _combat()._obstacle_at(position) != null
 
 
 ## Rechnet im Voraus, was die Wegfindung später braucht, bis Time.get_ticks_usec() deadline

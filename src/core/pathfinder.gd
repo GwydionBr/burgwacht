@@ -105,7 +105,7 @@ static func _search_uncounted(start: Vector3i, is_goal: Callable, estimate: Call
 			if closed[next] != 0:
 				continue
 			var cost := current_cost + (DIAGONAL_COST if code & 1 else 1.0)
-			if with_extra:
+			if with_extra and graph.is_costly(next):
 				cost += extra_cost.call(current_position, graph.position_of(next))
 			if cost_so_far[next] <= cost:
 				continue
@@ -178,7 +178,7 @@ static func _distances_uncounted(start: Vector3i, graph: Graph, max_length: floa
 		for code: int in graph.steps_of(current, extra_cost):
 			var next := code >> 1
 			var cost := current_cost + (DIAGONAL_COST if code & 1 else 1.0)
-			if with_extra:
+			if with_extra and graph.is_costly(next):
 				cost += extra_cost.call(current_position, graph.position_of(next))
 			if done[next] != 0 or cost > limit or cost_so_far[next] <= cost:
 				continue
@@ -311,6 +311,8 @@ static func path_length(path: Array[Vector3i]) -> float:
 ## einer Position aus mit einem geraden Schritt erreicht (leer gelassen: keine).
 ## steppable(Vector3i, Vector3i) -> bool sagt, ob man von einer begehbaren Position auf eine
 ## benachbarte treten darf (leer gelassen: immer), z. B. einen Eingang nur von vorn.
+## costly(Vector3i) -> bool sagt, ob das Betreten einer begehbaren Position überhaupt etwas extra
+## kosten kann (leer gelassen: überall); nur dorthin fragt die Suche extra_cost.
 ## Merkt sich Begehbarkeit und erlaubte Schritte je Position; die Callables müssen also dieselben
 ## Antworten geben, bis der Aufrufer die betroffenen Kacheln mit forget() meldet.
 class Graph:
@@ -319,11 +321,14 @@ class Graph:
 	## Einträge in _walkable_cache (0: noch nicht gefragt).
 	const CACHED_WALKABLE := 1
 	const CACHED_BLOCKED := 2
+	## Begehbar, und das Betreten kann extra kosten (costly).
+	const CACHED_COSTLY := 3
 
 	var size: Vector3i
 	var _walkable: Callable
 	var _ascents: Callable
 	var _steppable: Callable
+	var _costly: Callable
 	var _walkable_cache := PackedByteArray()
 	## Je Index die erlaubten Schritte ohne Zusatzkosten (steps_of()); leer, solange nicht berechnet.
 	var _steps: Array[PackedInt32Array] = []
@@ -333,11 +338,13 @@ class Graph:
 	## Indizes, deren Schritte forget() vergessen hat, nachdem warm() an ihnen vorbei war.
 	var _forgotten := PackedInt32Array()
 
-	func _init(grid_size: Vector3i, walkable: Callable, ascents := Callable(), steppable := Callable()) -> void:
+	func _init(grid_size: Vector3i, walkable: Callable, ascents := Callable(), steppable := Callable(),
+			costly := Callable()) -> void:
 		size = grid_size
 		_walkable = walkable
 		_ascents = ascents
 		_steppable = steppable
+		_costly = costly
 		var count := size.x * size.y * size.z
 		_walkable_cache.resize(count)
 		_steps.resize(count)
@@ -425,11 +432,18 @@ class Graph:
 			if code & 1:
 				# Am Boden sind beide Kacheln neben einem erlaubten schrägen Schritt begehbar.
 				var corner := position_of(code >> 1)
-				if extra_cost.call(position, Vector3i(corner.x, position.y, position.z)) > 0.0 \
-						or extra_cost.call(position, Vector3i(position.x, corner.y, position.z)) > 0.0:
+				if _costs_extra(position, Vector3i(corner.x, position.y, position.z), extra_cost) \
+						or _costs_extra(position, Vector3i(position.x, corner.y, position.z), extra_cost):
 					continue
 			result.append(code)
 		return result
+
+	## Kann das Betreten der begehbaren Position mit diesem index etwas extra kosten (costly)?
+	func is_costly(index: int) -> bool:
+		return _walkable_cache[index] == CACHED_COSTLY
+
+	func _costs_extra(from: Vector3i, to: Vector3i, extra_cost: Callable) -> bool:
+		return is_costly(index_of(to)) and extra_cost.call(from, to) > 0.0
 
 	## Berechnet die erlaubten Schritte von index aus und merkt sie sich.
 	func _compute_steps(index: int) -> void:
@@ -474,9 +488,12 @@ class Graph:
 		var index := (z * size.y + y) * size.x + x
 		var open := _walkable_cache[index]
 		if open == 0:
-			open = CACHED_WALKABLE if _walkable.call(Vector3i(x, y, z)) else CACHED_BLOCKED
+			var position := Vector3i(x, y, z)
+			open = CACHED_BLOCKED
+			if _walkable.call(position):
+				open = CACHED_COSTLY if not _costly.is_valid() or _costly.call(position) else CACHED_WALKABLE
 			_walkable_cache[index] = open
-		return open == CACHED_WALKABLE
+		return open != CACHED_BLOCKED
 
 
 ## Welche Positionen man von einer der starts aus erreicht: Breitensuche mit den gleichen
