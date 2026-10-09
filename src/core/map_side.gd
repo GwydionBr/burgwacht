@@ -42,11 +42,16 @@ static func is_on(map: MapData, side: String, tile: Vector2i) -> bool:
 	return map.in_bounds(tile) and not map.in_bounds(tile + outward(side))
 
 
-## Die Randkacheln der Seite, zeilenweise.
+## Die Randkacheln der Seite, zeilenweise: eine Zeile oder Spalte, ohne die Karte abzusuchen.
 static func tiles(map: MapData, side: String) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for y in map.height:
+	var out := outward(side)
+	if out.y != 0:
+		var y := 0 if out.y < 0 else map.height - 1
 		for x in map.width:
-			if is_on(map, side, Vector2i(x, y)):
-				result.append(Vector2i(x, y))
+			result.append(Vector2i(x, y))
+	else:
+		var x := 0 if out.x < 0 else map.width - 1
+		for y in map.height:
+			result.append(Vector2i(x, y))
 	return result

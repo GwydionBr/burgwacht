@@ -143,6 +143,14 @@ var _entrance_fronts: Dictionary[Vector2i, int] = {}
 var _distance_cache: Dictionary[String, Dictionary] = {}
 ## Ebenso _can_stand() je Walker und Position; die Wegfindung fragt jede Position viele Male.
 var _stand_cache := PackedByteArray()
+## Ebenso die erlaubten Schritte je Walker (Index), angelegt bei der ersten Suche (_graph()).
+var _graphs: Array[Pathfinder.Graph] = []
+## Ebenso der Graph für die Wegplanung der Feinde (_enemy_plan_graph()) und der für offenes
+## Gelände (_open_ground()).
+var _enemy_graph: Pathfinder.Graph
+var _open_ground_graph: Pathfinder.Graph
+## Ebenso die Suche für Combat.reaches_keep() (_keep_reach()); null, wenn noch nicht begonnen.
+var _keep_reach_search: Pathfinder.Reach
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
@@ -1333,8 +1341,9 @@ func _start_leaving(resident: Resident) -> void:
 ## Schickt einen Gehenden zur nach Weglänge nächsten erreichbaren Randkachel; steht er schon
 ## dort oder ist keine erreichbar, ist er sofort fort.
 func _send_to_edge(resident: Resident) -> void:
-	var edge := _nearest_edge(resident.plan_start())
-	if edge.is_empty() or not _route_to(resident, Figure.ground(edge[0])) or not resident.is_moving():
+	var route: Array[Vector3i] = []
+	var edge := _nearest_edge(resident.plan_start(), route, _walker_of(resident))
+	if edge.is_empty() or not _follow(resident, route) or not resident.is_moving():
 		_remove_resident(resident)
 
 
@@ -1361,24 +1370,27 @@ func _send_newcomer(newcomer: Resident) -> void:
 
 
 ## Die begehbare Randkachel mit dem kürzesten Weg von start als [Kachel]; bei gleicher Länge
-## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist.
-func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
+## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist. route bekommt den Weg dorthin
+## für walker.
+func _nearest_edge(start: Vector3i, route: Array[Vector3i] = [], walker := Walker.GROUND_ONLY) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
 	var is_edge := func(position: Vector3i) -> bool: return map.is_edge(Vector2i(position.x, position.y))
 	# Zum Kartenrand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
 	var to_edge := func(position: Vector3i) -> float:
 		return float(mini(mini(position.x, position.y), mini(map.width - 1 - position.x, map.height - 1 - position.y)))
-	var distances := _nearest(start, Walker.GROUND_ONLY, is_edge, to_edge)
-	for position: Vector3i in distances:
+	var paths := _nearest_paths(start, walker, is_edge, to_edge)
+	for position: Vector3i in paths:
 		var tile := Vector2i(position.x, position.y)
-		var length := distances[position]
+		var path := _route_in(paths, position)
+		var length := Pathfinder.path_length(path)
 		var better := length < best_length and not Pathfinder.same_length(length, best_length)
 		if not better and Pathfinder.same_length(length, best_length):
 			better = _row_order(tile, best[0])
 		if better:
 			best = [tile]
 			best_length = length
+			route.assign(path)
 	return best
 
 
@@ -1625,9 +1637,14 @@ func _has_deposit_for(tile: Vector2i, workplace: Building) -> bool:
 ## an; gibt es keinen Weg, bleibt er stehen und versucht es nach der Wartezeit erneut
 ## (_work() → _resume()).
 func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
+	_go_along(resident, _find_path(resident.plan_start(), Figure.ground(tile), _walker_of(resident)), task)
+
+
+## Wie _go(), aber auf einem schon geplanten Weg ab plan_start() (leer: keiner).
+func _go_along(resident: Resident, path: Array[Vector3i], task: Resident.Task) -> void:
 	resident.task = task
 	resident.timer = 0
-	if not _route_to(resident, Figure.ground(tile)):
+	if not _follow(resident, path):
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 	elif not resident.is_moving():
@@ -1697,8 +1714,9 @@ func _is_reserved(tile: Vector2i, resident: Resident) -> bool:
 ## der Arbeitsstätte und versucht es nach der Wartezeit erneut. Erreicht er sie nicht, wartet
 ## er mit der Ware, wo er ist, und sucht danach erneut ein Lager.
 func _seek_storage(resident: Resident, workplace: Building) -> void:
+	var route: Array[Vector3i] = []
 	var best := _nearest_storage(resident, resident.carried_good, func(storage: Building) -> bool:
-		return storage.stored() < storage.capacity())
+		return storage.stored() < storage.capacity(), route)
 	if best == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_STORAGE)
 		if resident.timer > 0:
@@ -1709,13 +1727,14 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.storage_id = best.id
-	_go(resident, best.entrance(), Resident.Task.TO_STORAGE)
+	_go_along(resident, route, Resident.Task.TO_STORAGE)
 
 
 ## Das nach Weglänge vom Bewohner aus nächste erreichbare Lager der Lagerart von good, für
 ## das accept (Lager → bool) gilt; bei gleicher Länge das mit der kleineren ID. null, wenn
-## es keins gibt.
-func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Building:
+## es keins gibt. route bekommt den Weg zu seinem Eingang ab plan_start() (für _go_along()).
+func _nearest_storage(resident: Resident, good: String, accept: Callable,
+		route: Array[Vector3i] = []) -> Building:
 	var candidates: Array[Building] = []
 	var entrances: Dictionary[Vector3i, bool] = {}
 	for storage in _storages(_storage_type_of(good)):
@@ -1729,18 +1748,21 @@ func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Bui
 		for entrance: Vector3i in entrances:
 			shortest = minf(shortest, Pathfinder.free_length(position, entrance))
 		return shortest
-	var distances := _nearest(resident.plan_start(), Walker.GROUND_ONLY,
+	var paths := _nearest_paths(resident.plan_start(), Walker.GROUND_ONLY,
 			func(position: Vector3i) -> bool: return entrances.has(position), to_nearest)
 	var best: Building = null
 	var best_length := INF
 	for storage in candidates:
 		var entrance := Figure.ground(storage.entrance())
-		if not distances.has(entrance):
+		if not paths.has(entrance):
 			continue
+		var path := _route_in(paths, entrance)
+		var length := Pathfinder.path_length(path)
 		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
-		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
+		if length < best_length and not Pathfinder.same_length(length, best_length):
 			best = storage
-			best_length = distances[entrance]
+			best_length = length
+			route.assign(path)
 	return best
 
 
@@ -1768,9 +1790,10 @@ func _seek_input(resident: Resident, workplace: Building, at_workplace: bool) ->
 		_go(resident, workplace.entrance(), Resident.Task.RETURNING)
 		return
 	var found: Building = null
+	var route: Array[Vector3i] = []
 	if not at_workplace or get_stock(good) >= missing:
 		found = _nearest_storage(resident, good, func(storage: Building) -> bool:
-			return storage.contents.get(good, 0) > 0)
+			return storage.contents.get(good, 0) > 0, route)
 	if found == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_INPUT)
 		if resident.timer > 0:
@@ -1780,7 +1803,7 @@ func _seek_input(resident: Resident, workplace: Building, at_workplace: bool) ->
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.storage_id = found.id
-	_go(resident, found.entrance(), Resident.Task.FETCHING)
+	_go_along(resident, route, Resident.Task.FETCHING)
 
 
 ## Wie viel Eingangsware dem Arbeiter eines Herstellungsbetriebs noch für einen Arbeitsgang fehlt.
@@ -1896,11 +1919,15 @@ static func _walker_of(figure: Figure) -> Walker:
 func _can_stand(position: Vector3i, walker: Walker) -> bool:
 	if not map.in_bounds(Vector2i(position.x, position.y)) or position.z < 0 or position.z > Figure.Level.WALL_WALK:
 		return false
-	var index := ((walker * (Figure.Level.WALL_WALK + 1) + position.z) * map.height + position.y) * map.width \
-			+ position.x
+	var index := _stand_index(position, walker)
 	if _stand_cache[index] == 0:
 		_stand_cache[index] = CACHED_YES if _can_stand_uncached(position, walker) else CACHED_NO
 	return _stand_cache[index] == CACHED_YES
+
+
+## Der Eintrag von position und walker in _stand_cache.
+func _stand_index(position: Vector3i, walker: Walker) -> int:
+	return ((walker * (Figure.Level.WALL_WALK + 1) + position.z) * map.height + position.y) * map.width + position.x
 
 
 ## _can_stand() ohne Zwischenspeicher.
@@ -1919,7 +1946,7 @@ func _can_stand_uncached(position: Vector3i, walker: Walker) -> bool:
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten und Feinde nehmen dabei Treppen und
 ## Soldaten Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
-	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable)
+	return Pathfinder.find_path(start, goal, _graph(walker))
 
 
 ## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
@@ -1929,8 +1956,7 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 			"inf" if is_inf(max_length) else "%.4f" % max_length]
 	if _distance_cache.has(key):
 		return _distance_cache[key]
-	var result := Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker),
-			_is_steppable)
+	var result := Pathfinder.distances(start, _graph(walker), max_length)
 	if _distance_cache.size() >= MAX_CACHED_DISTANCES:
 		_distance_cache.clear()
 	# Mehrere Aufrufer teilen sich das Ergebnis: Niemand darf es ändern.
@@ -1939,17 +1965,123 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 	return result
 
 
-## Weglängen für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest()).
-func _nearest(start: Vector3i, walker: Walker, is_goal: Callable, estimate: Callable) -> Dictionary[Vector3i, float]:
-	return Pathfinder.nearest(start, is_goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable,
-			estimate)
+## Wege für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest_paths()).
+func _nearest_paths(start: Vector3i, walker: Walker, is_goal: Callable,
+		estimate: Callable) -> Dictionary[Vector3i, Array]:
+	return Pathfinder.nearest_paths(start, is_goal, _graph(walker), estimate)
 
 
-## Die Begehbarkeit hat sich geändert: gemerkte Weglängen gelten nicht mehr.
-func _forget_paths(_tile: Vector2i = Vector2i.ZERO) -> void:
+## Der Weg zu goal aus dem Ergebnis von _nearest_paths(), typisiert.
+func _route_in(paths: Dictionary[Vector3i, Array], goal: Vector3i) -> Array[Vector3i]:
+	var route: Array[Vector3i] = []
+	route.assign(paths[goal])
+	return route
+
+
+## Der Graph für walker: wo er stehen darf (_can_stand()), seine Ebenenwechsel und die Regel für
+## Eingänge (_is_steppable()). Merkt sich die Schritte, bis sich die Begehbarkeit ändert
+## (_forget_paths(), _forget_tiles()).
+func _graph(walker: Walker) -> Pathfinder.Graph:
+	if _graphs[walker] == null:
+		_graphs[walker] = Pathfinder.Graph.new(_grid_size(), _can_stand.bind(walker), _ascents_for(walker),
+				_is_steppable)
+	return _graphs[walker]
+
+
+## Der Graph für die Wegplanung der Feinde (Combat.plan_passable() und Verwandte); gilt wie
+## _graph(). Die Callables gehen über die Spielwelt, weil Combat für jeden Aufruf neu entsteht.
+func _enemy_plan_graph() -> Pathfinder.Graph:
+	if _enemy_graph == null:
+		_enemy_graph = Pathfinder.Graph.new(_grid_size(), _enemy_plan_passable, _enemy_plan_ascents,
+				_enemy_plan_steppable, _enemy_plan_costly)
+	return _enemy_graph
+
+
+func _enemy_plan_passable(position: Vector3i) -> bool:
+	return _combat().plan_passable(position)
+
+
+func _enemy_plan_ascents(position: Vector3i) -> Array[Vector3i]:
+	return _combat().plan_ascents(position)
+
+
+func _enemy_plan_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _combat().plan_steppable(from, to)
+
+
+func _enemy_plan_costly(position: Vector3i) -> bool:
+	return _combat().plan_costly(position)
+
+
+## Rechnet im Voraus, was die Wegfindung später braucht, bis Time.get_ticks_usec() deadline
+## erreicht – nach den Takten eines Frames (GameClock). Sonst rechnet die erste Suche nach einer
+## Änderung oder einem neuen Spielstand alles selbst und bremst ihren Takt aus, etwa die erste
+## Welle. Ändert am Ablauf nichts (ADR 0001): Die Graphen geben vorgewärmt dieselben Antworten.
+func warm_paths(deadline: int) -> void:
+	# Vor der Gründung gibt es keinen Bergfried, den die Feindplanung kennen muss.
+	if _founding:
+		return
+	for graph: Pathfinder.Graph in [_open_ground(), _enemy_plan_graph(), _graph(Walker.GROUND_ONLY),
+			_graph(Walker.SOLDIER)]:
+		if not graph.warm(deadline):
+			return
+	_keep_reach().advance(deadline)
+
+
+## Was vom Bergfried aus über offenes Gelände erreichbar ist (Combat.reaches_keep()): ab den
+## Kacheln mit gemeinsamer Kante mit seiner Grundfläche. Gilt, bis sich die Begehbarkeit ändert;
+## warm_paths() rechnet vor, wer fragt, rechnet sie zu Ende.
+func _keep_reach() -> Pathfinder.Reach:
+	if _keep_reach_search == null:
+		var keep := _keep()
+		var starts: Array[Vector3i] = []
+		for tile in Building.adjacent_tiles(keep.type, keep.origin):
+			if _is_open_ground(Figure.ground(tile)):
+				starts.append(Figure.ground(tile))
+		_keep_reach_search = Pathfinder.Reach.new(starts, _open_ground())
+	return _keep_reach_search
+
+
+## Der Graph über offenes Gelände (_is_open_ground(), Gebäude außer Acht gelassen); gilt wie _graph().
+func _open_ground() -> Pathfinder.Graph:
+	if _open_ground_graph == null:
+		_open_ground_graph = Pathfinder.Graph.new(_grid_size(), _is_open_ground)
+	return _open_ground_graph
+
+
+## Größe des Rasters für die Wegfindung: Karte mal Ebenen.
+func _grid_size() -> Vector3i:
+	return Vector3i(map.width, map.height, Figure.Level.WALL_WALK + 1)
+
+
+## Die Begehbarkeit hat sich irgendwo geändert: gemerkte Weglängen und Graphen gelten nicht mehr.
+func _forget_paths() -> void:
 	_distance_cache.clear()
 	_stand_cache.resize(Walker.size() * (Figure.Level.WALL_WALK + 1) * map.width * map.height)
 	_stand_cache.fill(0)
+	_graphs.clear()
+	_graphs.resize(Walker.size())
+	_enemy_graph = null
+	_open_ground_graph = null
+	_keep_reach_search = null
+
+
+## Die Begehbarkeit hat sich nur auf diesen Kacheln geändert (Bau, Abriss, Vorkommen, Gelände):
+## Weglängen gelten nicht mehr, die Graphen vergessen nur, was von diesen Kacheln abhängt.
+func _forget_tiles(tiles: Array[Vector2i]) -> void:
+	_distance_cache.clear()
+	_keep_reach_search = null
+	for tile in tiles:
+		for walker: Walker in Walker.values():
+			for level in Figure.Level.WALL_WALK + 1:
+				_stand_cache[_stand_index(Vector3i(tile.x, tile.y, level), walker)] = 0
+	for graph: Pathfinder.Graph in _graphs + [_enemy_graph, _open_ground_graph]:
+		if graph != null:
+			graph.forget(tiles)
+
+
+func _forget_tile(tile: Vector2i) -> void:
+	_forget_tiles([tile])
 
 
 ## Die Ebenenwechsel für walker: Bewohner wechseln die Ebene nie. Turmeingänge kann ein Feind
@@ -1965,6 +2097,9 @@ func _ascents_for(walker: Walker) -> Callable:
 func _ascents(position: Vector3i) -> Array[Vector3i]:
 	var result: Array[Vector3i] = []
 	var tile := Vector2i(position.x, position.y)
+	# Am Boden ohne Gebäude weder Treppe noch Turmeingang (die Wegfindung fragt jede Kachel).
+	if position.z == Figure.Level.GROUND and not _occupied.has(tile):
+		return result
 	var building := get_building_at(tile)
 	if building != null and building.has_ascending_entrance() and building.entrance() == tile:
 		var other_level := Figure.Level.WALL_WALK if position.z == Figure.Level.GROUND else Figure.Level.GROUND
@@ -1983,6 +2118,8 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 ## Turmeingang. Sonst käme man an einem Eingang an der Ecke seitlich vorbei, etwa an einer
 ## schrägen Mauer, die dort ansetzt.
 func _is_steppable(from: Vector3i, to: Vector3i) -> bool:
+	if not _occupied.has(Vector2i(from.x, from.y)) and not _occupied.has(Vector2i(to.x, to.y)):
+		return true
 	return _passes_entrance(from, to) and _passes_entrance(to, from)
 
 
@@ -2155,7 +2292,8 @@ func _remove_building(building: Building, leave_wall_walk: Callable) -> void:
 	var id := building.id
 	_buildings.erase(id)
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
-	_rebuild_index()
+	_reindex_buildings()
+	_forget_tiles(building.tiles())
 	building_removed.emit(id)
 	leave_wall_walk.call()
 	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
@@ -2413,17 +2551,21 @@ func _add_building(type_id: String, origin: Vector2i) -> Building:
 	_next_building_id += 1
 	_buildings[building.id] = building
 	_index_building(building)
-	_forget_paths()
+	_forget_tiles(building.tiles())
 	building_added.emit(building.id)
 	return building
 
 
 func _rebuild_index() -> void:
+	_reindex_buildings()
+	_forget_paths()
+
+
+func _reindex_buildings() -> void:
 	_occupied.clear()
 	_entrance_fronts.clear()
 	for building: Building in _buildings.values():
 		_index_building(building)
-	_forget_paths()
 
 
 func _index_building(building: Building) -> void:
@@ -2573,17 +2715,18 @@ func _set_map(new_map: MapData) -> void:
 	map = new_map
 	_forget_paths()
 	map.deposit_added.connect(deposit_added.emit)
-	map.deposit_added.connect(_forget_paths)
+	map.deposit_added.connect(_forget_tile)
 	map.deposit_removed.connect(deposit_removed.emit)
-	map.deposit_removed.connect(_forget_paths)
+	map.deposit_removed.connect(_forget_tile)
 	map.deposit_changed.connect(deposit_changed.emit)
-	map.terrain_changed.connect(_forget_paths)
+	map.terrain_changed.connect(_forget_tile)
 
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume, Wild) breiten sich in ihrem Rhythmus aus:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
 ## angegebenen Chance ein neues – mit "terrain" nur auf diesen Geländen. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
 ## ein Bewohner oder Feind steht, und Posten von Soldaten bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
+## Bei Chance 0 wird gar nicht gewürfelt (verbraucht keine Zufallszahlen).
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
 	var types: Array[String] = []
@@ -2594,7 +2737,7 @@ func _spread_deposits() -> void:
 		if not deposit_def.has("spread"):
 			continue
 		var spread: Dictionary = deposit_def["spread"]
-		if _tick % int(spread["interval_ticks"]) == 0:
+		if float(spread["chance"]) > 0.0 and _tick % int(spread["interval_ticks"]) == 0:
 			_spread_type(type, float(spread["chance"]), Deposit.spread_terrains_of(type))
 
 
@@ -2608,18 +2751,21 @@ func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 			standing[resident.post_tile()] = true
 	for enemy: Enemy in _enemies.values():
 		standing[enemy.tile] = true
-	# Kacheln neben einem Vorkommen dieses Typs markieren, dann zeilenweise würfeln.
+	# Kacheln neben einem Vorkommen dieses Typs sammeln, dann zeilenweise würfeln – ohne die ganze
+	# Karte abzusuchen.
 	var near_mask := PackedByteArray()
 	near_mask.resize(map.width * map.height)
+	var near := PackedInt32Array()
 	for tile: Vector2i in map.deposits:
 		if map.deposits[tile].type != type:
 			continue
 		for y in range(maxi(tile.y - 1, 0), mini(tile.y + 2, map.height)):
 			for x in range(maxi(tile.x - 1, 0), mini(tile.x + 2, map.width)):
-				near_mask[y * map.width + x] = 1
-	for i in near_mask.size():
-		if near_mask[i] == 0:
-			continue
+				if near_mask[y * map.width + x] == 0:
+					near_mask[y * map.width + x] = 1
+					near.append(y * map.width + x)
+	near.sort()
+	for i in near:
 		var tile := Vector2i(i % map.width, i / map.width)
 		if map.is_buildable(tile) and not _occupied.has(tile) and not _entrance_fronts.has(tile) \
 				and (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \

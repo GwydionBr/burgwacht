@@ -302,3 +302,20 @@ func test_wave_on_day_one_appears_at_founding() -> void:
 	var world := _world_with_waves([{"day": 1, "enemies": {"bandit": 1}, "side": "north"}])
 	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
 	assert_eq(_enemy_tiles(world), [Vector2i(2, 0)] as Array[Vector2i], "Kachel:")
+
+
+func test_edge_tiles_are_the_same_as_searching_the_whole_map() -> void:
+	var world := empty_world()
+	var map := world.map
+	var all_edges: Array[Vector2i] = []
+	for y in map.height:
+		for x in map.width:
+			if map.is_edge(Vector2i(x, y)):
+				all_edges.append(Vector2i(x, y))
+	assert_eq(world._combat()._edge_tiles(""), all_edges, "Alle Ränder, zeilenweise:")
+	for side in MapSide.all():
+		var on_side: Array[Vector2i] = []
+		for tile in all_edges:
+			if MapSide.is_on(map, side, tile):
+				on_side.append(tile)
+		assert_eq(MapSide.tiles(map, side), on_side, "Seite %s:" % side)

@@ -454,7 +454,7 @@ func test_displaced_resident_skips_closed_pocket() -> void:
 	_assert_all_walkable(world, "Nach dem Bau")
 	assert_true(idle.tile != pocket, "Nicht in die abgeschlossene Tasche")
 	var campfire := Figure.ground(world.get_building(CAMPFIRE).origin)
-	assert_true(not Pathfinder.find_path(idle.position(), campfire, world._is_walkable_position).is_empty(),
+	assert_true(not Pathfinder.find_path(idle.position(), campfire, Pathfinder.Graph.new(world._grid_size(), world._is_walkable_position)).is_empty(),
 			"Erreicht von %s aus das Lagerfeuer" % str(idle.tile))
 	# Über ihm die Tasche, rechts die Grundfläche, darunter der Eingang.
 	assert_eq(idle.tile, POCKET_SITE + Vector2i(0, 1), "Nächste erreichbare Kachel:")
@@ -483,7 +483,7 @@ func test_displaced_worker_measures_way_to_workplace() -> void:
 	build(world, "woodcutter", POCKET_SITE)
 	assert_true(worker.tile != pocket, "Nicht in die abgeschlossene Tasche")
 	assert_true(not Pathfinder.find_path(worker.position(), Figure.ground(world.get_building(id).entrance()),
-			world._is_walkable_position).is_empty(), "Erreicht von %s aus die Arbeitsstätte" % str(worker.tile))
+			Pathfinder.Graph.new(world._grid_size(), world._is_walkable_position)).is_empty(), "Erreicht von %s aus die Arbeitsstätte" % str(worker.tile))
 
 
 func test_displaced_resident_into_pocket_when_nothing_else_reachable() -> void:
@@ -493,3 +493,18 @@ func test_displaced_resident_into_pocket_when_nothing_else_reachable() -> void:
 	_wall_in_campfire(world)
 	build(world, "woodcutter", POCKET_SITE)
 	assert_eq(world.get_resident(2).tile, pocket, "In der Tasche:")
+
+
+func test_path_search_sees_a_tree_that_grew_on_the_way() -> void:
+	var world := _founded()
+	var start := Figure.ground(Vector2i(10, 14))
+	var goal := Figure.ground(Vector2i(15, 14))
+	var straight := world._find_path(start, goal, GameWorld.Walker.GROUND_ONLY)
+	assert_true(straight.has(Figure.ground(Vector2i(12, 14))), "Erst geradeaus: %s" % str(straight))
+	# Der Graph der Spielwelt bleibt bestehen und vergisst nur, was der neue Baum ändert.
+	world.map.add_deposit(Vector2i(12, 14), Deposit.create("tree", RandomNumberGenerator.new()))
+	var detour := world._find_path(start, goal, GameWorld.Walker.GROUND_ONLY)
+	assert_true(not detour.is_empty() and not detour.has(Figure.ground(Vector2i(12, 14))),
+			"Um den Baum herum: %s" % str(detour))
+	world.map.remove_deposit(Vector2i(12, 14))
+	assert_eq(world._find_path(start, goal, GameWorld.Walker.GROUND_ONLY), straight, "Gefällt, wieder geradeaus:")

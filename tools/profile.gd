@@ -56,11 +56,16 @@ func _profile_core(world: GameWorld, days: int) -> void:
 		Pathfinder.reset_profile()
 		var started := Time.get_ticks_usec()
 		var longest := 0
+		var warming := 0
 		for i in GameWorld.TICKS_PER_DAY:
 			var tick_started := Time.get_ticks_usec()
 			world.step()
-			longest = maxi(longest, Time.get_ticks_usec() - tick_started)
-		var us_per_tick := float(Time.get_ticks_usec() - started) / float(GameWorld.TICKS_PER_DAY)
+			var tick_ended := Time.get_ticks_usec()
+			longest = maxi(longest, tick_ended - tick_started)
+			# Wie das Spiel in einem Frame neben den Takten (GameClock); zählt nicht zur Taktzeit.
+			world.warm_paths(tick_ended + GameClock.WARM_USEC_PER_FRAME)
+			warming += Time.get_ticks_usec() - tick_ended
+		var us_per_tick := float(Time.get_ticks_usec() - started - warming) / float(GameWorld.TICKS_PER_DAY)
 		_print_core_row(world, us_per_tick, longest)
 
 
