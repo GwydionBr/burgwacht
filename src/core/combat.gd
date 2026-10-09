@@ -332,14 +332,40 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 		estimate = func(position: Vector3i) -> float:
 			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - MELEE_REACH, 0.0)
 	var map := _EnemyMap.new(self, type)
-	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, map.is_passable, map.ascents,
-			map.is_steppable, map.extra_cost, estimate)
+	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, _world._enemy_plan_graph(), map.extra_cost,
+			estimate)
+
+
+## Begehbar für die Wegplanung der Feinde: wo ein Feind stehen darf oder ein Hindernis steht
+## (_obstacle_at()). Wie die Ebenenwechsel und Schritte unten unabhängig von Feindtyp und
+## Lebenspunkten, deshalb teilen sich alle Feinde einen Graph (GameWorld._enemy_plan_graph());
+## nur die Zusatzkosten kommen je Feind von _EnemyMap.
+func plan_passable(position: Vector3i) -> bool:
+	return _world._can_stand(position, GameWorld.Walker.ENEMY) or _obstacle_at(position) != null
+
+
+## Ebenenwechsel für die Wegplanung wie GameWorld._ascents(), aber nicht von einem Hindernis aus:
+## Durch einen Turm, den er erst zerstört, kommt ein Feind nicht auf dessen Wehrgang.
+func plan_ascents(position: Vector3i) -> Array[Vector3i]:
+	if _obstacle_at(position) != null:
+		var none: Array[Vector3i] = []
+		return none
+	return _world._ascents(position)
+
+
+## Schritte für die Wegplanung wie GameWorld._is_steppable(); auf ein Hindernis und von ihm
+## herunter immer (ein zerstörtes Gebäude hat keinen Eingang mehr).
+func plan_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _obstacle_at(from) != null or _obstacle_at(to) != null or _world._is_steppable(from, to)
 
 
 ## Das Hindernis auf position: ein zerstörbares Gebäude außer dem Bergfried, das am Boden auf
 ## sonst begehbarem Gelände steht und auf dem Feinde nicht stehen dürfen (Mauer, Tor, Turm, alle
 ## Gebäude außer Treppe und Eingängen). null, wenn dort keines ist.
 func _obstacle_at(position: Vector3i) -> Building:
+	# Die meisten Kacheln tragen kein Gebäude; das ist die schnellste Frage (Wegplanung).
+	if not _world._occupied.has(Vector2i(position.x, position.y)):
+		return null
 	if position.z != Figure.Level.GROUND or not _world._is_open_ground(position) \
 			or _world._can_stand(position, GameWorld.Walker.ENEMY):
 		return null
@@ -349,12 +375,12 @@ func _obstacle_at(position: Vector3i) -> Building:
 	return building
 
 
-## Die Karte, wie ein Feind dieses Typs sie für seinen Weg sieht (ADR 0005): Wo er stehen darf,
-## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar, kostet aber beim Hineingehen
-## von außerhalb so viele Kacheln Weg, wie er in der Zeit zurücklegt, die er braucht, um es zu
-## zerstören: (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro Kachel. Innerhalb
-## desselben Gebäudes kostet ein Schritt nichts extra, denn eine Zerstörung genügt. Merkt sich die
-## Kosten je Position, denn die Wegfindung fragt dieselbe Position oft.
+## Die Kosten, wie ein Feind dieses Typs sie für seinen Weg sieht (ADR 0005): Wo er stehen darf,
+## kostet nichts extra; ein Hindernis (_obstacle_at()) ist begehbar (plan_passable()), kostet aber
+## beim Hineingehen von außerhalb so viele Kacheln Weg, wie er in der Zeit zurücklegt, die er
+## braucht, um es zu zerstören: (aktuelle Lebenspunkte / Schaden) × Angriffsdauer / Takte pro
+## Kachel. Innerhalb desselben Gebäudes kostet ein Schritt nichts extra, denn eine Zerstörung
+## genügt. Merkt sich die Kosten je Position, denn die Wegfindung fragt dieselbe Position oft.
 class _EnemyMap:
 	## Kein Hindernis, aber auch nicht begehbar.
 	const BLOCKED := -1.0
@@ -387,10 +413,6 @@ class _EnemyMap:
 		_obstacles[position] = obstacle
 		return cost
 
-	## Begehbar für die Wegplanung: wo er stehen darf oder ein Hindernis.
-	func is_passable(position: Vector3i) -> bool:
-		return cost_at(position) != BLOCKED
-
 	## Zerstörungskosten für den Schritt von from auf to (Pathfinder, extra_cost): nur beim
 	## Hineingehen in ein Hindernis von außerhalb, nicht von einer anderen Kachel desselben.
 	func extra_cost(from: Vector3i, to: Vector3i) -> float:
@@ -400,19 +422,6 @@ class _EnemyMap:
 			if _obstacles[from] == _obstacles[to]:
 				return 0.0
 		return cost
-
-	## Ebenenwechsel wie GameWorld._ascents(), aber nicht von einem Hindernis aus: Durch einen Turm,
-	## den er erst zerstört, kommt er nicht auf dessen Wehrgang.
-	func ascents(position: Vector3i) -> Array[Vector3i]:
-		if cost_at(position) > 0.0:
-			var none: Array[Vector3i] = []
-			return none
-		return _combat._world._ascents(position)
-
-	## Schritte wie GameWorld._is_steppable(); auf ein Hindernis und von ihm herunter immer (ein
-	## zerstörtes Gebäude hat keinen Eingang mehr).
-	func is_steppable(from: Vector3i, to: Vector3i) -> bool:
-		return cost_at(from) > 0.0 or cost_at(to) > 0.0 or _combat._world._is_steppable(from, to)
 
 
 ## Abstand einer Kachel zur nächsten Kachel der Grundfläche eines Gebäudes (0 auf ihr).
@@ -438,14 +447,13 @@ func spawn_enemy(type_id: String) -> String:
 ## keine freie gibt.
 func spawn_tile(side := "") -> Array[Vector2i]:
 	var keep := _world._keep()
-	var reaching := reaches_keep()
 	var best: Array[Vector2i] = []
 	var best_distance := INF
 	var best_reaches := false
 	for tile in _edge_tiles(side):
 		if not is_free_enemy_tile(tile):
 			continue
-		var reaches := reaching.has(Figure.ground(tile))
+		var reaches := reaches_keep(tile)
 		var distance := _distance_to_building(tile, keep)
 		if (reaches and not best_reaches) \
 				or (reaches == best_reaches and distance < best_distance - Figure.DISTANCE_SLACK):
@@ -468,17 +476,20 @@ func _edge_tiles(side: String) -> Array[Vector2i]:
 	return result
 
 
-## Alle Positionen, von denen aus man eine Kachel direkt am Bergfried erreicht (gemeinsame Kante
-## mit seiner Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground()). Je
-## Zusammenhangsgebiet genügt eine Suche.
-func reaches_keep() -> Dictionary[Vector3i, float]:
-	var keep := _world._keep()
-	var result: Dictionary[Vector3i, float] = {}
-	for tile in Building.adjacent_tiles(keep.type, keep.origin):
-		var start := Figure.ground(tile)
-		if _world._is_open_ground(start) and not result.has(start):
-			result.merge(Pathfinder.distances(start, _world._is_open_ground))
-	return result
+## Erreicht man von tile aus eine Kachel direkt am Bergfried (gemeinsame Kante mit seiner
+## Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground())? Eine Suche vom
+## Bergfried aus beantwortet das für alle Kacheln; sie gilt, bis sich die Begehbarkeit ändert.
+func reaches_keep(tile: Vector2i) -> bool:
+	var graph := _world._open_ground()
+	if not _world._keep_reach_known:
+		var keep := _world._keep()
+		var starts: Array[Vector3i] = []
+		for adjacent in Building.adjacent_tiles(keep.type, keep.origin):
+			if _world._is_open_ground(Figure.ground(adjacent)):
+				starts.append(Figure.ground(adjacent))
+		_world._keep_reach = Pathfinder.reachable(starts, graph)
+		_world._keep_reach_known = true
+	return _world._keep_reach[graph.index_of(Figure.ground(tile))] != 0
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).

@@ -143,6 +143,15 @@ var _entrance_fronts: Dictionary[Vector2i, int] = {}
 var _distance_cache: Dictionary[String, Dictionary] = {}
 ## Ebenso _can_stand() je Walker und Position; die Wegfindung fragt jede Position viele Male.
 var _stand_cache := PackedByteArray()
+## Ebenso die erlaubten Schritte je Walker (Index), angelegt bei der ersten Suche (_graph()).
+var _graphs: Array[Pathfinder.Graph] = []
+## Ebenso der Graph für die Wegplanung der Feinde (_enemy_plan_graph()) und der für offenes
+## Gelände (_open_ground()).
+var _enemy_graph: Pathfinder.Graph
+var _open_ground_graph: Pathfinder.Graph
+## Ebenso Combat.reaches_keep() je Index in _open_ground(), solange _keep_reach_known gilt.
+var _keep_reach := PackedByteArray()
+var _keep_reach_known := false
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
@@ -1896,11 +1905,15 @@ static func _walker_of(figure: Figure) -> Walker:
 func _can_stand(position: Vector3i, walker: Walker) -> bool:
 	if not map.in_bounds(Vector2i(position.x, position.y)) or position.z < 0 or position.z > Figure.Level.WALL_WALK:
 		return false
-	var index := ((walker * (Figure.Level.WALL_WALK + 1) + position.z) * map.height + position.y) * map.width \
-			+ position.x
+	var index := _stand_index(position, walker)
 	if _stand_cache[index] == 0:
 		_stand_cache[index] = CACHED_YES if _can_stand_uncached(position, walker) else CACHED_NO
 	return _stand_cache[index] == CACHED_YES
+
+
+## Der Eintrag von position und walker in _stand_cache.
+func _stand_index(position: Vector3i, walker: Walker) -> int:
+	return ((walker * (Figure.Level.WALL_WALK + 1) + position.z) * map.height + position.y) * map.width + position.x
 
 
 ## _can_stand() ohne Zwischenspeicher.
@@ -1919,7 +1932,7 @@ func _can_stand_uncached(position: Vector3i, walker: Walker) -> bool:
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten und Feinde nehmen dabei Treppen und
 ## Soldaten Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
-	return Pathfinder.find_path(start, goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable)
+	return Pathfinder.find_path(start, goal, _graph(walker))
 
 
 ## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
@@ -1929,8 +1942,7 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 			"inf" if is_inf(max_length) else "%.4f" % max_length]
 	if _distance_cache.has(key):
 		return _distance_cache[key]
-	var result := Pathfinder.distances(start, _can_stand.bind(walker), max_length, _ascents_for(walker),
-			_is_steppable)
+	var result := Pathfinder.distances(start, _graph(walker), max_length)
 	if _distance_cache.size() >= MAX_CACHED_DISTANCES:
 		_distance_cache.clear()
 	# Mehrere Aufrufer teilen sich das Ergebnis: Niemand darf es ändern.
@@ -1941,15 +1953,94 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 
 ## Weglängen für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest()).
 func _nearest(start: Vector3i, walker: Walker, is_goal: Callable, estimate: Callable) -> Dictionary[Vector3i, float]:
-	return Pathfinder.nearest(start, is_goal, _can_stand.bind(walker), _ascents_for(walker), _is_steppable,
-			estimate)
+	return Pathfinder.nearest(start, is_goal, _graph(walker), estimate)
 
 
-## Die Begehbarkeit hat sich geändert: gemerkte Weglängen gelten nicht mehr.
-func _forget_paths(_tile: Vector2i = Vector2i.ZERO) -> void:
+## Der Graph für walker: wo er stehen darf (_can_stand()), seine Ebenenwechsel und die Regel für
+## Eingänge (_is_steppable()). Merkt sich die Schritte, bis sich die Begehbarkeit ändert
+## (_forget_paths(), _forget_tiles()).
+func _graph(walker: Walker) -> Pathfinder.Graph:
+	if _graphs[walker] == null:
+		_graphs[walker] = Pathfinder.Graph.new(_grid_size(), _can_stand.bind(walker), _ascents_for(walker),
+				_is_steppable)
+	return _graphs[walker]
+
+
+## Der Graph für die Wegplanung der Feinde (Combat.plan_passable() und Verwandte); gilt wie
+## _graph(). Die Callables gehen über die Spielwelt, weil Combat für jeden Aufruf neu entsteht.
+func _enemy_plan_graph() -> Pathfinder.Graph:
+	if _enemy_graph == null:
+		_enemy_graph = Pathfinder.Graph.new(_grid_size(), _enemy_plan_passable, _enemy_plan_ascents,
+				_enemy_plan_steppable)
+	return _enemy_graph
+
+
+func _enemy_plan_passable(position: Vector3i) -> bool:
+	return _combat().plan_passable(position)
+
+
+func _enemy_plan_ascents(position: Vector3i) -> Array[Vector3i]:
+	return _combat().plan_ascents(position)
+
+
+func _enemy_plan_steppable(from: Vector3i, to: Vector3i) -> bool:
+	return _combat().plan_steppable(from, to)
+
+
+## Rechnet im Voraus, was die Wegfindung später braucht, bis Time.get_ticks_usec() deadline
+## erreicht – für freie Zeit in einem Frame (GameClock). Sonst rechnet die erste Suche nach einer
+## Änderung oder einem neuen Spielstand alles selbst und bremst ihren Takt aus, etwa die erste
+## Welle. Ändert am Ablauf nichts (ADR 0001): Die Graphen geben vorgewärmt dieselben Antworten.
+func warm_paths(deadline: int) -> void:
+	# Vor der Gründung gibt es keinen Bergfried, den die Feindplanung kennen muss.
+	if _founding:
+		return
+	for graph: Pathfinder.Graph in [_open_ground(), _enemy_plan_graph(), _graph(Walker.GROUND_ONLY),
+			_graph(Walker.SOLDIER)]:
+		if not graph.warm(deadline):
+			return
+
+
+## Der Graph über offenes Gelände (_is_open_ground(), Gebäude außer Acht gelassen); gilt wie _graph().
+func _open_ground() -> Pathfinder.Graph:
+	if _open_ground_graph == null:
+		_open_ground_graph = Pathfinder.Graph.new(_grid_size(), _is_open_ground)
+	return _open_ground_graph
+
+
+## Größe des Rasters für die Wegfindung: Karte mal Ebenen.
+func _grid_size() -> Vector3i:
+	return Vector3i(map.width, map.height, Figure.Level.WALL_WALK + 1)
+
+
+## Die Begehbarkeit hat sich irgendwo geändert: gemerkte Weglängen und Graphen gelten nicht mehr.
+func _forget_paths() -> void:
 	_distance_cache.clear()
 	_stand_cache.resize(Walker.size() * (Figure.Level.WALL_WALK + 1) * map.width * map.height)
 	_stand_cache.fill(0)
+	_graphs.clear()
+	_graphs.resize(Walker.size())
+	_enemy_graph = null
+	_open_ground_graph = null
+	_keep_reach_known = false
+
+
+## Die Begehbarkeit hat sich nur auf diesen Kacheln geändert (Bau, Abriss, Vorkommen, Gelände):
+## Weglängen gelten nicht mehr, die Graphen vergessen nur, was von diesen Kacheln abhängt.
+func _forget_tiles(tiles: Array[Vector2i]) -> void:
+	_distance_cache.clear()
+	_keep_reach_known = false
+	for tile in tiles:
+		for walker: Walker in Walker.values():
+			for level in Figure.Level.WALL_WALK + 1:
+				_stand_cache[_stand_index(Vector3i(tile.x, tile.y, level), walker)] = 0
+	for graph: Pathfinder.Graph in _graphs + [_enemy_graph, _open_ground_graph]:
+		if graph != null:
+			graph.forget(tiles)
+
+
+func _forget_tile(tile: Vector2i) -> void:
+	_forget_tiles([tile])
 
 
 ## Die Ebenenwechsel für walker: Bewohner wechseln die Ebene nie. Turmeingänge kann ein Feind
@@ -1965,6 +2056,9 @@ func _ascents_for(walker: Walker) -> Callable:
 func _ascents(position: Vector3i) -> Array[Vector3i]:
 	var result: Array[Vector3i] = []
 	var tile := Vector2i(position.x, position.y)
+	# Am Boden ohne Gebäude weder Treppe noch Turmeingang (die Wegfindung fragt jede Kachel).
+	if position.z == Figure.Level.GROUND and not _occupied.has(tile):
+		return result
 	var building := get_building_at(tile)
 	if building != null and building.has_ascending_entrance() and building.entrance() == tile:
 		var other_level := Figure.Level.WALL_WALK if position.z == Figure.Level.GROUND else Figure.Level.GROUND
@@ -1983,6 +2077,8 @@ func _ascents(position: Vector3i) -> Array[Vector3i]:
 ## Turmeingang. Sonst käme man an einem Eingang an der Ecke seitlich vorbei, etwa an einer
 ## schrägen Mauer, die dort ansetzt.
 func _is_steppable(from: Vector3i, to: Vector3i) -> bool:
+	if not _occupied.has(Vector2i(from.x, from.y)) and not _occupied.has(Vector2i(to.x, to.y)):
+		return true
 	return _passes_entrance(from, to) and _passes_entrance(to, from)
 
 
@@ -2155,7 +2251,8 @@ func _remove_building(building: Building, leave_wall_walk: Callable) -> void:
 	var id := building.id
 	_buildings.erase(id)
 	# Neu aufbauen statt austragen: Vor dem Eingang kann noch ein anderes Gebäude liegen.
-	_rebuild_index()
+	_reindex_buildings()
+	_forget_tiles(building.tiles())
 	building_removed.emit(id)
 	leave_wall_walk.call()
 	# Wer Ware zu diesem Lager trägt oder dort holen will, sucht gleich ein anderes.
@@ -2413,17 +2510,21 @@ func _add_building(type_id: String, origin: Vector2i) -> Building:
 	_next_building_id += 1
 	_buildings[building.id] = building
 	_index_building(building)
-	_forget_paths()
+	_forget_tiles(building.tiles())
 	building_added.emit(building.id)
 	return building
 
 
 func _rebuild_index() -> void:
+	_reindex_buildings()
+	_forget_paths()
+
+
+func _reindex_buildings() -> void:
 	_occupied.clear()
 	_entrance_fronts.clear()
 	for building: Building in _buildings.values():
 		_index_building(building)
-	_forget_paths()
 
 
 func _index_building(building: Building) -> void:
@@ -2573,11 +2674,11 @@ func _set_map(new_map: MapData) -> void:
 	map = new_map
 	_forget_paths()
 	map.deposit_added.connect(deposit_added.emit)
-	map.deposit_added.connect(_forget_paths)
+	map.deposit_added.connect(_forget_tile)
 	map.deposit_removed.connect(deposit_removed.emit)
-	map.deposit_removed.connect(_forget_paths)
+	map.deposit_removed.connect(_forget_tile)
 	map.deposit_changed.connect(deposit_changed.emit)
-	map.terrain_changed.connect(_forget_paths)
+	map.terrain_changed.connect(_forget_tile)
 
 
 ## Vorkommen mit "spread" in den Daten (z. B. Bäume, Wild) breiten sich in ihrem Rhythmus aus:

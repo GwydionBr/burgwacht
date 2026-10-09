@@ -112,11 +112,11 @@ func _spawn(wave: PlannedWave) -> void:
 ## Gelände den Bergfried erreicht (Gebäude außer Acht gelassen, Combat.reaches_keep()); gibt es
 ## keine, unter allen.
 func _random_side() -> String:
-	var reaching := _world._combat().reaches_keep()
+	var combat := _world._combat()
 	var sides: Array[String] = []
 	for side in MapSide.all():
 		for tile in MapSide.tiles(_world.map, side):
-			if reaching.has(Figure.ground(tile)):
+			if combat.reaches_keep(tile):
 				sides.append(side)
 				break
 	if sides.is_empty():

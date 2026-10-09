@@ -14,6 +14,8 @@ const SPEEDS: Array[int] = [1, 2, 4]
 const MAX_TICKS_PER_FRAME := 10
 ## Gleicht Rundungsfehler beim Aufsummieren kleiner Zeitschritte aus.
 const EPSILON := 0.000001
+## So viele Mikrosekunden je Frame darf die Spielwelt die Wegfindung vorwärmen (warm_paths()).
+const WARM_USEC_PER_FRAME := 2000
 
 ## Beim Wechsel der Spielwelt verfällt ein noch angesammelter Zeitrest;
 ## eine Spielwelt in Gründung hält die Uhr an.
@@ -36,6 +38,7 @@ func _process(delta: float) -> void:
 		return
 	for i in advance(delta):
 		world.step()
+	world.warm_paths(Time.get_ticks_usec() + WARM_USEC_PER_FRAME)
 
 
 ## Verbucht delta Sekunden und gibt zurück, wie viele Takte jetzt fällig sind.

@@ -15,8 +15,13 @@ func _walkable(position: Vector3i) -> bool:
 			and not _blocked.has(tile)
 
 
+## Der Graph des Testrasters (eine Ebene).
+func _graph(walkable: Callable, steppable := Callable()) -> Pathfinder.Graph:
+	return Pathfinder.Graph.new(Vector3i(SIZE.x, SIZE.y, 1), walkable, Callable(), steppable)
+
+
 func _path(from: Vector2i, to: Vector2i) -> Array[Vector3i]:
-	return Pathfinder.find_path(Vector3i(from.x, from.y, GROUND), Vector3i(to.x, to.y, GROUND), _walkable)
+	return Pathfinder.find_path(Vector3i(from.x, from.y, GROUND), Vector3i(to.x, to.y, GROUND), _graph(_walkable))
 
 
 func _tiles(path: Array[Vector3i]) -> Array[Vector2i]:
@@ -111,7 +116,7 @@ func test_path_carries_level() -> void:
 
 
 func _distances(from: Vector2i, max_length := INF) -> Dictionary[Vector3i, float]:
-	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _walkable, max_length)
+	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _graph(_walkable), max_length)
 
 
 func test_distances_match_path_lengths() -> void:
@@ -146,11 +151,11 @@ func _steppable(from: Vector3i, to: Vector3i) -> bool:
 
 
 func test_steppable_forbids_single_steps() -> void:
-	var path := Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(4, 1, GROUND), _walkable, Callable(), _steppable)
+	var path := Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(4, 1, GROUND), _graph(_walkable, _steppable))
 	assert_true(not _tiles(path).has(Vector2i(3, 1)), "Nicht seitlich durch den Eingang: %s" % str(_tiles(path)))
-	path = Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(3, 1, GROUND), _walkable, Callable(), _steppable)
+	path = Pathfinder.find_path(Vector3i(2, 1, GROUND), Vector3i(3, 1, GROUND), _graph(_walkable, _steppable))
 	assert_eq(path[path.size() - 2], Vector3i(3, 2, GROUND), "Hinein nur von vorn:")
-	var distances := Pathfinder.distances(Vector3i(2, 1, GROUND), _walkable, INF, Callable(), _steppable)
+	var distances := Pathfinder.distances(Vector3i(2, 1, GROUND), _graph(_walkable, _steppable))
 	assert_true(is_equal_approx(distances[Vector3i(3, 1, GROUND)], 1.0 + sqrt(2.0)), "Über die Kachel davor")
 	assert_true(is_equal_approx(distances[Vector3i(4, 1, GROUND)], 2.0 * sqrt(2.0)), "Außen herum")
 
@@ -176,13 +181,12 @@ func _extra_cost(_from: Vector3i, to: Vector3i) -> float:
 
 
 func _costly_path(from: Vector2i, to: Vector2i) -> Array[Vector3i]:
-	return Pathfinder.find_path(Vector3i(from.x, from.y, GROUND), Vector3i(to.x, to.y, GROUND), _walkable_or_costly,
-			Callable(), Callable(), _extra_cost)
+	return Pathfinder.find_path(Vector3i(from.x, from.y, GROUND), Vector3i(to.x, to.y, GROUND), _graph(_walkable_or_costly),
+			_extra_cost)
 
 
 func _costly_distances(from: Vector2i) -> Dictionary[Vector3i, float]:
-	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _walkable_or_costly, INF, Callable(), Callable(),
-			_extra_cost)
+	return Pathfinder.distances(Vector3i(from.x, from.y, GROUND), _graph(_walkable_or_costly), INF, _extra_cost)
 
 
 ## Mauer bei x = 3 von y = 0 bis 4 (wie test_detour_around_wall), jede Kachel mit diesen Zusatzkosten.
@@ -243,14 +247,12 @@ func test_extra_cost_depends_on_where_the_step_comes_from() -> void:
 	var entering := func(from: Vector3i, to: Vector3i) -> float:
 		var inside := func(position: Vector3i) -> bool: return block.has(Vector2i(position.x, position.y))
 		return 3.0 if inside.call(to) and not inside.call(from) else 0.0
-	var path := Pathfinder.find_path(Vector3i(1, 1, GROUND), Vector3i(7, 1, GROUND), _walkable_or_costly,
-			Callable(), Callable(), entering)
+	var path := Pathfinder.find_path(Vector3i(1, 1, GROUND), Vector3i(7, 1, GROUND), _graph(_walkable_or_costly), entering)
 	var expected: Array[Vector2i] = []
 	for x in range(1, 8):
 		expected.append(Vector2i(x, 1))
 	assert_eq(_tiles(path), expected, "Gerade durch den Block:")
-	var distances := Pathfinder.distances(Vector3i(1, 1, GROUND), _walkable_or_costly, INF, Callable(), Callable(),
-			entering)
+	var distances := Pathfinder.distances(Vector3i(1, 1, GROUND), _graph(_walkable_or_costly), INF, entering)
 	assert_true(is_equal_approx(distances[Vector3i(7, 1, GROUND)], 9.0), "6 Schritte + einmal 3")
 
 
@@ -266,22 +268,21 @@ func test_path_to_any_goal_takes_the_cheapest_one() -> void:
 		if y != 3:
 			_blocked[Vector2i(1, y)] = true
 	var is_goal := func(position: Vector3i) -> bool: return position.x == 0 or position.x == 6
-	var path := Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _walkable_or_costly, Callable(),
-			Callable(), _extra_cost)
+	var path := Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _graph(_walkable_or_costly), _extra_cost)
 	assert_eq(path.back(), Vector3i(6, 3, GROUND), "Das rechte Ziel, 4 statt 2 + 10:")
 	assert_eq(path.size(), 5, "Gerade hinüber:")
 	_costs[Vector2i(1, 3)] = 1.0
-	path = Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _walkable_or_costly, Callable(),
-			Callable(), _extra_cost)
+	path = Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), is_goal, _graph(_walkable_or_costly), _extra_cost)
 	assert_eq(path.back(), Vector3i(0, 3, GROUND), "Das linke Ziel, 2 + 1 statt 4:")
 	var none := func(_position: Vector3i) -> bool: return false
-	assert_eq(Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), none, _walkable).size(), 0, "Kein Ziel:")
-	assert_eq(Pathfinder.find_path_to_any(Vector3i(6, 3, GROUND), is_goal, _walkable), [Vector3i(6, 3, GROUND)] as Array[Vector3i],
+	var graph := _graph(_walkable)
+	assert_eq(Pathfinder.find_path_to_any(Vector3i(2, 3, GROUND), none, graph).size(), 0, "Kein Ziel:")
+	assert_eq(Pathfinder.find_path_to_any(Vector3i(6, 3, GROUND), is_goal, graph), [Vector3i(6, 3, GROUND)] as Array[Vector3i],
 			"Schon am Ziel:")
 
 
 func _nearest(from: Vector2i, is_goal: Callable, estimate := Callable()) -> Dictionary[Vector3i, float]:
-	return Pathfinder.nearest(Vector3i(from.x, from.y, GROUND), is_goal, _walkable, Callable(), Callable(), estimate)
+	return Pathfinder.nearest(Vector3i(from.x, from.y, GROUND), is_goal, _graph(_walkable), estimate)
 
 
 func test_nearest_gives_only_the_closest_goal() -> void:
@@ -319,3 +320,51 @@ func test_nearest_counts_the_start_as_goal() -> void:
 	var is_goal := func(position: Vector3i) -> bool: return position.x == 2
 	assert_eq(_nearest(Vector2i(2, 3), is_goal), {Vector3i(2, 3, GROUND): 0.0} as Dictionary[Vector3i, float],
 			"Schon am Ziel:")
+
+
+func test_graph_keeps_its_steps_until_told() -> void:
+	var graph := _graph(_walkable)
+	var start := Vector3i(1, 1, GROUND)
+	var goal := Vector3i(5, 1, GROUND)
+	var straight := Pathfinder.find_path(start, goal, graph)
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4)])
+	assert_eq(Pathfinder.find_path(start, goal, graph), straight, "Ohne forget() noch der alte Weg:")
+	graph.forget([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4)])
+	assert_eq(Pathfinder.find_path(start, goal, graph), _path(Vector2i(1, 1), Vector2i(5, 1)),
+			"Nach forget() wie mit einem neuen Graph:")
+
+
+func test_forget_reopens_a_corner() -> void:
+	# Eine gesperrte Kachel daneben sperrt den schrägen Schritt; ist sie frei, ist er offen.
+	_block([Vector2i(3, 2)])
+	var graph := _graph(_walkable)
+	var start := Vector3i(3, 3, GROUND)
+	assert_true(not Pathfinder.neighbors(start, graph).has(Vector3i(4, 2, GROUND)), "Ecke zu")
+	_blocked.erase(Vector2i(3, 2))
+	graph.forget([Vector2i(3, 2)])
+	assert_true(Pathfinder.neighbors(start, graph).has(Vector3i(4, 2, GROUND)), "Ecke offen")
+
+
+func test_warm_graph_gives_the_same_answers() -> void:
+	_block([Vector2i(4, 2), Vector2i(4, 3), Vector2i(4, 4), Vector2i(4, 5), Vector2i(2, 7), Vector2i(6, 1)])
+	var graph := _graph(_walkable)
+	assert_true(graph.warm(Time.get_ticks_usec() + 1000000), "Fertig vorgewärmt")
+	assert_eq(Pathfinder.find_path(Vector3i(0, 4, GROUND), Vector3i(9, 4, GROUND), graph),
+			_path(Vector2i(0, 4), Vector2i(9, 4)), "Gleicher Weg wie kalt:")
+	assert_eq(Pathfinder.distances(Vector3i(0, 4, GROUND), graph), _distances(Vector2i(0, 4)), "Gleiche Weglängen:")
+
+
+func test_warm_stops_at_the_deadline() -> void:
+	assert_false(_graph(_walkable).warm(Time.get_ticks_usec()), "Keine Zeit, nichts fertig")
+
+
+func test_reachable_matches_distances() -> void:
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4), Vector2i(3, 5),
+			Vector2i(3, 6), Vector2i(3, 7), Vector2i(3, 8), Vector2i(3, 9)])
+	var graph := _graph(_walkable)
+	var reached := Pathfinder.reachable([Vector3i(1, 1, GROUND)], graph)
+	var distances := _distances(Vector2i(1, 1))
+	for y in SIZE.y:
+		for x in SIZE.x:
+			var position := Vector3i(x, y, GROUND)
+			assert_eq(reached[graph.index_of(position)] != 0, distances.has(position), "Erreichbar %s:" % str(position))
