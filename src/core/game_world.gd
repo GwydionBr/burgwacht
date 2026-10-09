@@ -149,9 +149,8 @@ var _graphs: Array[Pathfinder.Graph] = []
 ## Gelände (_open_ground()).
 var _enemy_graph: Pathfinder.Graph
 var _open_ground_graph: Pathfinder.Graph
-## Ebenso Combat.reaches_keep() je Index in _open_ground(), solange _keep_reach_known gilt.
-var _keep_reach := PackedByteArray()
-var _keep_reach_known := false
+## Ebenso die Suche für Combat.reaches_keep() (_keep_reach()); null, wenn noch nicht begonnen.
+var _keep_reach_search: Pathfinder.Reach
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
@@ -2016,6 +2015,21 @@ func warm_paths(deadline: int) -> void:
 			_graph(Walker.SOLDIER)]:
 		if not graph.warm(deadline):
 			return
+	_keep_reach().advance(deadline)
+
+
+## Was vom Bergfried aus über offenes Gelände erreichbar ist (Combat.reaches_keep()): ab den
+## Kacheln mit gemeinsamer Kante mit seiner Grundfläche. Gilt, bis sich die Begehbarkeit ändert;
+## warm_paths() rechnet vor, wer fragt, rechnet sie zu Ende.
+func _keep_reach() -> Pathfinder.Reach:
+	if _keep_reach_search == null:
+		var keep := _keep()
+		var starts: Array[Vector3i] = []
+		for tile in Building.adjacent_tiles(keep.type, keep.origin):
+			if _is_open_ground(Figure.ground(tile)):
+				starts.append(Figure.ground(tile))
+		_keep_reach_search = Pathfinder.Reach.new(starts, _open_ground())
+	return _keep_reach_search
 
 
 ## Der Graph über offenes Gelände (_is_open_ground(), Gebäude außer Acht gelassen); gilt wie _graph().
@@ -2039,14 +2053,14 @@ func _forget_paths() -> void:
 	_graphs.resize(Walker.size())
 	_enemy_graph = null
 	_open_ground_graph = null
-	_keep_reach_known = false
+	_keep_reach_search = null
 
 
 ## Die Begehbarkeit hat sich nur auf diesen Kacheln geändert (Bau, Abriss, Vorkommen, Gelände):
 ## Weglängen gelten nicht mehr, die Graphen vergessen nur, was von diesen Kacheln abhängt.
 func _forget_tiles(tiles: Array[Vector2i]) -> void:
 	_distance_cache.clear()
-	_keep_reach_known = false
+	_keep_reach_search = null
 	for tile in tiles:
 		for walker: Walker in Walker.values():
 			for level in Figure.Level.WALL_WALK + 1:
@@ -2702,6 +2716,7 @@ func _set_map(new_map: MapData) -> void:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
 ## angegebenen Chance ein neues – mit "terrain" nur auf diesen Geländen. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
 ## ein Bewohner oder Feind steht, und Posten von Soldaten bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
+## Bei Chance 0 wird gar nicht gewürfelt.
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
 	var types: Array[String] = []
@@ -2712,7 +2727,8 @@ func _spread_deposits() -> void:
 		if not deposit_def.has("spread"):
 			continue
 		var spread: Dictionary = deposit_def["spread"]
-		if _tick % int(spread["interval_ticks"]) == 0:
+		# Ohne Wahrscheinlichkeit entsteht nie etwas; dann auch nicht würfeln (spart den Durchgang).
+		if float(spread["chance"]) > 0.0 and _tick % int(spread["interval_ticks"]) == 0:
 			_spread_type(type, float(spread["chance"]), Deposit.spread_terrains_of(type))
 
 
@@ -2726,18 +2742,21 @@ func _spread_type(type: String, chance: float, terrains: Array[String]) -> void:
 			standing[resident.post_tile()] = true
 	for enemy: Enemy in _enemies.values():
 		standing[enemy.tile] = true
-	# Kacheln neben einem Vorkommen dieses Typs markieren, dann zeilenweise würfeln.
+	# Kacheln neben einem Vorkommen dieses Typs sammeln, dann zeilenweise würfeln – ohne die ganze
+	# Karte abzusuchen.
 	var near_mask := PackedByteArray()
 	near_mask.resize(map.width * map.height)
+	var near := PackedInt32Array()
 	for tile: Vector2i in map.deposits:
 		if map.deposits[tile].type != type:
 			continue
 		for y in range(maxi(tile.y - 1, 0), mini(tile.y + 2, map.height)):
 			for x in range(maxi(tile.x - 1, 0), mini(tile.x + 2, map.width)):
-				near_mask[y * map.width + x] = 1
-	for i in near_mask.size():
-		if near_mask[i] == 0:
-			continue
+				if near_mask[y * map.width + x] == 0:
+					near_mask[y * map.width + x] = 1
+					near.append(y * map.width + x)
+	near.sort()
+	for i in near:
 		var tile := Vector2i(i % map.width, i / map.width)
 		if map.is_buildable(tile) and not _occupied.has(tile) and not _entrance_fronts.has(tile) \
 				and (terrains.is_empty() or terrains.has(map.get_terrain(tile))) \

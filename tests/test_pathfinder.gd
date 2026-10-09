@@ -367,7 +367,7 @@ func test_reachable_matches_distances() -> void:
 	for y in SIZE.y:
 		for x in SIZE.x:
 			var position := Vector3i(x, y, GROUND)
-			assert_eq(reached[graph.index_of(position)] != 0, distances.has(position), "Erreichbar %s:" % str(position))
+			assert_eq(reached.has(position), distances.has(position), "Erreichbar %s:" % str(position))
 
 
 func test_warm_redoes_what_forget_dropped() -> void:
@@ -379,3 +379,17 @@ func test_warm_redoes_what_forget_dropped() -> void:
 	assert_true(graph.warm(Time.get_ticks_usec() + 1000000), "Wieder fertig")
 	assert_true(not Pathfinder.neighbors(Vector3i(4, 5, GROUND), graph).has(Vector3i(5, 5, GROUND)),
 			"Mit der neuen Begehbarkeit")
+
+
+func test_reach_in_stages_gives_the_same_result() -> void:
+	_block([Vector2i(4, 2), Vector2i(4, 3), Vector2i(4, 4), Vector2i(4, 5), Vector2i(2, 7), Vector2i(6, 1)])
+	var graph := _graph(_walkable)
+	var staged := Pathfinder.Reach.new([Vector3i(0, 0, GROUND)], graph)
+	assert_false(staged.advance(Time.get_ticks_usec()), "Ohne Zeit nicht fertig")
+	while not staged.advance(Time.get_ticks_usec() + 50):
+		pass
+	var whole := Pathfinder.reachable([Vector3i(0, 0, GROUND)], graph)
+	for y in SIZE.y:
+		for x in SIZE.x:
+			var position := Vector3i(x, y, GROUND)
+			assert_eq(staged.has(position), whole.has(position), "Erreichbar %s:" % str(position))

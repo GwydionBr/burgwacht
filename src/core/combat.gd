@@ -467,12 +467,18 @@ func spawn_tile(side := "") -> Array[Vector2i]:
 func _edge_tiles(side: String) -> Array[Vector2i]:
 	if side != "":
 		return MapSide.tiles(_world.map, side)
+	# Nur den Rand ablaufen, nicht die ganze Karte: oberste Zeile, dazwischen erste und letzte
+	# Spalte, unterste Zeile.
 	var result: Array[Vector2i] = []
 	var map := _world.map
 	for y in map.height:
-		for x in map.width:
-			if map.is_edge(Vector2i(x, y)):
+		if y == 0 or y == map.height - 1:
+			for x in map.width:
 				result.append(Vector2i(x, y))
+		else:
+			result.append(Vector2i(0, y))
+			if map.width > 1:
+				result.append(Vector2i(map.width - 1, y))
 	return result
 
 
@@ -480,16 +486,9 @@ func _edge_tiles(side: String) -> Array[Vector2i]:
 ## Grundfläche), wenn man Gebäude außer Acht lässt (GameWorld._is_open_ground())? Eine Suche vom
 ## Bergfried aus beantwortet das für alle Kacheln; sie gilt, bis sich die Begehbarkeit ändert.
 func reaches_keep(tile: Vector2i) -> bool:
-	var graph := _world._open_ground()
-	if not _world._keep_reach_known:
-		var keep := _world._keep()
-		var starts: Array[Vector3i] = []
-		for adjacent in Building.adjacent_tiles(keep.type, keep.origin):
-			if _world._is_open_ground(Figure.ground(adjacent)):
-				starts.append(Figure.ground(adjacent))
-		_world._keep_reach = Pathfinder.reachable(starts, graph)
-		_world._keep_reach_known = true
-	return _world._keep_reach[graph.index_of(Figure.ground(tile))] != 0
+	var reach := _world._keep_reach()
+	reach.finish()
+	return reach.has(Figure.ground(tile))
 
 
 ## Kann hier ein Feind erscheinen? Begehbar und ohne Gebäude (also auch nicht auf Eingängen).

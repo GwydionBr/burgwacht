@@ -187,28 +187,11 @@ static func _distances_uncounted(start: Vector3i, graph: Graph, max_length: floa
 	return result
 
 
-## Welche Positionen man von einer der starts aus erreicht (Breitensuche, gleiche Schritte wie
-## find_path()): je Index im graph 1 oder 0. Schneller als distances(), wenn die Weglänge egal ist.
-static func reachable(starts: Array[Vector3i], graph: Graph) -> PackedByteArray:
-	var reached := PackedByteArray()
-	reached.resize(graph.size.x * graph.size.y * graph.size.z)
-	var queue := PackedInt32Array()
-	for start in starts:
-		var index := graph.index_of(start)
-		if reached[index] == 0:
-			reached[index] = 1
-			queue.append(index)
-	var no_extra := Callable()
-	var next_in_queue := 0
-	while next_in_queue < queue.size():
-		var current := queue[next_in_queue]
-		next_in_queue += 1
-		for code: int in graph.steps_of(current, no_extra):
-			var next := code >> 1
-			if reached[next] == 0:
-				reached[next] = 1
-				queue.append(next)
-	return reached
+## Welche Positionen man von einer der starts aus erreicht (Reach, ganz gerechnet).
+static func reachable(starts: Array[Vector3i], graph: Graph) -> Reach:
+	var reach := Reach.new(starts, graph)
+	reach.finish()
+	return reach
 
 
 ## Weglängen von start zu den nächsten Positionen, für die is_goal(Vector3i) -> bool gilt: zur
@@ -494,6 +477,51 @@ class Graph:
 			open = CACHED_WALKABLE if _walkable.call(Vector3i(x, y, z)) else CACHED_BLOCKED
 			_walkable_cache[index] = open
 		return open == CACHED_WALKABLE
+
+
+## Welche Positionen man von einer der starts aus erreicht: Breitensuche mit den gleichen
+## Schritten wie find_path(), schneller als distances(), wenn die Weglänge egal ist. Lässt sich in
+## Etappen rechnen (advance()), etwa in freier Zeit; der graph darf sich dabei nicht ändern.
+class Reach:
+	extends RefCounted
+
+	var _graph: Graph
+	var _reached := PackedByteArray()
+	var _queue := PackedInt32Array()
+	var _next_in_queue := 0
+
+	func _init(starts: Array[Vector3i], graph: Graph) -> void:
+		_graph = graph
+		_reached.resize(graph.size.x * graph.size.y * graph.size.z)
+		for start in starts:
+			var index := graph.index_of(start)
+			if _reached[index] == 0:
+				_reached[index] = 1
+				_queue.append(index)
+
+	## Rechnet weiter, bis Time.get_ticks_usec() deadline erreicht; true, wenn fertig.
+	func advance(deadline: int) -> bool:
+		var no_extra := Callable()
+		while _next_in_queue < _queue.size():
+			# Die Uhr nur ab und zu fragen, sie kostet selbst.
+			if _next_in_queue % 64 == 0 and Time.get_ticks_usec() >= deadline:
+				return false
+			var current := _queue[_next_in_queue]
+			_next_in_queue += 1
+			for code: int in _graph.steps_of(current, no_extra):
+				var next := code >> 1
+				if _reached[next] == 0:
+					_reached[next] = 1
+					_queue.append(next)
+		return true
+
+	func finish() -> void:
+		while not advance(Time.get_ticks_usec() + 1000000):
+			pass
+
+	## Erreicht? Erst gültig, wenn die Suche fertig ist (advance(), finish()).
+	func has(position: Vector3i) -> bool:
+		return _graph.contains(position) and _reached[_graph.index_of(position)] != 0
 
 
 ## Vorrangwarteschlange (4-ärer Heap) über Indizes: kleinste Schätzung zuerst, dann kleinste
