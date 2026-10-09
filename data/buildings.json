@@ -352,7 +352,7 @@
     "cost": { "stone": 1 },
     "hp": 60,
     "walkable": true,
-    "rules": [{ "kind": "next_to_behavior", "behavior": ["wall", "gate", "defense"], "reason": "Muss an Mauer, Tor oder Turm grenzen" }],
+    "rules": [{ "kind": "next_to_walkway", "reason": "Muss an Mauer, Tor oder Turm grenzen" }],
     "hotkey": "I",
     "category": "military",
     "color": "#a39d90",

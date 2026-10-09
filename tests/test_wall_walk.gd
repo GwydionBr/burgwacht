@@ -73,6 +73,61 @@ func test_stairs_must_border_a_wall() -> void:
 	assert_eq(world.build_error("stairs", STAIRS), "", "An der Mauer:")
 
 
+func test_stairs_border_any_walkway_regardless_of_behavior() -> void:
+	var world := _soldiers(0)
+	# Wohnhaus mit Wehrgang: Die Bauregel darf keine Liste der Verhalten verwenden.
+	var definition: Dictionary = GameDefs.get_instance().buildings["house"]
+	definition["walkway"] = true
+	var site := Vector2i(0, 12)
+	build(world, "house", site)
+	var stairs_site := site + Vector2i(2, 0)
+	assert_eq(world.build_error("stairs", stairs_site), "", "Wehrgang auf anderem Verhalten:")
+	definition.erase("walkway")
+	assert_eq(world.build_error("stairs", stairs_site), "Muss an Mauer, Tor oder Turm grenzen", "Ohne Wehrgang:")
+
+
+func test_last_stair_demolition_traps_soldier_until_stairs_are_rebuilt() -> void:
+	var world := _soldiers(1)
+	_wall_with_stairs(world)
+	assert_eq(world.execute(Command.move([1] as Array[int], _on_wall(WALL_BOTTOM))), "", "Hinauf:")
+	_until_settled(world)
+	var soldier := world.get_resident(1)
+	assert_eq(world.execute(Command.demolish(world.get_building_at(STAIRS).id)), "", "Letzte Treppe abreißen:")
+	for i in 100:
+		world.step()
+	assert_eq(soldier.position(), _on_wall(WALL_BOTTOM), "Bleibt oben:")
+	assert_eq(soldier.post, soldier.position(), "Posten bleibt oben:")
+	var before := world.to_data()
+	assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(STAIRS))), "Kein Weg dorthin", "Kein Abstieg:")
+	assert_eq(world.to_data(), before, "Abgelehnter Befehl ändert nichts:")
+	# Auf dem abgetrennten Wehrgang kann er weitergehen, auch nach dem Laden.
+	var loaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
+	for each: GameWorld in [world, loaded]:
+		assert_eq(each.execute(Command.move([1] as Array[int], _on_wall(WALL_TOP))), "", "Oben bewegen:")
+		_until_settled(each)
+		assert_eq(each.get_resident(1).position(), _on_wall(WALL_TOP), "Anderes Ende erreicht:")
+		build(each, "stairs", STAIRS)
+		assert_eq(each.execute(Command.move([1] as Array[int], Figure.ground(STAIRS + Vector2i(0, -1)))), "", "Nach Neubau hinunter:")
+		_until_settled(each)
+		assert_eq(each.get_resident(1).position(), Figure.ground(STAIRS + Vector2i(0, -1)), "Wieder am Boden:")
+	assert_eq(loaded.to_data(), world.to_data(), "Gleicher Verlauf nach Laden:")
+
+
+func test_stair_demolition_keeps_other_descents_available() -> void:
+	for alternative: String in ["stairs", "tower"]:
+		var world := _soldiers(1)
+		_wall_with_stairs(world)
+		var site := Vector2i(5, 11) if alternative == "stairs" else Vector2i(5, 9)
+		var id := build(world, alternative, site)
+		var target := site + Vector2i(-1, 0) if alternative == "stairs" else world.get_building(id).entrance_front()
+		assert_eq(world.execute(Command.move([1] as Array[int], _on_wall(WALL_BOTTOM))), "", "Hinauf:")
+		_until_settled(world)
+		assert_eq(world.execute(Command.demolish(world.get_building_at(STAIRS).id)), "", "Erste Treppe abreißen:")
+		assert_eq(world.execute(Command.move([1] as Array[int], Figure.ground(target))), "", "Anderer Abstieg (%s):" % alternative)
+		_until_settled(world)
+		assert_eq(world.get_resident(1).position(), Figure.ground(target), "Am Boden (%s):" % alternative)
+
+
 func test_soldier_climbs_the_stairs_onto_the_wall_walk() -> void:
 	var world := _soldiers(1)
 	_until_settled(world)

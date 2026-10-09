@@ -2498,12 +2498,11 @@ func _rule_holds(type_id: String, origin: Vector2i, rule: Dictionary) -> bool:
 			if deposit != null and deposit.type == deposit_type:
 				return true
 		return false
-	if kind == "next_to_behavior":
-		# Grenzt an ein Gebäude mit einem der genannten Verhalten (z. B. Treppe an Mauer).
-		var behaviors: Array = rule["behavior"]
+	if kind == "next_to_walkway":
+		# Dieselbe Wehrgang-Eigenschaft wie bei der Begehbarkeit, unabhängig vom Verhalten.
 		for tile in adjacent:
 			var other := get_building_at(tile)
-			if other != null and behaviors.has(other.def()["behavior"]):
+			if other != null and other.has_walkway():
 				return true
 		return false
 	if kind == "on_terrain":
