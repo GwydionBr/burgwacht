@@ -322,6 +322,22 @@ func test_nearest_counts_the_start_as_goal() -> void:
 			"Schon am Ziel:")
 
 
+func test_nearest_paths_lead_to_the_goals_nearest_finds() -> void:
+	_block([Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3), Vector2i(3, 4)])
+	var start := Vector3i(3, 6, GROUND)
+	var is_goal := func(position: Vector3i) -> bool: return position.x == 0 or position.x == 6
+	var lengths := _nearest(Vector2i(3, 6), is_goal)
+	var paths := Pathfinder.nearest_paths(start, is_goal, _graph(_walkable))
+	assert_eq(paths.keys(), lengths.keys(), "Dieselben Ziele wie nearest():")
+	for goal: Vector3i in paths:
+		var path: Array[Vector3i] = []
+		path.assign(paths[goal])
+		assert_eq(path[0], start, "Beginnt am Start:")
+		assert_eq(path[-1], goal, "Endet am Ziel:")
+		assert_true(Pathfinder.same_length(Pathfinder.path_length(path), lengths[goal]),
+				"Gleich lang wie nearest(): %s" % str(path))
+
+
 func test_graph_keeps_its_steps_until_told() -> void:
 	var graph := _graph(_walkable)
 	var start := Vector3i(1, 1, GROUND)

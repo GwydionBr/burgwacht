@@ -211,7 +211,8 @@ static func nearest(start: Vector3i, is_goal: Callable, graph: Graph,
 
 ## Wie nearest(), aber je Ziel der Weg dorthin samt beiden Enden (wie find_path()) statt seiner
 ## Länge (path_length() ergibt dieselbe). Spart die zweite Suche, wer zum gewählten Ziel auch gehen
-## will; unter gleich langen Wegen dorthin ist es der, den diese Suche zuerst fand.
+## will; unter gleich langen Wegen dorthin ist es der, den diese Suche zuerst fand – nicht
+## unbedingt derselbe wie bei find_path() (andere Schätzung, andere Reihenfolge bei Gleichstand).
 static func nearest_paths(start: Vector3i, is_goal: Callable, graph: Graph,
 		estimate := Callable()) -> Dictionary[Vector3i, Array]:
 	distance_calls += 1
@@ -439,7 +440,10 @@ class Graph:
 		return result
 
 	## Kann das Betreten der begehbaren Position mit diesem index etwas extra kosten (costly)?
+	## Setzt voraus, dass is_walkable(index) schon gefragt wurde; steps_of() tut das für jedes Ziel
+	## seiner Schritte.
 	func is_costly(index: int) -> bool:
+		assert(_walkable_cache[index] != 0, "is_costly() vor is_walkable()")
 		return _walkable_cache[index] == CACHED_COSTLY
 
 	func _costs_extra(from: Vector3i, to: Vector3i, extra_cost: Callable) -> bool:

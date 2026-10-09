@@ -359,6 +359,12 @@ func plan_steppable(from: Vector3i, to: Vector3i) -> bool:
 	return _obstacle_at(from) != null or _obstacle_at(to) != null or _world._is_steppable(from, to)
 
 
+## Kann das Betreten von position für die Wegplanung extra kosten? Nur auf einem Hindernis
+## (_EnemyMap.extra_cost()).
+func plan_costly(position: Vector3i) -> bool:
+	return _obstacle_at(position) != null
+
+
 ## Das Hindernis auf position: ein zerstörbares Gebäude außer dem Bergfried, das am Boden auf
 ## sonst begehbarem Gelände steht und auf dem Feinde nicht stehen dürfen (Mauer, Tor, Turm, alle
 ## Gebäude außer Treppe und Eingängen). null, wenn dort keines ist.

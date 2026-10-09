@@ -1342,7 +1342,7 @@ func _start_leaving(resident: Resident) -> void:
 ## dort oder ist keine erreichbar, ist er sofort fort.
 func _send_to_edge(resident: Resident) -> void:
 	var route: Array[Vector3i] = []
-	var edge := _nearest_edge(resident.plan_start(), route)
+	var edge := _nearest_edge(resident.plan_start(), route, _walker_of(resident))
 	if edge.is_empty() or not _follow(resident, route) or not resident.is_moving():
 		_remove_resident(resident)
 
@@ -1370,19 +1370,19 @@ func _send_newcomer(newcomer: Resident) -> void:
 
 
 ## Die begehbare Randkachel mit dem kürzesten Weg von start als [Kachel]; bei gleicher Länge
-## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist. route bekommt den Weg dorthin.
-func _nearest_edge(start: Vector3i, route: Array[Vector3i] = []) -> Array[Vector2i]:
+## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist. route bekommt den Weg dorthin
+## für walker.
+func _nearest_edge(start: Vector3i, route: Array[Vector3i] = [], walker := Walker.GROUND_ONLY) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
 	var is_edge := func(position: Vector3i) -> bool: return map.is_edge(Vector2i(position.x, position.y))
 	# Zum Kartenrand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
 	var to_edge := func(position: Vector3i) -> float:
 		return float(mini(mini(position.x, position.y), mini(map.width - 1 - position.x, map.height - 1 - position.y)))
-	var paths := _nearest_paths(start, Walker.GROUND_ONLY, is_edge, to_edge)
+	var paths := _nearest_paths(start, walker, is_edge, to_edge)
 	for position: Vector3i in paths:
 		var tile := Vector2i(position.x, position.y)
-		var path: Array[Vector3i] = []
-		path.assign(paths[position])
+		var path := _route_in(paths, position)
 		var length := Pathfinder.path_length(path)
 		var better := length < best_length and not Pathfinder.same_length(length, best_length)
 		if not better and Pathfinder.same_length(length, best_length):
@@ -1756,8 +1756,7 @@ func _nearest_storage(resident: Resident, good: String, accept: Callable,
 		var entrance := Figure.ground(storage.entrance())
 		if not paths.has(entrance):
 			continue
-		var path: Array[Vector3i] = []
-		path.assign(paths[entrance])
+		var path := _route_in(paths, entrance)
 		var length := Pathfinder.path_length(path)
 		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
 		if length < best_length and not Pathfinder.same_length(length, best_length):
@@ -1972,6 +1971,13 @@ func _nearest_paths(start: Vector3i, walker: Walker, is_goal: Callable,
 	return Pathfinder.nearest_paths(start, is_goal, _graph(walker), estimate)
 
 
+## Der Weg zu goal aus dem Ergebnis von _nearest_paths(), typisiert.
+func _route_in(paths: Dictionary[Vector3i, Array], goal: Vector3i) -> Array[Vector3i]:
+	var route: Array[Vector3i] = []
+	route.assign(paths[goal])
+	return route
+
+
 ## Der Graph für walker: wo er stehen darf (_can_stand()), seine Ebenenwechsel und die Regel für
 ## Eingänge (_is_steppable()). Merkt sich die Schritte, bis sich die Begehbarkeit ändert
 ## (_forget_paths(), _forget_tiles()).
@@ -2004,7 +2010,7 @@ func _enemy_plan_steppable(from: Vector3i, to: Vector3i) -> bool:
 
 
 func _enemy_plan_costly(position: Vector3i) -> bool:
-	return _combat()._obstacle_at(position) != null
+	return _combat().plan_costly(position)
 
 
 ## Rechnet im Voraus, was die Wegfindung später braucht, bis Time.get_ticks_usec() deadline
@@ -2720,7 +2726,7 @@ func _set_map(new_map: MapData) -> void:
 ## Jede freie, bebaubare Kachel neben einem solchen Vorkommen bekommt mit der
 ## angegebenen Chance ein neues – mit "terrain" nur auf diesen Geländen. Grundflächen, Kacheln vor Eingängen und Kacheln, auf denen
 ## ein Bewohner oder Feind steht, und Posten von Soldaten bleiben frei. Typen und Kacheln in fester Reihenfolge (ADR 0001).
-## Bei Chance 0 wird gar nicht gewürfelt.
+## Bei Chance 0 wird gar nicht gewürfelt (verbraucht keine Zufallszahlen).
 func _spread_deposits() -> void:
 	var defs := GameDefs.get_instance().deposits
 	var types: Array[String] = []
@@ -2731,7 +2737,6 @@ func _spread_deposits() -> void:
 		if not deposit_def.has("spread"):
 			continue
 		var spread: Dictionary = deposit_def["spread"]
-		# Ohne Wahrscheinlichkeit entsteht nie etwas; dann auch nicht würfeln (spart den Durchgang).
 		if float(spread["chance"]) > 0.0 and _tick % int(spread["interval_ticks"]) == 0:
 			_spread_type(type, float(spread["chance"]), Deposit.spread_terrains_of(type))
 
