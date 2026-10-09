@@ -368,3 +368,14 @@ func test_reachable_matches_distances() -> void:
 		for x in SIZE.x:
 			var position := Vector3i(x, y, GROUND)
 			assert_eq(reached[graph.index_of(position)] != 0, distances.has(position), "Erreichbar %s:" % str(position))
+
+
+func test_warm_redoes_what_forget_dropped() -> void:
+	var graph := _graph(_walkable)
+	assert_true(graph.warm(Time.get_ticks_usec() + 1000000), "Fertig vorgewärmt")
+	_block([Vector2i(5, 5)])
+	graph.forget([Vector2i(5, 5)])
+	assert_false(graph.warm(Time.get_ticks_usec()), "Das Vergessene wartet noch")
+	assert_true(graph.warm(Time.get_ticks_usec() + 1000000), "Wieder fertig")
+	assert_true(not Pathfinder.neighbors(Vector3i(4, 5, GROUND), graph).has(Vector3i(5, 5, GROUND)),
+			"Mit der neuen Begehbarkeit")

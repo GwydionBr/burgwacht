@@ -190,3 +190,34 @@ func test_defeat_is_saved_and_loaded() -> void:
 	assert_eq(loaded.to_data(), world.to_data(), "Gleiche Daten:")
 	var reloaded := GameWorld.from_data(bytes_to_var(var_to_bytes(world.to_data())))
 	assert_true(reloaded.is_defeated(), "Niederlage geladen")
+
+
+## Ein Räuber am rechten Rand und sein geplanter Weg zum Bergfried, nachdem eine Mauer quer davor
+## entstanden ist. warm: Die Graphen sind vorher ganz vorgewärmt (GameWorld.warm_paths()).
+func _route_behind_new_wall(warm: bool) -> Array[Vector3i]:
+	var world := _founded()
+	put_goods(world, 2, "stone", 100)
+	if warm:
+		world.warm_paths(Time.get_ticks_usec() + 10000000)
+	assert_eq(world.execute(Command.build_line("wall", Vector2i(12, 0), Vector2i(12, 15))), "", "Mauerlinie:")
+	var enemy := add_enemy(world, "bandit", Vector2i(19, 8))
+	return world._combat()._keep_route(enemy)
+
+
+func test_warm_graphs_plan_the_same_route_after_building() -> void:
+	var cold := _route_behind_new_wall(false)
+	assert_true(cold.any(func(position: Vector3i) -> bool: return position.x == 12),
+			"Durch die Mauer, sie ist das Hindernis: %s" % str(cold))
+	assert_eq(_route_behind_new_wall(true), cold, "Vorgewärmt derselbe Weg:")
+
+
+func test_reaches_keep_follows_terrain_changes() -> void:
+	var world := _founded()
+	var combat := world._combat()
+	assert_true(combat.reaches_keep(Vector2i(19, 8)), "Rechter Rand erreicht den Bergfried")
+	for y in world.map.height:
+		world.map.set_terrain(Vector2i(15, y), "water")
+	assert_false(combat.reaches_keep(Vector2i(19, 8)), "Hinter dem Wasser abgeschnitten")
+	assert_true(combat.reaches_keep(Vector2i(0, 8)), "Linker Rand weiter verbunden")
+	world.map.set_terrain(Vector2i(15, 8), "grass")
+	assert_true(combat.reaches_keep(Vector2i(19, 8)), "Durch die Lücke wieder verbunden")

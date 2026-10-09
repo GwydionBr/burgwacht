@@ -308,20 +308,22 @@ static func path_length(path: Array[Vector3i]) -> float:
 class Graph:
 	extends RefCounted
 
-	## Gemerkte Begehbarkeit (0: noch nicht gefragt).
-	const OPEN := 1
-	const CLOSED := 2
+	## Einträge in _walkable_cache (0: noch nicht gefragt).
+	const CACHED_WALKABLE := 1
+	const CACHED_BLOCKED := 2
 
 	var size: Vector3i
 	var _walkable: Callable
 	var _ascents: Callable
 	var _steppable: Callable
-	var _open := PackedByteArray()
+	var _walkable_cache := PackedByteArray()
 	## Je Index die erlaubten Schritte ohne Zusatzkosten (steps_of()); leer, solange nicht berechnet.
 	var _steps: Array[PackedInt32Array] = []
-	var _known := PackedByteArray()
+	var _steps_known := PackedByteArray()
 	## Bis hierher hat warm() die Indizes schon durchgesehen.
 	var _warm_cursor := 0
+	## Indizes, deren Schritte forget() vergessen hat, nachdem warm() an ihnen vorbei war.
+	var _forgotten := PackedInt32Array()
 
 	func _init(grid_size: Vector3i, walkable: Callable, ascents := Callable(), steppable := Callable()) -> void:
 		size = grid_size
@@ -329,9 +331,9 @@ class Graph:
 		_ascents = ascents
 		_steppable = steppable
 		var count := size.x * size.y * size.z
-		_open.resize(count)
+		_walkable_cache.resize(count)
 		_steps.resize(count)
-		_known.resize(count)
+		_steps_known.resize(count)
 
 	func contains(position: Vector3i) -> bool:
 		return position.x >= 0 and position.y >= 0 and position.z >= 0 \
@@ -339,6 +341,7 @@ class Graph:
 
 	## Index von position im Raster; position muss darin liegen (contains()).
 	func index_of(position: Vector3i) -> int:
+		assert(contains(position), "Position außerhalb des Rasters")
 		return (position.z * size.y + position.y) * size.x + position.x
 
 	@warning_ignore("integer_division")
@@ -347,7 +350,7 @@ class Graph:
 		return Vector3i(index % size.x, row % size.y, row / size.y)
 
 	func is_walkable(position: Vector3i) -> bool:
-		return _is_open(position.x, position.y, position.z)
+		return _is_walkable_at(position.x, position.y, position.z)
 
 	## Die Begehbarkeit dieser Kacheln (auf allen Ebenen) hat sich geändert: Vergisst sie und die
 	## Schritte von allen Positionen, deren Schritte davon abhängen können – die Kacheln selbst und
@@ -358,31 +361,42 @@ class Graph:
 			for z in size.z:
 				for y in range(maxi(tile.y - 1, 0), mini(tile.y + 2, size.y)):
 					for x in range(maxi(tile.x - 1, 0), mini(tile.x + 2, size.x)):
-						_known[(z * size.y + y) * size.x + x] = 0
+						var index := (z * size.y + y) * size.x + x
+						if _steps_known[index] != 0 and index < _warm_cursor:
+							_forgotten.append(index)
+						_steps_known[index] = 0
 				if contains(Vector3i(tile.x, tile.y, z)):
-					_open[(z * size.y + tile.y) * size.x + tile.x] = 0
+					_walkable_cache[(z * size.y + tile.y) * size.x + tile.x] = 0
 
 	## Berechnet im Voraus die Schritte begehbarer Positionen, bis Time.get_ticks_usec() deadline
 	## erreicht; true, wenn alle durchgesehen sind. Ändert kein Ergebnis, nur wie lange spätere
-	## Suchen rechnen. Was forget() danach wieder vergisst, berechnet erst die nächste Suche.
+	## Suchen rechnen. Was forget() vergessen hat, kommt zuerst dran.
 	func warm(deadline: int) -> bool:
-		var count := _known.size()
+		while not _forgotten.is_empty():
+			if Time.get_ticks_usec() >= deadline:
+				return false
+			var forgotten := _forgotten[_forgotten.size() - 1]
+			_forgotten.resize(_forgotten.size() - 1)
+			_warm_index(forgotten)
+		var count := _steps_known.size()
 		while _warm_cursor < count:
 			# Die Uhr nur ab und zu fragen, sie kostet selbst.
 			if _warm_cursor % 64 == 0 and Time.get_ticks_usec() >= deadline:
 				return false
-			var index := _warm_cursor
 			_warm_cursor += 1
-			if _known[index] == 0:
-				var position := position_of(index)
-				if _is_open(position.x, position.y, position.z):
-					_compute_steps(index)
+			_warm_index(_warm_cursor - 1)
 		return true
+
+	func _warm_index(index: int) -> void:
+		if _steps_known[index] == 0:
+			var position := position_of(index)
+			if _is_walkable_at(position.x, position.y, position.z):
+				_compute_steps(index)
 
 	## Kosten je Index für eine Suche, alle noch unendlich.
 	func new_costs() -> PackedFloat64Array:
 		var costs := PackedFloat64Array()
-		costs.resize(_open.size())
+		costs.resize(_walkable_cache.size())
 		costs.fill(INF)
 		return costs
 
@@ -390,7 +404,7 @@ class Graph:
 	## Zielindex * 2 + 1, wenn der Schritt schräg ist (sonst + 0). Mit extra_cost gilt die Eckregel
 	## auch für Kacheln daneben, die von hier aus zusätzlich kosten; die Kosten selbst addiert die Suche.
 	func steps_of(index: int, extra_cost: Callable) -> PackedInt32Array:
-		if _known[index] == 0:
+		if _steps_known[index] == 0:
 			_compute_steps(index)
 		var steps := _steps[index]
 		if not extra_cost.is_valid():
@@ -416,10 +430,10 @@ class Graph:
 		var y := position.y
 		var z := position.z
 		var width := size.x
-		var up := _is_open(x, y - 1, z)
-		var right := _is_open(x + 1, y, z)
-		var down := _is_open(x, y + 1, z)
-		var left := _is_open(x - 1, y, z)
+		var up := _is_walkable_at(x, y - 1, z)
+		var right := _is_walkable_at(x + 1, y, z)
+		var down := _is_walkable_at(x, y + 1, z)
+		var left := _is_walkable_at(x - 1, y, z)
 		var steps := PackedInt32Array()
 		# Reihenfolge wie STRAIGHT_STEPS, dann wie DIAGONAL_STEPS.
 		_add_step(steps, position, up, index - width, 0)
@@ -427,34 +441,34 @@ class Graph:
 		_add_step(steps, position, down, index + width, 0)
 		_add_step(steps, position, left, index - 1, 0)
 		var on_ground := z == Figure.Level.GROUND
-		_add_step(steps, position, (not on_ground or up and right) and _is_open(x + 1, y - 1, z),
+		_add_step(steps, position, (not on_ground or up and right) and _is_walkable_at(x + 1, y - 1, z),
 				index - width + 1, 1)
-		_add_step(steps, position, (not on_ground or down and right) and _is_open(x + 1, y + 1, z),
+		_add_step(steps, position, (not on_ground or down and right) and _is_walkable_at(x + 1, y + 1, z),
 				index + width + 1, 1)
-		_add_step(steps, position, (not on_ground or down and left) and _is_open(x - 1, y + 1, z),
+		_add_step(steps, position, (not on_ground or down and left) and _is_walkable_at(x - 1, y + 1, z),
 				index + width - 1, 1)
-		_add_step(steps, position, (not on_ground or up and left) and _is_open(x - 1, y - 1, z),
+		_add_step(steps, position, (not on_ground or up and left) and _is_walkable_at(x - 1, y - 1, z),
 				index - width - 1, 1)
 		if _ascents.is_valid():
 			for next: Vector3i in _ascents.call(position):
 				_add_step(steps, position, is_walkable(next), index_of(next) if contains(next) else 0, 0)
 		_steps[index] = steps
-		_known[index] = 1
+		_steps_known[index] = 1
 
 	## Hängt den Schritt nach next an steps, wenn next offen ist und steppable ihn erlaubt.
 	func _add_step(steps: PackedInt32Array, from: Vector3i, open: bool, next: int, diagonal: int) -> void:
 		if open and (not _steppable.is_valid() or _steppable.call(from, position_of(next))):
 			steps.append(next * 2 + diagonal)
 
-	func _is_open(x: int, y: int, z: int) -> bool:
+	func _is_walkable_at(x: int, y: int, z: int) -> bool:
 		if x < 0 or y < 0 or z < 0 or x >= size.x or y >= size.y or z >= size.z:
 			return false
 		var index := (z * size.y + y) * size.x + x
-		var open := _open[index]
+		var open := _walkable_cache[index]
 		if open == 0:
-			open = OPEN if _walkable.call(Vector3i(x, y, z)) else CLOSED
-			_open[index] = open
-		return open == OPEN
+			open = CACHED_WALKABLE if _walkable.call(Vector3i(x, y, z)) else CACHED_BLOCKED
+			_walkable_cache[index] = open
+		return open == CACHED_WALKABLE
 
 
 ## Vorrangwarteschlange (4-ärer Heap) über Indizes: kleinste Schätzung zuerst, dann kleinste

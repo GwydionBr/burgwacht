@@ -1988,7 +1988,7 @@ func _enemy_plan_steppable(from: Vector3i, to: Vector3i) -> bool:
 
 
 ## Rechnet im Voraus, was die Wegfindung später braucht, bis Time.get_ticks_usec() deadline
-## erreicht – für freie Zeit in einem Frame (GameClock). Sonst rechnet die erste Suche nach einer
+## erreicht – nach den Takten eines Frames (GameClock). Sonst rechnet die erste Suche nach einer
 ## Änderung oder einem neuen Spielstand alles selbst und bremst ihren Takt aus, etwa die erste
 ## Welle. Ändert am Ablauf nichts (ADR 0001): Die Graphen geben vorgewärmt dieselben Antworten.
 func warm_paths(deadline: int) -> void:

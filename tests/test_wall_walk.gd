@@ -326,3 +326,18 @@ func test_soldier_walking_on_a_demolished_wall_stops_on_the_next_wall_walk() -> 
 	for i in 50:
 		world.step()
 	assert_eq(soldier.position(), soldier.post, "Bleibt dort:")
+
+
+func test_soldier_paths_see_new_and_removed_stairs() -> void:
+	var world := empty_world("tiny_production")
+	assert_eq(world.execute(Command.found(KEEP_ORIGIN)), "", "Gründung:")
+	put_goods(world, WAREHOUSE, "stone", 100)
+	_wall(world, WALL_TOP, WALL_BOTTOM)
+	var from := Figure.ground(Vector2i(3, 13))
+	var up := _on_wall(Vector2i(6, 12))
+	# Dieselben Graphen der Spielwelt über alle Suchen: Sie vergessen nur, was Bau und Abriss ändern.
+	assert_true(world._find_path(from, up, GameWorld.Walker.SOLDIER).is_empty(), "Ohne Treppe nicht hinauf")
+	var stairs := build(world, "stairs", STAIRS)
+	assert_true(not world._find_path(from, up, GameWorld.Walker.SOLDIER).is_empty(), "Über die neue Treppe")
+	assert_eq(world.execute(Command.demolish(stairs)), "", "Abriss:")
+	assert_true(world._find_path(from, up, GameWorld.Walker.SOLDIER).is_empty(), "Treppe weg, nicht mehr hinauf")
