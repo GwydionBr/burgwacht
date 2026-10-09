@@ -123,7 +123,13 @@ static func _search_uncounted(start: Vector3i, is_goal: Callable, estimate: Call
 			open.push(cost + rest, rest, next)
 	if not found:
 		return path
-	var index := current
+	return _path_to(current, start, came_from, graph)
+
+
+## Der Weg von start nach index samt beiden Enden, rückwärts über came_from (Vorgänger je Index).
+static func _path_to(index: int, start: Vector3i, came_from: PackedInt32Array, graph: Graph) -> Array[Vector3i]:
+	var path: Array[Vector3i] = []
+	var start_index := graph.index_of(start)
 	while index != start_index:
 		path.append(graph.position_of(index))
 		index = came_from[index]
@@ -215,15 +221,33 @@ static func nearest(start: Vector3i, is_goal: Callable, graph: Graph,
 		estimate := Callable()) -> Dictionary[Vector3i, float]:
 	distance_calls += 1
 	var started := Time.get_ticks_usec()
-	var result := _nearest_uncounted(start, is_goal, graph, estimate)
+	var result := _nearest_uncounted(start, is_goal, graph, estimate, PackedInt32Array())
 	distance_us += Time.get_ticks_usec() - started
 	return result
 
 
+## Wie nearest(), aber je Ziel der Weg dorthin samt beiden Enden (wie find_path()) statt seiner
+## Länge (path_length() ergibt dieselbe). Spart die zweite Suche, wer zum gewählten Ziel auch gehen
+## will; unter gleich langen Wegen dorthin ist es der, den diese Suche zuerst fand.
+static func nearest_paths(start: Vector3i, is_goal: Callable, graph: Graph,
+		estimate := Callable()) -> Dictionary[Vector3i, Array]:
+	distance_calls += 1
+	var started := Time.get_ticks_usec()
+	var came_from := PackedInt32Array()
+	var lengths := _nearest_uncounted(start, is_goal, graph, estimate, came_from)
+	var result: Dictionary[Vector3i, Array] = {}
+	for goal: Vector3i in lengths:
+		result[goal] = _path_to(graph.index_of(goal), start, came_from, graph)
+	distance_us += Time.get_ticks_usec() - started
+	return result
+
+
+## came_from bekommt je Index den Vorgänger auf dem kürzesten Weg (für _path_to()).
 static func _nearest_uncounted(start: Vector3i, is_goal: Callable, graph: Graph,
-		estimate: Callable) -> Dictionary[Vector3i, float]:
+		estimate: Callable, came_from: PackedInt32Array) -> Dictionary[Vector3i, float]:
 	var goals: Dictionary[Vector3i, float] = {}
 	var cost_so_far := graph.new_costs()
+	came_from.resize(cost_so_far.size())
 	var closed := PackedByteArray()
 	closed.resize(cost_so_far.size())
 	var no_extra := Callable()
@@ -255,6 +279,7 @@ static func _nearest_uncounted(start: Vector3i, is_goal: Callable, graph: Graph,
 			if cost > limit or cost_so_far[next] <= cost:
 				continue
 			cost_so_far[next] = cost
+			came_from[next] = current
 			var rest := _estimate(estimate, graph.position_of(next))
 			open.push(cost + rest, rest, next)
 	return goals

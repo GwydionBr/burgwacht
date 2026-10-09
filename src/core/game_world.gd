@@ -1342,8 +1342,9 @@ func _start_leaving(resident: Resident) -> void:
 ## Schickt einen Gehenden zur nach Weglänge nächsten erreichbaren Randkachel; steht er schon
 ## dort oder ist keine erreichbar, ist er sofort fort.
 func _send_to_edge(resident: Resident) -> void:
-	var edge := _nearest_edge(resident.plan_start())
-	if edge.is_empty() or not _route_to(resident, Figure.ground(edge[0])) or not resident.is_moving():
+	var route: Array[Vector3i] = []
+	var edge := _nearest_edge(resident.plan_start(), route)
+	if edge.is_empty() or not _follow(resident, route) or not resident.is_moving():
 		_remove_resident(resident)
 
 
@@ -1370,24 +1371,27 @@ func _send_newcomer(newcomer: Resident) -> void:
 
 
 ## Die begehbare Randkachel mit dem kürzesten Weg von start als [Kachel]; bei gleicher Länge
-## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist.
-func _nearest_edge(start: Vector3i) -> Array[Vector2i]:
+## die kleinere (zeilenweise). Leer, wenn kein Rand erreichbar ist. route bekommt den Weg dorthin.
+func _nearest_edge(start: Vector3i, route: Array[Vector3i] = []) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
 	var is_edge := func(position: Vector3i) -> bool: return map.is_edge(Vector2i(position.x, position.y))
 	# Zum Kartenrand fehlen mindestens so viele gerade Schritte, wie die nächste Kartenseite entfernt ist.
 	var to_edge := func(position: Vector3i) -> float:
 		return float(mini(mini(position.x, position.y), mini(map.width - 1 - position.x, map.height - 1 - position.y)))
-	var distances := _nearest(start, Walker.GROUND_ONLY, is_edge, to_edge)
-	for position: Vector3i in distances:
+	var paths := _nearest_paths(start, Walker.GROUND_ONLY, is_edge, to_edge)
+	for position: Vector3i in paths:
 		var tile := Vector2i(position.x, position.y)
-		var length := distances[position]
+		var path: Array[Vector3i] = []
+		path.assign(paths[position])
+		var length := Pathfinder.path_length(path)
 		var better := length < best_length and not Pathfinder.same_length(length, best_length)
 		if not better and Pathfinder.same_length(length, best_length):
 			better = _row_order(tile, best[0])
 		if better:
 			best = [tile]
 			best_length = length
+			route.assign(path)
 	return best
 
 
@@ -1634,9 +1638,14 @@ func _has_deposit_for(tile: Vector2i, workplace: Building) -> bool:
 ## an; gibt es keinen Weg, bleibt er stehen und versucht es nach der Wartezeit erneut
 ## (_work() → _resume()).
 func _go(resident: Resident, tile: Vector2i, task: Resident.Task) -> void:
+	_go_along(resident, _find_path(resident.plan_start(), Figure.ground(tile), _walker_of(resident)), task)
+
+
+## Wie _go(), aber auf einem schon geplanten Weg ab plan_start() (leer: keiner).
+func _go_along(resident: Resident, path: Array[Vector3i], task: Resident.Task) -> void:
 	resident.task = task
 	resident.timer = 0
-	if not _route_to(resident, Figure.ground(tile)):
+	if not _follow(resident, path):
 		resident.stop()
 		resident.timer = Resident.retry_ticks()
 	elif not resident.is_moving():
@@ -1706,8 +1715,9 @@ func _is_reserved(tile: Vector2i, resident: Resident) -> bool:
 ## der Arbeitsstätte und versucht es nach der Wartezeit erneut. Erreicht er sie nicht, wartet
 ## er mit der Ware, wo er ist, und sucht danach erneut ein Lager.
 func _seek_storage(resident: Resident, workplace: Building) -> void:
+	var route: Array[Vector3i] = []
 	var best := _nearest_storage(resident, resident.carried_good, func(storage: Building) -> bool:
-		return storage.stored() < storage.capacity())
+		return storage.stored() < storage.capacity(), route)
 	if best == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_STORAGE)
 		if resident.timer > 0:
@@ -1718,13 +1728,14 @@ func _seek_storage(resident: Resident, workplace: Building) -> void:
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.storage_id = best.id
-	_go(resident, best.entrance(), Resident.Task.TO_STORAGE)
+	_go_along(resident, route, Resident.Task.TO_STORAGE)
 
 
 ## Das nach Weglänge vom Bewohner aus nächste erreichbare Lager der Lagerart von good, für
 ## das accept (Lager → bool) gilt; bei gleicher Länge das mit der kleineren ID. null, wenn
-## es keins gibt.
-func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Building:
+## es keins gibt. route bekommt den Weg zu seinem Eingang ab plan_start() (für _go_along()).
+func _nearest_storage(resident: Resident, good: String, accept: Callable,
+		route: Array[Vector3i] = []) -> Building:
 	var candidates: Array[Building] = []
 	var entrances: Dictionary[Vector3i, bool] = {}
 	for storage in _storages(_storage_type_of(good)):
@@ -1738,18 +1749,22 @@ func _nearest_storage(resident: Resident, good: String, accept: Callable) -> Bui
 		for entrance: Vector3i in entrances:
 			shortest = minf(shortest, Pathfinder.free_length(position, entrance))
 		return shortest
-	var distances := _nearest(resident.plan_start(), Walker.GROUND_ONLY,
+	var paths := _nearest_paths(resident.plan_start(), Walker.GROUND_ONLY,
 			func(position: Vector3i) -> bool: return entrances.has(position), to_nearest)
 	var best: Building = null
 	var best_length := INF
 	for storage in candidates:
 		var entrance := Figure.ground(storage.entrance())
-		if not distances.has(entrance):
+		if not paths.has(entrance):
 			continue
+		var path: Array[Vector3i] = []
+		path.assign(paths[entrance])
+		var length := Pathfinder.path_length(path)
 		# Lager kommen nach ID aufsteigend: bei gleicher Länge bleibt das frühere.
-		if distances[entrance] < best_length and not Pathfinder.same_length(distances[entrance], best_length):
+		if length < best_length and not Pathfinder.same_length(length, best_length):
 			best = storage
-			best_length = distances[entrance]
+			best_length = length
+			route.assign(path)
 	return best
 
 
@@ -1777,9 +1792,10 @@ func _seek_input(resident: Resident, workplace: Building, at_workplace: bool) ->
 		_go(resident, workplace.entrance(), Resident.Task.RETURNING)
 		return
 	var found: Building = null
+	var route: Array[Vector3i] = []
 	if not at_workplace or get_stock(good) >= missing:
 		found = _nearest_storage(resident, good, func(storage: Building) -> bool:
-			return storage.contents.get(good, 0) > 0)
+			return storage.contents.get(good, 0) > 0, route)
 	if found == null:
 		_go(resident, workplace.entrance(), Resident.Task.WAITING_FOR_INPUT)
 		if resident.timer > 0:
@@ -1789,7 +1805,7 @@ func _seek_input(resident: Resident, workplace: Building, at_workplace: bool) ->
 		resident.timer = Resident.retry_ticks()
 		return
 	resident.storage_id = found.id
-	_go(resident, found.entrance(), Resident.Task.FETCHING)
+	_go_along(resident, route, Resident.Task.FETCHING)
 
 
 ## Wie viel Eingangsware dem Arbeiter eines Herstellungsbetriebs noch für einen Arbeitsgang fehlt.
@@ -1951,9 +1967,10 @@ func _distances(start: Vector3i, walker: Walker, max_length := INF) -> Dictionar
 	return result
 
 
-## Weglängen für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest()).
-func _nearest(start: Vector3i, walker: Walker, is_goal: Callable, estimate: Callable) -> Dictionary[Vector3i, float]:
-	return Pathfinder.nearest(start, is_goal, _graph(walker), estimate)
+## Wege für walker zu den nächsten Positionen, für die is_goal gilt (Pathfinder.nearest_paths()).
+func _nearest_paths(start: Vector3i, walker: Walker, is_goal: Callable,
+		estimate: Callable) -> Dictionary[Vector3i, Array]:
+	return Pathfinder.nearest_paths(start, is_goal, _graph(walker), estimate)
 
 
 ## Der Graph für walker: wo er stehen darf (_can_stand()), seine Ebenenwechsel und die Regel für
