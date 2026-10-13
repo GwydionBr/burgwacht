@@ -447,17 +447,17 @@ func _finish_selection(release: Vector2, remove_marks: bool = false) -> void:
 	_set_selection(picked)
 
 
-## Ein Klick trifft den Baum auf der Kachel oder die vorderste Baumkrone darüber.
+## Ein Klick trifft zuerst die vorderste Baumkrone, sonst den Baum auf der Bodenkachel.
 func _clearing_tile_at(point: Vector2) -> Vector2i:
-	var tile := Iso.world_to_tile(point)
-	if world.clearing_error([tile]) == "":
-		return tile
 	var front := GameWorld.NO_SITE
 	for candidate: Vector2i in _deposit_views:
 		if world.clearing_error([candidate]) == "" and _deposit_views[candidate].hit_rect().has_point(point) \
 				and (front == GameWorld.NO_SITE or _deposit_views[candidate].position.y > _deposit_views[front].position.y):
 			front = candidate
-	return front
+	if front != GameWorld.NO_SITE:
+		return front
+	var tile := Iso.world_to_tile(point)
+	return tile if world.clearing_error([tile]) == "" else GameWorld.NO_SITE
 
 
 ## Der Rahmen erfasst Baumkronen; leere Kacheln und andere Vorkommen bleiben unberührt.
