@@ -6,6 +6,8 @@ var type: String
 var amount: int
 ## Nur für die Optik (Form, Größe), damit nicht alle Bäume gleich aussehen.
 var variant: int
+## Vom Spieler zum bevorzugten Abbau markiert; endet mit diesem Vorkommen.
+var marked_for_clearing := false
 
 
 static func create(type_id: String, rng: RandomNumberGenerator) -> Deposit:
@@ -24,6 +26,11 @@ func is_walkable() -> bool:
 ## Darf es nur ein Arbeiter zugleich abbauen ("exclusive", z. B. Bäume)?
 func is_exclusive() -> bool:
 	return bool(GameDefs.get_instance().deposits[type].get("exclusive", false))
+
+
+## Darf das Roden-Werkzeug dieses Vorkommen markieren („clearable“)?
+func is_clearable() -> bool:
+	return bool(GameDefs.get_instance().deposits[type].get("clearable", false))
 
 
 ## Die Ware, die es liefert ("yields").
@@ -53,7 +60,7 @@ static func spread_terrains_of(type_id: String) -> Array[String]:
 
 ## Als reine Daten für den Spielstand (ohne Kachel – die gehört der Karte).
 func to_data() -> Dictionary:
-	return {"type": type, "amount": amount, "variant": variant}
+	return {"type": type, "amount": amount, "variant": variant, "marked_for_clearing": marked_for_clearing}
 
 
 ## Gegenstück zu to_data().
@@ -62,4 +69,6 @@ static func from_data(data: Dictionary) -> Deposit:
 	deposit.type = str(data["type"])
 	deposit.amount = int(data["amount"])
 	deposit.variant = int(data["variant"])
+	# Ältere Spielstände derselben Formatversion enthalten noch keine Markierungen.
+	deposit.marked_for_clearing = bool(data.get("marked_for_clearing", false))
 	return deposit

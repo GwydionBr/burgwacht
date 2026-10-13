@@ -17,6 +17,7 @@ extends CanvasLayer
 signal build_selected(type_id: String)
 ## Der Abriss-Knopf wurde gedrückt.
 signal demolish_selected()
+signal clearing_selected()
 ## In der Verwaltung soll die Ration um so viele Stufen steigen (+1) bzw. sinken (−1).
 signal ration_step(delta: int)
 ## In der Verwaltung soll der Steuersatz um so viele Stufen steigen (+1) bzw. sinken (−1).
@@ -114,6 +115,7 @@ var _category_rows: Dictionary[String, HBoxContainer] = {}
 var _build_buttons: Dictionary[String, Button] = {}
 var _cost_labels: Dictionary[String, Label] = {}
 var _demolish_button: Button
+var _clearing_button: Button
 var _defeat_panel: PanelContainer
 ## Dunkelt hinter der Niederlage-Ansicht die Partie ab und fängt Klicks ab.
 var _defeat_dim: ColorRect
@@ -154,7 +156,7 @@ func _ready() -> void:
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
-		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  Rechtsklick/Esc: beenden\n"
+		"Linksklick: gründen/bauen/abreißen/Kaserne öffnen  ·  X: Abriss  ·  F6: Roden  ·  Rechtsklick/Esc: beenden\n"
 		+ "Soldaten: Linksklick/-ziehen wählen, Rechtsklick schickt sie hin bzw. greift an  ·  Esc: Auswahl aufheben\n"
 		+ "WASD/Pfeile, zwei Finger, Rechtsziehen: Kamera  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo" + ("  ·  N: neue Karte" if OS.is_debug_build() else "") + "\n"
@@ -467,6 +469,8 @@ func set_build_bar_enabled(enabled: bool) -> void:
 		button.modulate.a = 1.0 if enabled else 0.55
 	_demolish_button.disabled = not enabled
 	_demolish_button.modulate.a = 1.0 if enabled else 0.55
+	_clearing_button.disabled = not enabled
+	_clearing_button.modulate.a = 1.0 if enabled else 0.55
 
 
 ## Je Gebäudetyp der Grund, warum seine Kosten gerade nicht reichen (leer = sie reichen); die
@@ -481,14 +485,15 @@ func show_build_costs(errors: Dictionary[String, String]) -> void:
 
 
 ## Hebt den Knopf des gewählten Werkzeugs hervor: Gebäudetyp im Baumodus (leer = keiner)
-## oder das Abriss-Werkzeug.
+## oder das Abriss- bzw. Roden-Werkzeug.
 ## Wird ein Gebäude per Taste gewählt, wechselt die Bauleiste zu seiner Kategorie.
-func show_tool(build_type: String, demolishing: bool) -> void:
+func show_tool(build_type: String, demolishing: bool, clearing: bool = false) -> void:
 	if build_type != "":
 		_select_category(GameWorld.build_category_of(build_type))
 	for button_type: String in _build_buttons:
 		_build_buttons[button_type].set_pressed_no_signal(button_type == build_type)
 	_demolish_button.set_pressed_no_signal(demolishing)
+	_clearing_button.set_pressed_no_signal(clearing)
 
 
 ## Die Titelleiste über die ganze Breite: links Name und Karte, dann Tag und Tempo, die Lager mit
@@ -695,6 +700,10 @@ func _make_build_bar() -> VBoxContainer:
 	_demolish_button.tooltip_text = "Abriss [X]\nGibt die Hälfte der Kosten zurück"
 	_demolish_button.pressed.connect(demolish_selected.emit)
 	body.add_child(_demolish_button)
+	_clearing_button = _make_card("", "Roden", "F6", "Bäume markieren", true)
+	_clearing_button.tooltip_text = "Roden [F6]\nKlicken oder Rahmen ziehen: Bäume zum Fällen markieren\nUmschalt: Markierungen entfernen"
+	_clearing_button.pressed.connect(clearing_selected.emit)
+	body.add_child(_clearing_button)
 	return bar
 
 
@@ -715,9 +724,9 @@ func _make_build_button(type_id: String) -> Button:
 	return button
 
 
-## Umschaltknopf als Karte: Symbol (type_id, leer = Abriss), Titel, unten die Kosten bzw. ein
+## Umschaltknopf als Karte: Symbol (type_id, leer = Abriss oder mit clearing eine Axt), Titel, unten die Kosten bzw. ein
 ## Hinweis und oben links die Taste. Das Kostenfeld merkt sich _cost_labels.
-func _make_card(type_id: String, title: String, hotkey: String, cost: String) -> Button:
+func _make_card(type_id: String, title: String, hotkey: String, cost: String, clearing: bool = false) -> Button:
 	var button := Button.new()
 	button.toggle_mode = true
 	# Kein Tastaturfokus, sonst löst die Leertaste (Pause) den Knopf aus.
@@ -729,7 +738,7 @@ func _make_card(type_id: String, title: String, hotkey: String, cost: String) ->
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(column)
-	var icon := BuildingIcon.new(type_id, true)
+	var icon := BuildingIcon.new(type_id, true, clearing)
 	icon.custom_minimum_size = Vector2(0, CARD_ICON_HEIGHT)
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(icon)

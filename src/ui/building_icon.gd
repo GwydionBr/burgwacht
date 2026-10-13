@@ -3,6 +3,7 @@ extends Control
 ## Gebäudebild für die Bauleiste, eingepasst in die eigene Fläche. Ohne Sprite erscheint
 ## derselbe isometrische Block wie auf der Karte, mit Größe, Höhe und Farbe aus den Daten.
 ## Ohne Typ (leer) zeigt es das Abriss-Werkzeug: ein Trümmerblock mit rotem Kreuz.
+## Mit clearing zeigt es die Axt des Roden-Werkzeugs.
 
 ## Größter Maßstab, damit Gebäude mit einer Kachel (Mauer, Treppe) nicht riesig werden.
 const MAX_SCALE := 0.75
@@ -15,16 +16,21 @@ const RUBBLE_HEIGHT := 14.0
 var _use_sprite: bool
 var _type_id: String
 var _texture: Texture2D
+var _clearing: bool
 
 
 ## Sprites nur für Baukarten; Lagerzähler behalten ihr gezeichnetes HUD-Symbol.
-func _init(type_id: String, use_sprite: bool = false) -> void:
+func _init(type_id: String, use_sprite: bool = false, clearing: bool = false) -> void:
 	_type_id = type_id
 	_use_sprite = use_sprite
+	_clearing = clearing
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _draw() -> void:
+	if _clearing:
+		ClearingMarker.draw_axe(self, size * 0.5, 2.5)
+		return
 	var tiles := Vector2i(2, 2)
 	var height := RUBBLE_HEIGHT
 	var color := RUBBLE_COLOR

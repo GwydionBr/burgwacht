@@ -252,6 +252,10 @@ _Avoid_: Sammelpunkt, Feuerstelle
 Das Gewinnen von Rohstoffen aus einem Vorkommen durch einen Arbeiter; ist ein Vorkommen erschöpft, verschwindet es.
 _Avoid_: Ernte, Abriss (das ist das Entfernen eines Gebäudes)
 
+**Roden**:
+Das gezielte Freiräumen von Bäumen: Der Spieler markiert sie zum Fällen, Holzfäller bauen sie
+innerhalb ihres Suchradius bevorzugt ab. Die Markierung endet mit dem Baum; sie sperrt kein Nachwachsen.
+
 **Traglast**:
 Die Menge einer Ware, die ein Arbeiter auf einmal trägt.
 _Avoid_: Ladung, Kapazität
