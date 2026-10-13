@@ -1,6 +1,6 @@
 class_name SelectionBox
 extends Node2D
-## Rahmen beim Linksziehen: zeigt, welche Soldaten gleich ausgewählt werden (Weltkoordinaten).
+## Rahmen beim Linksziehen für Soldatenauswahl und Roden (Weltkoordinaten).
 
 const FILL_COLOR := Color(1, 0.95, 0.7, 0.12)
 const LINE_COLOR := Color(1, 0.95, 0.7, 0.9)

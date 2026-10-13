@@ -13,6 +13,7 @@ extends Node2D
 ##   --ticks=40            danach so viele Takte laufen lassen (für Screenshots, z. B. laufende Arbeiter)
 ##   --build=woodcutter    nach der Gründung gleich im Baumodus für diesen Typ (für Screenshots)
 ##   --demolish            nach der Gründung gleich mit dem Abriss-Werkzeug (für Screenshots)
+##   --clearing            nach der Gründung gleich mit dem Roden-Werkzeug
 ##   --hover=x,y           Maus gilt als über dieser Kachel (für Screenshots, sonst Kartenmitte)
 ##   --admin               Verwaltung geöffnet (für Screenshots)
 ##   --market              Marktansicht geöffnet (für Screenshots)
@@ -96,6 +97,8 @@ var _hovered := Vector2i(-1, -1)
 var _build_type := ""
 ## Abriss-Werkzeug gewählt (schließt den Baumodus aus).
 var _demolishing := false
+var _clearing := false
+var _clearing_remove_hint := false
 ## ID der Kaserne, deren Ansicht offen ist (0 = keine).
 var _barracks_id := 0
 ## IDs der ausgewählten Soldaten.
@@ -135,6 +138,7 @@ func _ready() -> void:
 	_hud.show_speed(_clock.get_speed(), _clock.is_paused())
 	_hud.build_selected.connect(_select_build)
 	_hud.demolish_selected.connect(_select_demolish)
+	_hud.clearing_selected.connect(_select_clearing)
 	_hud.ration_step.connect(_step_ration)
 	_hud.tax_rate_step.connect(_step_tax_rate)
 	_hud.trade_requested.connect(_trade)
@@ -196,6 +200,8 @@ func _ready() -> void:
 		_select_build(str(args["build"]))
 	if args.has("demolish"):
 		_select_demolish()
+	if args.has("clearing"):
+		_select_clearing()
 	if args.has("admin"):
 		_hud.toggle_administration()
 	if args.has("market"):
@@ -308,6 +314,9 @@ func _process(_delta: float) -> void:
 		_hovered = tile
 		_update_hover()
 		_update_preview()
+	if _clearing and _clearing_remove_hint != Input.is_key_pressed(KEY_SHIFT):
+		# Umschalt ändert den Hinweis auch ohne Mausbewegung.
+		_update_preview()
 
 
 ## Eine begonnene Auswahl folgt der Maus und endet beim Loslassen – auch über dem HUD, das
@@ -322,10 +331,10 @@ func _input(event: InputEvent) -> void:
 		return
 	var motion := event as InputEventMouseMotion
 	if motion != null and _is_drag(_left_press, motion.position):
-		_selection_box.show_box(_left_press_world, get_global_mouse_position())
+		_selection_box.show_box(_left_press_world, _world_point(motion.position))
 	var button := event as InputEventMouseButton
 	if button != null and button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
-		_finish_selection(button.position)
+		_finish_selection(button.position, button.shift_pressed)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -342,7 +351,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not _is_drag(_right_press, button.position):
 				_right_click()
 	elif button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
-		_left_click()
+		_left_click(button.position)
+
+
+## Weltposition des Eingabeereignisses, auch wenn die Maus seitdem schon weitergezogen ist.
+func _world_point(screen: Vector2) -> Vector2:
+	return get_global_transform_with_canvas().affine_inverse() * screen
 
 
 ## Ist die Maus zwischen Drücken und Loslassen so weit gewandert, dass es ein Ziehen ist?
@@ -353,7 +367,7 @@ static func _is_drag(from: Vector2, to: Vector2) -> bool:
 ## Rechtsklick ohne Ziehen: beendet den Bau- bzw. Abrissmodus, sonst lässt er die Auswahl den
 ## Feind unter der Maus angreifen bzw. schickt sie an die Kachel unter der Maus.
 func _right_click() -> void:
-	if _build_type != "" or _demolishing:
+	if _build_type != "" or _demolishing or _clearing:
 		_select_build("")
 	elif not _selected.is_empty():
 		var enemy := _enemy_at(get_global_mouse_position())
@@ -383,9 +397,9 @@ func _target_under_mouse() -> Vector3i:
 	return Figure.ground(_hovered)
 
 
-## Linke Taste gedrückt: gründet, baut oder reißt ab; ohne Werkzeug beginnt die Auswahl
-## (entschieden wird beim Loslassen).
-func _left_click() -> void:
+## Linke Taste gedrückt: gründet, baut oder reißt ab; beim Roden und ohne Werkzeug beginnt
+## der Auswahlrahmen (entschieden wird beim Loslassen).
+func _left_click(screen: Vector2) -> void:
 	var reason := ""
 	if world.is_founding():
 		reason = _match.execute(Command.found(_origin_under_mouse(GameWorld.FOUNDING_TYPE)))
@@ -401,32 +415,66 @@ func _left_click() -> void:
 			reason = _match.execute(Command.demolish(building.id))
 	else:
 		_selecting = true
-		_left_press = get_viewport().get_mouse_position()
-		_left_press_world = get_global_mouse_position()
+		_left_press = screen
+		_left_press_world = _world_point(screen)
 	if reason != "":
 		_hud.show_message(reason)
 
 
 ## Linke Taste losgelassen: Gezogen wählt alle Soldaten im Rahmen. Ein Klick wählt den
 ## Soldaten unter der Maus (_soldier_at()); steht dort keiner, hebt er die Auswahl auf und
-## öffnet auf einer Kaserne deren Ansicht.
-func _finish_selection(release: Vector2) -> void:
+## öffnet auf einer Kaserne deren Ansicht. Beim Roden setzt bzw. entfernt sie Markierungen.
+func _finish_selection(release: Vector2, remove_marks: bool = false) -> void:
 	_selecting = false
 	_selection_box.visible = false
+	if _clearing:
+		_finish_clearing(release, remove_marks)
+		return
 	var picked: Array[int] = []
+	var point := _world_point(release)
 	if _is_drag(_left_press, release):
-		var box := Rect2(_left_press_world, get_global_mouse_position() - _left_press_world).abs()
+		var box := Rect2(_left_press_world, point - _left_press_world).abs()
 		for id: int in _soldier_views():
 			if _resident_views[id].hit_rect().intersects(box, true):
 				picked.append(id)
 	else:
 		var building := world.get_building_at(_hovered)
-		var front := _soldier_at(get_global_mouse_position(), null if building == null else _building_views[building.id])
+		var front := _soldier_at(point, null if building == null else _building_views[building.id])
 		if front != 0:
 			picked.append(front)
 		elif building != null and building.is_barracks():
 			_open_barracks(building.id)
 	_set_selection(picked)
+
+
+## Ein Klick trifft den Baum auf der Kachel oder die vorderste Baumkrone darüber.
+func _clearing_tile_at(point: Vector2) -> Vector2i:
+	var tile := Iso.world_to_tile(point)
+	if world.clearing_error([tile]) == "":
+		return tile
+	var front := GameWorld.NO_SITE
+	for candidate: Vector2i in _deposit_views:
+		if world.clearing_error([candidate]) == "" and _deposit_views[candidate].hit_rect().has_point(point) \
+				and (front == GameWorld.NO_SITE or _deposit_views[candidate].position.y > _deposit_views[front].position.y):
+			front = candidate
+	return front
+
+
+## Der Rahmen erfasst Baumkronen; leere Kacheln und andere Vorkommen bleiben unberührt.
+func _finish_clearing(release: Vector2, remove_marks: bool) -> void:
+	var tiles: Array[Vector2i] = []
+	var point := _world_point(release)
+	if _is_drag(_left_press, release):
+		var box := Rect2(_left_press_world, point - _left_press_world).abs()
+		for tile: Vector2i in _deposit_views:
+			if world.clearing_error([tile]) == "" and _deposit_views[tile].hit_rect().intersects(box, true):
+				tiles.append(tile)
+	else:
+		var tile := _clearing_tile_at(point)
+		if tile != GameWorld.NO_SITE:
+			tiles.append(tile)
+	_execute_or_show(Command.mark_clearing(tiles, not remove_marks))
+	_update_preview()
 
 
 ## Die IDs aller Soldaten mit Figur, nach ID aufsteigend.
@@ -511,7 +559,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_hud.close_market()
 			elif _hud.is_barracks_open():
 				_hud.close_barracks()
-			elif _build_type != "" or _demolishing:
+			elif _build_type != "" or _demolishing or _clearing:
 				_select_build("")
 			elif not world.is_defeated():
 				_open_game_menu()
@@ -533,6 +581,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_step_tax_rate(1)
 		KEY_X:
 			_select_demolish()
+		KEY_F6:
+			_select_clearing()
 		KEY_F:
 			Settings.shared().set_fullscreen(not Settings.shared().is_fullscreen())
 		_:
@@ -575,6 +625,7 @@ func _show_world() -> void:
 	world.deposit_added.connect(_on_deposit_added)
 	world.deposit_removed.connect(_on_deposit_removed)
 	world.deposit_changed.connect(_on_deposit_changed)
+	world.clearing_changed.connect(_on_clearing_changed)
 	world.day_started.connect(_hud.show_day)
 	world.building_added.connect(_on_building_added)
 	world.building_removed.connect(_on_building_removed)
@@ -601,6 +652,7 @@ func _show_world() -> void:
 	_close_game_menu()
 	_build_type = ""
 	_demolishing = false
+	_clearing = false
 	_hud.show_tool("", false)
 	_barracks_id = 0
 	_hud.close_barracks()
@@ -815,6 +867,12 @@ func _on_deposit_changed(tile: Vector2i) -> void:
 		_update_hover()
 
 
+func _on_clearing_changed(tile: Vector2i) -> void:
+	if _deposit_views.has(tile):
+		_deposit_views[tile].update_clearing()
+	_update_hover()
+
+
 func _add_building_view(id: int) -> void:
 	var view := BuildingView.new()
 	view.setup(world.get_building(id), _shadows, _clock, world)
@@ -902,6 +960,8 @@ func _on_resident_removed(id: int) -> void:
 func _on_resident_changed(_id: int) -> void:
 	_update_residents()
 	_update_hover()
+	if _clearing:
+		_update_preview()
 
 
 func _add_enemy_view(id: int) -> void:
@@ -967,18 +1027,30 @@ func _select_demolish() -> void:
 	_select_tool("", true)
 
 
-func _select_tool(build_type: String, demolishing: bool) -> void:
+## Roden-Werkzeug wählen; in der Gründung gesperrt.
+func _select_clearing() -> void:
+	_select_tool("", false, true)
+
+
+func _select_tool(build_type: String, demolishing: bool, clearing: bool = false) -> void:
+	var clearing_reason := world.clearing_tool_error() if clearing else ""
+	if clearing_reason != "":
+		_hud.show_message(clearing_reason)
+		clearing = false
 	if (build_type != "" or demolishing) and world.is_founding():
 		_hud.show_message(GameWorld.FOUNDING_FIRST)
 		build_type = ""
 		demolishing = false
 	# Mit einem Werkzeug ist keine Auswahl sichtbar; Esc soll dann gleich das Werkzeug beenden.
-	if build_type != "" or demolishing:
+	if build_type != "" or demolishing or clearing:
 		_set_selection([])
 	_build_type = build_type
 	_demolishing = demolishing
+	_clearing = clearing
 	_drawing_line = false
-	_hud.show_tool(build_type, demolishing)
+	_selecting = false
+	_selection_box.visible = false
+	_hud.show_tool(build_type, demolishing, clearing)
 	_update_preview()
 
 
@@ -996,6 +1068,15 @@ func _update_preview() -> void:
 
 
 func _update_build_preview() -> void:
+	if _clearing:
+		_preview.visible = false
+		_clearing_remove_hint = Input.is_key_pressed(KEY_SHIFT)
+		var hint := "Roden: Bäume anklicken oder Rahmen ziehen  ·  Umschalt: entfernen  ·  Rechtsklick/Esc: beenden"
+		if _clearing_remove_hint:
+			hint = "Roden: Markierungen entfernen (Klick oder Rahmen)  ·  Rechtsklick/Esc: beenden"
+		var warning := world.clearing_warning(_hovered)
+		_hud.show_build_hint(hint + ("\n" + warning if warning != "" else ""), warning == "")
+		return
 	if _demolishing:
 		_update_demolish_preview()
 		return
@@ -1173,6 +1254,11 @@ func _update_hover() -> void:
 	if deposit != null:
 		var deposit_def: Dictionary = defs.deposits[deposit.type]
 		text += "  ·  %s: %d %s" % [deposit_def["name"], deposit.amount, defs.goods[deposit_def["yields"]]["name"]]
+		if deposit.marked_for_clearing:
+			text += "  ·  Zum Fällen markiert"
+			var warning := world.clearing_warning(_hovered)
+			if warning != "":
+				text += "\n" + warning
 	var building := world.get_building_at(_hovered)
 	if building != null:
 		text += "  ·  %s" % building.def()["name"]

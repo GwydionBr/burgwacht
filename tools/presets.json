@@ -55,6 +55,14 @@
 		"name": "Holzfäller bei der Arbeit, Markt offen",
 		"args": ["--seed=1", "--days=3", "--place=woodcutter@46,41", "--ticks=25", "--market"]
 	},
+	"clearing": {
+		"name": "Roden: Axtmarkierungen und Werkzeug mit Auswahlrahmen",
+		"args": ["--setup=clearing", "--clearing", "--box=14,8", "--hover=18,13", "--focus=15,10"]
+	},
+	"clearing_unreachable": {
+		"name": "Roden: markierter Baum außerhalb der Holzfällerreichweite",
+		"args": ["--setup=clearing", "--hover=38,12", "--focus=38,12"]
+	},
 	"demolish": {
 		"name": "Abriss nach einem Tag",
 		"args": ["--seed=1", "--days=1", "--demolish"]

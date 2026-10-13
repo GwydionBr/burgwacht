@@ -12,10 +12,14 @@ const GAME_COLOR := Color("#7a5232")
 const GAME_BELLY_COLOR := Color("#c9a77c")
 
 const SPRITE_SCALE := 0.5
+## Sichtbare Bildgrenzen je Sprite, ohne transparente Ränder; nur einmal pro Variante gelesen.
+static var _sprite_bounds: Dictionary[String, Rect2] = {}
 
 var deposit: Deposit
 var _sprite: Sprite2D
 var _shadow: Sprite2D
+var _clearing_marker: ClearingMarker
+var _hit_rect := Rect2(Vector2(-18, -40), Vector2(36, 48))
 
 
 ## Die gespeicherte Variante bestimmt das Bild; shadows liegt unter den sortierten Objekten.
@@ -27,17 +31,40 @@ func setup(tile: Vector2i, shown: Deposit, shadows: Node2D = null) -> void:
 			old.queue_free()
 	_sprite = null
 	_shadow = null
+	_hit_rect = Rect2(Vector2(-18, -40), Vector2(36, 48))
 	var def: Dictionary = GameDefs.get_instance().deposits[deposit.type]
 	var path := GameDefs.sprite_path(def, deposit.variant)
 	if ResourceLoader.exists(path):
 		_sprite = _make_sprite(path)
 		add_child(_sprite)
+		if not _sprite_bounds.has(path):
+			var used := _sprite.texture.get_image().get_used_rect()
+			_sprite_bounds[path] = Rect2(Vector2(used.position) - _sprite.texture.get_size() * 0.5, Vector2(used.size))
+		var bounds := _sprite_bounds[path]
+		_hit_rect = Rect2(bounds.position * SPRITE_SCALE, bounds.size * SPRITE_SCALE)
 		var shadow_path := GameDefs.shadow_path(def, deposit.variant)
 		if shadows != null and ResourceLoader.exists(shadow_path):
 			_shadow = _make_sprite(shadow_path)
 			_shadow.position = position - shadows.global_position
 			shadows.add_child(_shadow)
+	if not is_instance_valid(_clearing_marker):
+		_clearing_marker = ClearingMarker.new()
+		# Über benachbarten Baumkronen, damit Markierungen im Wald erkennbar bleiben.
+		_clearing_marker.z_index = 30
+		add_child(_clearing_marker)
+	_clearing_marker.position = Vector2(0, -38)
+	update_clearing()
 	queue_redraw()
+
+
+## Die sichtbare Fläche des Vorkommens für Klick und Auswahlrahmen (Weltkoordinaten).
+func hit_rect() -> Rect2:
+	return Rect2(global_position + _hit_rect.position, _hit_rect.size)
+
+
+## Übernimmt die Markierung aus der Spielwelt, auch nach dem Laden.
+func update_clearing() -> void:
+	_clearing_marker.visible = deposit.marked_for_clearing
 
 
 func _notification(what: int) -> void:

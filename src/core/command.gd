@@ -2,7 +2,11 @@ class_name Command
 extends RefCounted
 ## Ein Befehl: eine Absicht des Spielers, die GameWorld.execute() sofort ausführt (ADR 0001).
 
-enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY, SPAWN_WAVE }
+enum Kind { FOUND, BUILD, BUILD_LINE, DEMOLISH, SET_RATION, SET_TAX_RATE, TRADE, RECRUIT, MOVE, ATTACK, SPAWN_ENEMY, SPAWN_WAVE, MARK_CLEARING }
+
+## Bei MARK_CLEARING: die Vorkommen, deren Markierung gesetzt oder entfernt wird.
+var deposit_tiles: Array[Vector2i] = []
+var clearing_marked := true
 
 var kind: Kind
 ## Ursprungskachel (obere Ecke der Grundfläche) des Gebäudes; bei BUILD_LINE der Anfang der Linie.
@@ -67,6 +71,15 @@ static func demolish(id: int) -> Command:
 	var command := Command.new()
 	command.kind = Kind.DEMOLISH
 	command.building_id = id
+	return command
+
+
+## Vorkommen zum bevorzugten Abbau markieren, mit marked = false die Markierung entfernen.
+static func mark_clearing(tiles: Array[Vector2i], marked: bool = true) -> Command:
+	var command := Command.new()
+	command.kind = Kind.MARK_CLEARING
+	command.deposit_tiles = tiles.duplicate()
+	command.clearing_marked = marked
 	return command
 
 

@@ -41,6 +41,8 @@ signal deposit_added(tile: Vector2i)
 signal deposit_removed(tile: Vector2i)
 ## Die Menge eines Vorkommens hat sich geändert (abgebaut, aber nicht erschöpft).
 signal deposit_changed(tile: Vector2i)
+## Die Markierung zum Roden hat sich geändert.
+signal clearing_changed(tile: Vector2i)
 ## Ein neuer Tag hat begonnen; kommt am Ende des Takts, die Spielwelt ist dann vollständig.
 signal day_started(day: int)
 signal building_added(id: int)
@@ -356,6 +358,8 @@ func execute(command: Command) -> String:
 		return _build_line(command.building_type, command.origin, command.line_end)
 	if command.kind == Command.Kind.DEMOLISH:
 		return _demolish(command.building_id)
+	if command.kind == Command.Kind.MARK_CLEARING:
+		return _mark_clearing(command.deposit_tiles, command.clearing_marked)
 	if command.kind == Command.Kind.SET_RATION:
 		return _set_ration(command.ration)
 	if command.kind == Command.Kind.SET_TAX_RATE:
@@ -379,6 +383,58 @@ func execute(command: Command) -> String:
 
 func is_founding() -> bool:
 	return _founding
+
+
+## Darf das Roden-Werkzeug jetzt verwendet werden?
+func clearing_tool_error() -> String:
+	if _defeated:
+		return DEFEATED
+	if _founding:
+		return FOUNDING_FIRST
+	return ""
+
+
+## Darf das Roden-Werkzeug hier markieren oder die Markierung entfernen?
+func clearing_error(tiles: Array[Vector2i]) -> String:
+	var reason := clearing_tool_error()
+	if reason != "":
+		return reason
+	if tiles.is_empty():
+		return "Keine Bäume ausgewählt."
+	for tile in tiles:
+		var deposit := map.get_deposit(tile)
+		if deposit == null or not deposit.is_clearable():
+			return "Hier steht kein Baum zum Roden."
+	return ""
+
+
+func _mark_clearing(tiles: Array[Vector2i], marked: bool) -> String:
+	var reason := clearing_error(tiles)
+	if reason != "":
+		return reason
+	# Doppelte Kacheln ändern und melden den Zustand nur einmal.
+	for tile in tiles:
+		var deposit := map.get_deposit(tile)
+		if deposit.marked_for_clearing != marked:
+			deposit.marked_for_clearing = marked
+			clearing_changed.emit(tile)
+	return ""
+
+
+## Hinweis für einen markierten Baum, den keine besetzte Arbeitsstätte erreicht; sonst leer.
+## Verwendet dieselben Wege, Nachbarkacheln und Suchradien wie die Vorkommenssuche.
+func clearing_warning(tile: Vector2i) -> String:
+	var deposit := map.get_deposit(tile)
+	if deposit == null or not deposit.marked_for_clearing:
+		return ""
+	for workplace in get_buildings():
+		if workplace.deposit_type() != deposit.type or get_workers(workplace.id).is_empty():
+			continue
+		var distances := _distances(Figure.ground(workplace.entrance()), Walker.GROUND_ONLY, workplace.gather_range())
+		for step: Vector3i in Pathfinder.STRAIGHT_STEPS:
+			if distances.has(Figure.ground(tile) + step):
+				return ""
+	return "Kein besetzter Holzfäller erreicht diesen Baum."
 
 
 ## Ist die Partie verloren (der Bergfried gefallen)? Der erreichte Tag ist dann get_day().
@@ -1672,10 +1728,12 @@ func _seek_deposit(resident: Resident, workplace: Building) -> void:
 ## ihres Suchradius (gemessen bis zur Kachel, von der aus abgebaut wird), das kein anderer
 ## reserviert hat, als [Kachel des Vorkommens, Kachel
 ## daneben zum Abbauen]; leer, wenn es keins gibt. Abgebaut wird von einer begehbaren Kachel
-## mit gemeinsamer Kante. Bei gleicher Weglänge zuerst die kleinere Kachel (zeilenweise).
+## mit gemeinsamer Kante. Zum Roden markierte Vorkommen haben Vorrang; innerhalb derselben
+## Priorität entscheidet die Weglänge, bei Gleichstand die kleinere Kachel (zeilenweise).
 func _nearest_deposit(resident: Resident, workplace: Building) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	var best_length := INF
+	var best_marked := false
 	var distances := _distances(Figure.ground(workplace.entrance()), Walker.GROUND_ONLY, workplace.gather_range())
 	for position: Vector3i in distances:
 		var stand := Vector2i(position.x, position.y)
@@ -1685,12 +1743,16 @@ func _nearest_deposit(resident: Resident, workplace: Building) -> Array[Vector2i
 			var deposit := map.get_deposit(tile)
 			if deposit == null or deposit.type != workplace.deposit_type() or _is_reserved(tile, resident):
 				continue
-			var better := length < best_length and not Pathfinder.same_length(length, best_length)
-			if not better and Pathfinder.same_length(length, best_length):
+			var marked := deposit.marked_for_clearing
+			var better := best.is_empty() or (marked and not best_marked)
+			if marked == best_marked:
+				better = length < best_length and not Pathfinder.same_length(length, best_length)
+			if not better and marked == best_marked and Pathfinder.same_length(length, best_length):
 				better = _row_order(tile, best[0]) or (tile == best[0] and _row_order(stand, best[1]))
 			if better:
 				best = [tile, stand]
 				best_length = length
+				best_marked = marked
 	return best
 
 
