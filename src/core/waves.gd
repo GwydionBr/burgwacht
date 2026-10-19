@@ -58,6 +58,9 @@ func _announce(wave: PlannedWave) -> void:
 
 ## Darf der Debug-Befehl jetzt die nächste Welle erscheinen lassen? Leer oder der Grund.
 func spawn_next_error() -> String:
+	var reason := _world.command_error()
+	if reason != "":
+		return reason
 	if _world.is_founding():
 		return GameWorld.FOUNDING_FIRST
 	if planned_wave(_world.get_next_wave()) == null:

@@ -14,9 +14,11 @@ Jeder Meilenstein ist eine spielbare Scheibe: Am Ende läuft das Spiel und zeigt
 10. ✅ **Sound**: Geräusche und Musik, Lautstärke in den Einstellungen
 11. ✅ **Grafik**: gerenderte Sprites für Gelände, Vorkommen, Gebäude, Figuren und Waren; acht Richtungen, Arbeits- und Kampfschleifen, verbundene Mauern, Bauleiste und Bauvorschau, vollständige Galerie
 
+12. ✅ **Szenarioziele**: Bedingungen aus Szenariodaten (Gebäude, Bewohner, abgewehrte Wellen), Fortschritt und Hinweise im HUD, Siegansicht, Einstiegsszenario „Die erste Bewährungsprobe“
+
 ## Später denkbar
 
-- Ziele und Aufträge in Szenarien (das Modell ist dafür vorbereitet)
+- Optionale Aufträge mit Belohnungen in Szenarien
 - Förster, Reparatur von Gebäuden, Belagerungswaffen
 - Arbeitsgeräusche (Axt, Spitzhacke, Schmiede, Mühle) und Umgebungsgeräusche (Wind, Vögel)
 

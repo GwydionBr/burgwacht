@@ -7,7 +7,7 @@ extends RefCounted
 ## "start_popularity" (Beliebtheit zu Beginn, 0–100, fehlt sie: 50) und "start_gold" (Gold im
 ## Schatz zu Beginn, ganze Zahl ab 0, fehlt es: 0) und "enemies" (Feinde, die bei der Gründung
 ## erscheinen: Liste von {"type": Feindtyp aus units.json, "tile": [x, y]}) und "waves" (der
-## Wellenplan, siehe WavePlan).
+## Wellenplan, siehe WavePlan) und „goals“ (Zielbedingungen, siehe ScenarioGoal).
 ## Fehler beim Laden stehen in `error` (leer = gültig), damit der Aufrufer sie anzeigen kann.
 
 const DIR := "res://data/scenarios/"
@@ -36,6 +36,8 @@ var start_gold := 0
 var start_enemies: Array[StartEnemy] = []
 ## Der Wellenplan (Feld "waves", siehe WavePlan); ohne das Feld leer, dann kommen keine Wellen.
 var wave_plan := WavePlan.new()
+## Alle Bedingungen müssen gleichzeitig erfüllt sein; leer bedeutet freies Spiel.
+var goals: Array[ScenarioGoal] = []
 var error := ""
 
 
@@ -98,6 +100,8 @@ static func from_dict(scenario_id: String, data: Dictionary) -> Scenario:
 		scenario.fixed_seed = int(seed_value)
 	else:
 		problems.append("„seed“ muss eine ganze Zahl oder \"%s\" sein" % RANDOM_SEED)
+
+	scenario.goals = ScenarioGoal.parse(data.get("goals", []), problems)
 
 	_read_start_goods(scenario, data.get("start_goods", {}), problems)
 

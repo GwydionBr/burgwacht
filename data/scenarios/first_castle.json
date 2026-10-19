@@ -1,0 +1,57 @@
+{
+  "name": "Die erste Bewährungsprobe",
+  "description": "Gründe deine erste Burg: Baue einen Holzfäller, eine Apfelplantage und ein Wohnhaus. Halte diese Gebäude und wehre die Räuber an Tag 11 ab. Baue für die Verteidigung einen Markt, eine Waffenkammer und eine Kaserne. Kaufe am Markt Bögen und wirb Bogenschützen an. Es folgen keine weiteren Wellen. Alle Zielbedingungen müssen gleichzeitig erfüllt sein.",
+  "map": {
+    "width": 60,
+    "height": 60
+  },
+  "seed": 42,
+  "start_goods": {
+    "wood": 100,
+    "stone": 50,
+    "apples": 80
+  },
+  "start_residents": 8,
+  "start_popularity": 60,
+  "start_gold": 250,
+  "waves": {
+    "warning_days": 2,
+    "list": [
+      {
+        "day": 11,
+        "enemies": {
+          "bandit": 2
+        }
+      }
+    ]
+  },
+  "goals": [
+    {
+      "kind": "building",
+      "type": "woodcutter",
+      "amount": 1,
+      "text": "Holzversorgung aufbauen",
+      "hint": "Baue einen Holzfäller in der Nähe von Bäumen."
+    },
+    {
+      "kind": "building",
+      "type": "orchard",
+      "amount": 1,
+      "text": "Nahrung anbauen",
+      "hint": "Baue eine Apfelplantage auf Wiese."
+    },
+    {
+      "kind": "building",
+      "type": "house",
+      "amount": 1,
+      "text": "Wohnraum schaffen",
+      "hint": "Baue ein Wohnhaus für neue Bewohner."
+    },
+    {
+      "kind": "repelled_waves",
+      "amount": 1,
+      "text": "Die erste Welle abwehren",
+      "hint": "Markt, Waffenkammer und Kaserne bauen. Bögen kaufen (M), Bogenschützen anwerben."
+    }
+  ]
+}

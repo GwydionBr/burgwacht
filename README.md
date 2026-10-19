@@ -12,6 +12,8 @@ tools/run.sh
 
 Oder Godot öffnen, das Projekt importieren und auf ▶ klicken.
 
+Unter „Neue Partie“ steht neben dem freien Spiel das Einstiegsszenario **Die erste Bewährungsprobe** bereit: Holzversorgung, Nahrung und Wohnraum aufbauen und die erste Welle abwehren. Die Zielanzeige erklärt die nächsten Schritte.
+
 ## Steuerung
 
 | Aktion | Tasten |

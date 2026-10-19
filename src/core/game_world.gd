@@ -86,6 +86,8 @@ signal settings_changed()
 signal notice(text: String)
 ## Der Bergfried ist gefallen: Die Partie ist verloren (is_defeated()).
 signal defeated()
+## Alle Bedingungen des Szenarioziels sind erfüllt; die Partie ist gewonnen.
+signal victorious()
 ## Eine Ankündigung hat begonnen oder ist mit dem Erscheinen ihrer Welle vorbei
 ## (get_announced_side()).
 signal announcement_changed()
@@ -177,6 +179,8 @@ var _announced_side := ""
 var _keep_alarmed_waves: Array[int] = []
 ## Ist der Bergfried gefallen? Dann steht die Zeit, und Befehle werden abgelehnt.
 var _defeated := false
+var _victorious := false
+var _goals: Array[ScenarioGoal] = []
 ## Wie gern die Bewohner in der Burg leben, 0–100.
 var _popularity := Scenario.DEFAULT_POPULARITY
 ## Die eingestellte Ration (population.json).
@@ -208,6 +212,7 @@ class Meal:
 static func create(scenario: Scenario, world_seed: int) -> GameWorld:
 	assert(scenario.error == "", scenario.error)
 	var world := GameWorld.new()
+	world._goals = ScenarioGoal.parse(scenario.goals.map(func(goal: ScenarioGoal) -> Dictionary: return goal.to_data()), [])
 	world._scenario_id = scenario.id
 	world._seed = world_seed
 	world._start_goods = scenario.start_goods.duplicate()
@@ -250,6 +255,8 @@ func to_data() -> Dictionary:
 		"announced_side": _announced_side,
 		"keep_alarmed_waves": _keep_alarmed_waves.duplicate(),
 		"defeated": _defeated,
+		"victorious": _victorious,
+		"goals": _goals.map(func(goal: ScenarioGoal) -> Dictionary: return goal.to_data()),
 		"popularity": _popularity,
 		"ration": _ration,
 		"tax_rate": _tax_rate,
@@ -310,6 +317,8 @@ static func from_data(data: Dictionary) -> GameWorld:
 	for wave: Variant in data["keep_alarmed_waves"]:
 		world._keep_alarmed_waves.append(int(wave))
 	world._defeated = bool(data["defeated"])
+	world._victorious = bool(data.get("victorious", false))
+	world._goals = ScenarioGoal.parse(data.get("goals", []), [])
 	world._popularity = int(data["popularity"])
 	world._ration = str(data["ration"])
 	world._tax_rate = str(data["tax_rate"])
@@ -323,11 +332,11 @@ static func from_data(data: Dictionary) -> GameWorld:
 	return world
 
 
-## Genau ein Takt; in Gründung und nach der Niederlage steht die Zeit still. Fällt der
+## Genau ein Takt; in Gründung und nach dem Ende der Partie steht die Zeit still. Fällt der
 ## Bergfried, endet der Takt sofort. day_started kommt erst am Ende des Takts, damit ein
 ## Autospielstand einen vollständigen Takt festhält.
 func step() -> void:
-	if _founding or _defeated:
+	if _founding or is_finished():
 		return
 	_tick += 1
 	_spread_deposits()
@@ -341,15 +350,24 @@ func step() -> void:
 	if new_day:
 		_start_day()
 	_waves().update()
+	_check_victory()
 	if new_day:
 		day_started.emit(get_day())
 
 
 ## Führt einen Befehl sofort aus. Leer bei Erfolg, sonst der Grund auf Deutsch;
-## ein abgelehnter Befehl ändert nichts. Nach der Niederlage wird jeder abgelehnt.
+## ein abgelehnter Befehl ändert nichts. Nach dem Ende der Partie wird jeder abgelehnt.
 func execute(command: Command) -> String:
-	if _defeated:
-		return DEFEATED
+	var reason := command_error()
+	if reason != "":
+		return reason
+	var error := _execute(command)
+	if error == "":
+		_check_victory()
+	return error
+
+
+func _execute(command: Command) -> String:
 	if command.kind == Command.Kind.FOUND:
 		return _found(command.origin)
 	if command.kind == Command.Kind.BUILD:
@@ -387,8 +405,9 @@ func is_founding() -> bool:
 
 ## Darf das Roden-Werkzeug jetzt verwendet werden?
 func clearing_tool_error() -> String:
-	if _defeated:
-		return DEFEATED
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if _founding:
 		return FOUNDING_FIRST
 	return ""
@@ -442,6 +461,45 @@ func is_defeated() -> bool:
 	return _defeated
 
 
+func is_victorious() -> bool:
+	return _victorious
+
+
+## Nach Sieg oder Niederlage stehen die Zeit und sämtliche Befehle still.
+func is_finished() -> bool:
+	return _defeated or _victorious
+
+
+## Gemeinsame Sperre für Befehle und deren Vorschauen nach dem Ende der Partie.
+func command_error() -> String:
+	if _defeated:
+		return DEFEATED
+	if _victorious:
+		return "Die Partie ist gewonnen."
+	return ""
+
+
+## Anzeigetexte samt aktuellem Fortschritt; ohne Ziel leer, auch in der Gründung abfragbar.
+func goal_status() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for goal in _goals:
+		var current := goal.progress(self)
+		lines.append("%s %s (%d/%d)" % ["✓" if current >= goal.amount else "○", goal.text, mini(current, goal.amount), goal.amount])
+		if current < goal.amount and goal.hint != "":
+			lines.append("   " + goal.hint)
+	return lines
+
+
+func _check_victory() -> void:
+	if _founding or is_finished() or _goals.is_empty():
+		return
+	for goal in _goals:
+		if goal.progress(self) < goal.amount:
+			return
+	_victorious = true
+	victorious.emit()
+
+
 ## Darf ein Gebäude vom Typ type_id mit diesem Ursprung stehen? Leer oder der Grund.
 ## Prüft in fester Reihenfolge, damit der Grund stabil ist: auf der Karte → Gelände
 ## bebaubar → keine Vorkommen → keine Gebäude → Kachel vor dem Eingang begehbar und frei.
@@ -459,6 +517,9 @@ func build_error(type_id: String, origin: Vector2i) -> String:
 ## Wie build_error(); spent_goods (Ware → Menge) und spent_gold sind schon verplant und
 ## zählen nicht mehr zum Bestand (für die Mauerlinie).
 func _build_error(type_id: String, origin: Vector2i, spent_goods: Dictionary[String, int], spent_gold: int) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if _founding:
 		return FOUNDING_FIRST
 	if type_id == FOUNDING_TYPE:
@@ -551,6 +612,9 @@ static func line_tiles(line_start: Vector2i, line_end: Vector2i) -> Array[Vector
 ## der Grund. Typen mit "demolish_forbidden" in den Daten (Bergfried, Lagerfeuer) nie, ein
 ## Lager nur, wenn es leer ist.
 func demolish_error(id: int) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if _founding:
 		return FOUNDING_FIRST
 	var building := get_building(id)
@@ -592,6 +656,9 @@ func trade_error(good: String, buying: bool) -> String:
 ## Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → am Ziel kann jemand stehen →
 ## mindestens einer der Soldaten kommt zum Ziel.
 func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if soldier_ids.is_empty():
 		return "Keine Soldaten ausgewählt"
 	for id in soldier_ids:
@@ -609,6 +676,9 @@ func move_error(soldier_ids: Array[int], target: Vector3i) -> String:
 ## Darf der Befehl „Angreifen“ diese Soldaten auf den Feind mit dieser ID schicken? Leer oder der
 ## Grund. Prüfreihenfolge: Auswahl nicht leer → jede ID ein Soldat → Feind vorhanden.
 func attack_error(soldier_ids: Array[int], enemy_id: int) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if soldier_ids.is_empty():
 		return "Keine Soldaten ausgewählt"
 	for id in soldier_ids:
@@ -622,6 +692,9 @@ func attack_error(soldier_ids: Array[int], enemy_id: int) -> String:
 
 ## Darf der Debug-Befehl jetzt einen Feind dieses Typs erscheinen lassen? Leer oder der Grund.
 func spawn_enemy_error(type_id: String) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if _founding:
 		return FOUNDING_FIRST
 	if not FighterType.is_enemy_type(type_id):
@@ -635,6 +708,9 @@ func spawn_enemy_error(type_id: String) -> String:
 ## anwerben? Leer oder der Grund. Prüfreihenfolge: Kaserne vorhanden → Soldatentyp bekannt →
 ## Untätiger vorhanden → Waren der Anwerbekosten vorrätig → genug Gold.
 func recruit_error(barracks_id: int, type_id: String) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if _founding:
 		return FOUNDING_FIRST
 	var barracks := get_building(barracks_id)
@@ -654,6 +730,9 @@ func recruit_error(barracks_id: int, type_id: String) -> String:
 
 ## Kann überhaupt gehandelt werden (steht ein Markt)? Leer oder der Grund.
 func market_error() -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	return "" if has_market() else "Kein Markt gebaut"
 
 
@@ -741,6 +820,9 @@ static func buildable_types() -> Array[String]:
 ## Grund. Prüft der Reihe nach alle Gebäude der Gründung (founding_buildings()); die
 ## früheren gelten für die späteren als belegt, ebenso die Kacheln vor ihren Eingängen.
 func founding_error(origin: Vector2i) -> String:
+	var reason := command_error()
+	if reason != "":
+		return reason
 	if not _founding:
 		return "Die Burg ist bereits gegründet."
 	var blocked: Dictionary[Vector2i, String] = {}
