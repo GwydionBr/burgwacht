@@ -388,7 +388,7 @@ func test_description_that_is_not_text_is_invalid() -> void:
 
 
 func test_list_shows_the_scenarios_of_the_game_data_only() -> void:
-	assert_eq(Scenario.list_ids(), PackedStringArray(["free_play"]), "Szenarien der Spieldaten:")
+	assert_eq(Scenario.list_ids(), PackedStringArray(["first_castle", "free_play"]), "Szenarien der Spieldaten:")
 
 
 func test_list_of_a_folder_is_sorted_and_has_only_json_files() -> void:

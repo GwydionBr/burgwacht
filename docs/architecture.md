@@ -217,7 +217,13 @@ Neues Zustandsstück:
 
 ## Spielmodus
 
-Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Szenarien mit Zielen und Aufträgen sind später möglich.
+Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Das Einstiegsszenario „Die erste Bewährungsprobe“ hat einen festen Seed, eine einzelne Welle und ein Szenarioziel.
+
+### Szenarioziel
+
+Das optionale Szenariofeld `goals` enthält Bedingungen mit `kind` (`building`, `population` oder `repelled_waves`), positivem ganzzahligem `amount`, `text` und optionalem `hint`; Gebäudebedingungen nennen außerdem `type`. `ScenarioGoal` prüft die Daten und liest den Fortschritt aus der Spielwelt. Alle Bedingungen müssen gleichzeitig erfüllt sein: Abgerissene oder zerstörte Gebäude zählen nicht mehr. Es werden keine Waren verbraucht und keine Belohnungen vergeben.
+
+`GameWorld` prüft das Ziel nach jedem erfolgreichen Befehl und am Ende jedes Takts vor `day_started`. In der Gründung und nach der Niederlage gibt es keinen Sieg. Beim Sieg kommt einmal `victorious`; `is_finished()` gilt bei Sieg und Niederlage, Zeit und Befehle stehen dann still. `goal_status()` liefert die Fortschrittstexte für das HUD. Bedingungen und Siegzustand gehören zum Spielstand, sodass er unabhängig von späteren Änderungen an der Szenariodatei weiterläuft. Ältere Spielstände ohne diese Felder bleiben ohne Ziel. Gewonnene Partien lassen sich weiter speichern und laden; die Ergebnisansicht bietet neue Partie, Laden, Hauptmenü und Beenden.
 
 ## Export
 

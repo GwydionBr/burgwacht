@@ -43,7 +43,7 @@ func _process(delta: float) -> void:
 
 ## Verbucht delta Sekunden und gibt zurück, wie viele Takte jetzt fällig sind.
 func advance(delta: float) -> int:
-	if _paused or _held:
+	if _paused or _held or (world != null and world.is_finished()):
 		return 0
 	_pending_ticks += delta * TICKS_PER_SECOND * _speed
 	var ticks := floori(_pending_ticks + EPSILON)
@@ -96,9 +96,9 @@ func is_paused() -> bool:
 
 
 ## Steht die Zeit? Ohne Spielwelt, in Gründung und Pause, im Spielmenü (hold()) und nach der
-## Niederlage. Die Tonregie lässt dann keine Spielgeräusche entstehen.
+## dem Ende der Partie. Die Tonregie lässt dann keine Spielgeräusche entstehen.
 func is_time_standing() -> bool:
-	return world == null or _paused or _held or world.is_defeated()
+	return world == null or _paused or _held or world.is_finished()
 
 
 func _is_founding() -> bool:

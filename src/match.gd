@@ -91,9 +91,9 @@ func execute(command: Command) -> String:
 
 
 ## Ginge beim Verlassen der Partie etwas verloren? Ja, wenn seit dem letzten Speichern, Laden
-## oder Start Takte vergangen oder Befehle erfolgreich waren; nach der Niederlage nie.
+## oder Start Takte vergangen oder Befehle erfolgreich waren; nach dem Ende der Partie nie.
 func has_unsaved_progress() -> bool:
-	if world.is_defeated():
+	if world.is_finished():
 		return false
 	return _commands_since_save or world.get_tick() != _saved_tick
 

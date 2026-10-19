@@ -309,6 +309,7 @@ func _leave_match(question: String, leave: Callable) -> void:
 
 func _process(_delta: float) -> void:
 	_update_announcement()
+	_hud.show_goals(world.goal_status())
 	var tile := Iso.world_to_tile(get_global_mouse_position())
 	if tile != _hovered:
 		_hovered = tile
@@ -528,6 +529,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if key.keycode == KEY_ESCAPE:
 			_close_game_menu()
 		return
+	if world.is_finished() and key.keycode not in [KEY_F5, KEY_F9, KEY_F]:
+		return
 	match key.keycode:
 		KEY_N:
 			# Neue Karte im selben Szenario, immer mit neuem Zufallsseed (nur zum Entwickeln).
@@ -561,7 +564,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_hud.close_barracks()
 			elif _build_type != "" or _demolishing or _clearing:
 				_select_build("")
-			elif not world.is_defeated():
+			elif not world.is_finished():
 				_open_game_menu()
 		KEY_V:
 			_hud.toggle_administration()
@@ -644,7 +647,8 @@ func _show_world() -> void:
 	world.settings_changed.connect(_update_popularity)
 	world.treasury_changed.connect(_update_treasury)
 	world.notice.connect(_hud.show_message)
-	world.defeated.connect(_on_defeated)
+	world.defeated.connect(_on_finished)
+	world.victorious.connect(_on_finished)
 	world.announcement_changed.connect(_update_wave_marker)
 	if _world_audible:
 		_hear_world()
@@ -697,14 +701,15 @@ func _show_world() -> void:
 	_update_preview()
 	_update_wave_marker()
 	_update_announcement()
-	if world.is_defeated():
-		_on_defeated()
+	if world.is_finished():
+		_on_finished()
 	else:
 		_hud.hide_defeat()
+	_hud.show_goals(world.goal_status())
 
 
-## Der Bergfried ist gefallen: Werkzeuge und Ansichten schließen, Niederlage-Ansicht zeigen.
-func _on_defeated() -> void:
+## Die Partie ist beendet: Werkzeuge und Ansichten schließen, Ergebnis zeigen.
+func _on_finished() -> void:
 	_select_build("")
 	_set_selection([])
 	_selecting = false
@@ -715,7 +720,10 @@ func _on_defeated() -> void:
 	_hud.close_administration()
 	_hud.close_market()
 	_hud.set_build_bar_enabled(false)
-	_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
+	if world.is_victorious():
+		_hud.show_victory(world.get_day(), world.get_repelled_waves(), world.get_seed())
+	else:
+		_hud.show_defeat(world.get_day(), world.get_repelled_waves(), world.get_seed())
 
 
 ## Einträge des Spielmenüs.
@@ -787,11 +795,11 @@ func _load_chosen(path: String, view: LoadView) -> void:
 			view.show_error(error))
 
 
-## Zurück aus Speichern- oder Ladeansicht ins Spielmenü; nach der Niederlage zur Niederlage-Ansicht.
+## Zurück aus Speichern- oder Ladeansicht ins Spielmenü; nach dem Ende der Partie zum Ergebnis.
 func _close_menu_view() -> void:
-	if world.is_defeated():
+	if world.is_finished():
 		_close_game_menu()
-		_on_defeated()
+		_on_finished()
 	else:
 		_game_menu.close_view()
 

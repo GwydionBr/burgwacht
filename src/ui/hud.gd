@@ -116,6 +116,9 @@ var _build_buttons: Dictionary[String, Button] = {}
 var _cost_labels: Dictionary[String, Label] = {}
 var _demolish_button: Button
 var _clearing_button: Button
+var _goal_panel: PanelContainer
+var _goal_label: Label
+var _result_title: Label
 var _defeat_panel: PanelContainer
 ## Dunkelt hinter der Niederlage-Ansicht die Partie ab und fängt Klicks ab.
 var _defeat_dim: ColorRect
@@ -153,6 +156,15 @@ func _ready() -> void:
 	_announcement_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, MARGIN)
 	_announcement_panel.offset_top = below_bar
 	_announcement_panel.visible = false
+
+	_goal_panel = _make_panel()
+	_goal_label = _make_label("", TEXT_COLOR, 15)
+	_goal_label.custom_minimum_size.x = 440
+	_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_goal_panel.add_child(_goal_label)
+	add_child(_goal_panel)
+	_goal_panel.position = Vector2(MARGIN, below_bar + 54)
+	_goal_panel.visible = false
 
 	var help_panel := _make_panel()
 	help_panel.add_child(_make_label(
@@ -229,11 +241,28 @@ func _ready() -> void:
 ## Zeigt die Niederlage-Ansicht mit dem erreichten Tag, den abgewehrten Wellen und dem Seed der
 ## Karte; die Partie dahinter wird abgedunkelt.
 func show_defeat(day: int, repelled_waves: int, map_seed: int) -> void:
+	_result_title.text = "Der Bergfried ist gefallen"
+	_result_title.add_theme_color_override("font_color", BLOCKED_COLOR)
 	_defeat_day_label.text = "Erreicht: Tag %d\nAbgewehrte Wellen: %d" % [day, repelled_waves]
 	_defeat_seed_label.text = "Karte: Seed %d" % map_seed
 	_defeat_panel.visible = true
 	_defeat_dim.visible = true
 	_defeat_panel.reset_size()
+
+
+## Verwendet dieselben Wege für neue Partie, Laden und Hauptmenü wie die Niederlage-Ansicht.
+func show_victory(day: int, repelled_waves: int, map_seed: int) -> void:
+	show_defeat(day, repelled_waves, map_seed)
+	_result_title.text = "Ziel erfüllt – die Burg hält stand!"
+	_result_title.add_theme_color_override("font_color", UiStyle.GOLD_COLOR)
+
+
+func show_goals(lines: PackedStringArray) -> void:
+	_goal_panel.visible = not lines.is_empty()
+	var text := "Szenarioziel · alle Bedingungen erfüllen\n" + "\n".join(lines)
+	if _goal_label.text != text:
+		_goal_label.text = text
+		_goal_panel.reset_size()
 
 
 func hide_defeat() -> void:
@@ -886,9 +915,9 @@ func _make_defeat_panel() -> PanelContainer:
 	column.add_theme_constant_override("separation", 18)
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(column)
-	var title := _make_label("Der Bergfried ist gefallen", BLOCKED_COLOR, 28)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
+	_result_title = _make_label("Der Bergfried ist gefallen", TEXT_COLOR, 26)
+	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_result_title)
 	_defeat_day_label = _make_label("", TEXT_COLOR, 18)
 	_defeat_day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_defeat_day_label)

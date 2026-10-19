@@ -4,7 +4,7 @@
 		"args": ["--menu"]
 	},
 	"scenario_select": {
-		"name": "Szenarioauswahl mit dem freien Spiel",
+		"name": "Szenarioauswahl mit Einstiegsszenario und freiem Spiel",
 		"args": ["--scenario_select"]
 	},
 	"game_menu": {
@@ -138,5 +138,13 @@
 	"workers_graphics": {
 		"name": "Arbeiter: Hacken, Schlagen und alle Warenbündel",
 		"args": ["--setup=workers", "--focus=19,14", "--zoom=1.5"]
+	},
+	"scenario_goals": {
+		"name": "Einstiegsszenario mit Zielanzeige",
+		"args": ["--scenario=first_castle", "--seed=42", "--found"]
+	},
+	"victory": {
+		"name": "Szenarioziel erfüllt: Siegansicht",
+		"args": ["--setup=victory"]
 	}
 }

@@ -119,3 +119,16 @@ func test_time_stands_when_paused_held_founding_or_defeated() -> void:
 	clock.world = setup.call("create")
 	assert_true(clock.is_time_standing(), "nach der Niederlage")
 	clock.free()
+
+
+func test_finished_world_stops_clock_and_interpolation() -> void:
+	var clock := GameClock.new()
+	var setup: GDScript = load("res://tests/setups/victory.gd")
+	clock.world = setup.call("create")
+	assert_true(clock.is_time_standing(), "Nach Sieg steht die Zeit")
+	assert_eq(clock.advance(0.15), 0, "Keine weiteren Takte")
+	assert_eq(clock.tick_fraction(), 0.0, "Keine laufende Interpolation")
+	clock.world = run_scenario("tiny", 0)
+	clock.world._lose()
+	assert_eq(clock.advance(0.15), 0, "Auch nach Niederlage keine Takte")
+	clock.free()
