@@ -3,13 +3,21 @@ extends RefCounted
 ## Eine Bedingung des Szenarioziels. Alle Bedingungen müssen gleichzeitig erfüllt sein.
 ## Beschreibung und Hilfetext kommen aus den Szenariodaten; Fortschritt aus der Spielwelt.
 
+## Art der Bedingung: Gebäudezahl, Bewohnerzahl oder abgewehrte Wellen.
 var kind: String
+## Gebäudetyp, nur für Gebäudebedingungen verwendet.
 var type: String
+## Benötigte Anzahl; muss positiv und ganzzahlig sein.
 var amount: int
+## Beschreibung der Bedingung in der Zielanzeige.
 var text: String
+## Optionaler Hinweis, solange die Bedingung nicht erfüllt ist.
 var hint: String
 
 
+## Liest die Bedingungen und hängt Validierungsfehler an problems an.
+## Fehlerhafte Objekte bleiben im Ergebnis; der Aufrufer muss bei Fehlern das Szenario ablehnen.
+## Nicht-Objekte werden übersprungen. Spielstände liefern bereits geprüfte Daten.
 static func parse(value: Variant, problems: PackedStringArray) -> Array[ScenarioGoal]:
 	var result: Array[ScenarioGoal] = []
 	if not value is Array:
@@ -42,6 +50,8 @@ static func parse(value: Variant, problems: PackedStringArray) -> Array[Scenario
 	return result
 
 
+## Aktuelle Anzahl in der Spielwelt, auch oberhalb des geforderten amount;
+## abgerissene oder zerstörte Gebäude zählen nicht mehr.
 func progress(world: GameWorld) -> int:
 	match kind:
 		"population":

@@ -72,9 +72,15 @@ _Avoid_: Aktion, Kommando
 Das Ende einer Partie, weil der Bergfried keine Lebenspunkte mehr hat: Die Zeit steht, Befehle werden abgelehnt.
 _Avoid_: Game Over, Verloren-Bildschirm
 
+**Sieg**:
+Das Ende einer Partie, weil alle Bedingungen ihres Ziels gleichzeitig erfüllt sind: Die Zeit steht, Befehle werden abgelehnt. Die Siegansicht zeigt das Ergebnis; der Siegzustand bleibt im Spielstand erhalten.
+
 **Ziel**:
-Eine prüfbare Bedingung, deren Erfüllung eine Partie gewinnt. Im freien Spiel gibt es keines.
+Eine oder mehrere Bedingungen eines Szenarios, die gleichzeitig erfüllt sein müssen, um die Partie zu gewinnen. Im freien Spiel gibt es keines.
 _Avoid_: Siegbedingung, Quest
+
+**Zielanzeige**:
+Die Übersicht der Bedingungen des Szenarioziels mit aktuellem Fortschritt und Hinweisen.
 
 **Auftrag**:
 Eine optionale Aufgabe während einer Partie, deren Erfüllung eine Belohnung bringt, die Partie aber nicht beendet.

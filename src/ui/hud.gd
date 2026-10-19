@@ -257,6 +257,7 @@ func show_victory(day: int, repelled_waves: int, map_seed: int) -> void:
 	_result_title.add_theme_color_override("font_color", UiStyle.GOLD_COLOR)
 
 
+## Zeigt Fortschritt und Hinweise des Szenarioziels; eine leere Liste blendet die Anzeige aus.
 func show_goals(lines: PackedStringArray) -> void:
 	_goal_panel.visible = not lines.is_empty()
 	var text := "Szenarioziel · alle Bedingungen erfüllen\n" + "\n".join(lines)
