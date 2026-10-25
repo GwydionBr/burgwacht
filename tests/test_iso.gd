@@ -19,3 +19,8 @@ func test_points_outside_diamond_belong_to_neighbours() -> void:
 	var c := Iso.tile_to_world(Vector2i(3, 7))
 	assert_eq(Iso.world_to_tile(c + Vector2(0, 17)), Vector2i(4, 8), "unten:")
 	assert_eq(Iso.world_to_tile(c + Vector2(17, -9)), Vector2i(3, 6), "oben rechts:")
+
+
+func test_world_point_roundtrip() -> void:
+	for point: Vector2 in [Vector2.ZERO, Vector2(3.25, 7.5), Vector2(-1.5, 12.0)]:
+		assert_true(Iso.world_to_point(Iso.point_to_world(point)).is_equal_approx(point), "Punkt %s:" % point)

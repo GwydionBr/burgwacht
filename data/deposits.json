@@ -1,5 +1,6 @@
 {
   "tree": {
+    "minimap_color": "#2e5524",
     "sprite": "deposits/tree",
     "sprite_variants": 4,
     "name": "Baum",
@@ -15,6 +16,7 @@
     "work_animation": "axe"
   },
   "stone": {
+    "minimap_color": "#a3a29c",
     "name": "Felsen",
     "yields": "stone",
     "amount": 120,
@@ -32,6 +34,7 @@
     }
   },
   "iron": {
+    "minimap_color": "#7a5c52",
     "name": "Eisenvorkommen",
     "yields": "iron",
     "amount": 80,
@@ -49,6 +52,7 @@
     }
   },
   "game": {
+    "minimap_color": "#a07a4a",
     "name": "Wild",
     "yields": "meat",
     "amount": 6,

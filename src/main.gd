@@ -148,6 +148,7 @@ func _ready() -> void:
 	_hud.load_requested.connect(_open_load_view)
 	_hud.main_menu_requested.connect(_leave_to_main_menu)
 	_hud.quit_requested.connect(_quit)
+	_hud.minimap.focus_requested.connect(_camera.focus_on)
 	# ⌘Q und das Schließen des Fensters kommen als NOTIFICATION_WM_CLOSE_REQUEST an.
 	get_tree().set_auto_accept_quit(false)
 	_match.saves = Presets.save_games()
@@ -667,6 +668,7 @@ func _show_world() -> void:
 	_hud.set_build_bar_enabled(not world.is_founding())
 	var map := world.map
 	_terrain.show_map(map)
+	_hud.minimap.show_world(world)
 
 	for view: DepositView in _deposit_views.values():
 		view.queue_free()
