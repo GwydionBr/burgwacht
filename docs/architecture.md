@@ -110,6 +110,13 @@ noch nicht abdecken; außerhalb der Karte entsteht kein Übergang. Dadurch bleib
 mit drei oder mehr Geländen alle Übergänge erhalten. Die Datenpriorität legt fest, auf welcher
 Seite einer Grenze gemischt wird. Wasser trägt zusätzlich einen sandfarbenen Ufersaum.
 
+`TerrainRenderer` zeichnet den Boden in Blöcken (`Chunk`, `CHUNK_SIZE` Kacheln je Seite), je ein
+eigenes Zeichenobjekt: Godot lässt Blöcke außerhalb des Bildes aus. Innerhalb eines Blocks liegen
+erst alle Grundbilder, dann alle Übergänge, je nach Geländerang und dann nach Bild geordnet, damit
+Godot gleiche Bilder in einem Aufruf an die Grafikkarte zeichnet. Kachel für Kachel gezeichnet
+wechselte das Bild fast bei jeder Kachel, eine 160 × 160-Karte kostete so rund 27 000 Aufrufe je
+Frame. Der höhere Rang deckt dabei den Viertelpixel-Überstand des niedrigeren an der Naht.
+
 `tools/render.sh terrain/grass terrain/sand terrain/meadow terrain/dirt terrain/water` rendert
 die vier Grundvarianten mit `terrain.py`, gemeinsamer Kamera, Licht und Palette; die gleichnamigen
 `*_transition`-Rezepte rendern je Variante acht transparente Kanten- und Eckbilder nebeneinander.
