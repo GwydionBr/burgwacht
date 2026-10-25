@@ -96,3 +96,93 @@ func test_same_seed_gives_same_game() -> void:
 			"Wild bei gleichem Seed:")
 	assert_true(_game_tiles(MapGenerator.generate(42, SIZE, SIZE)) != _game_tiles(MapGenerator.generate(43, SIZE, SIZE)),
 			"Anderer Seed sollte anderes Wild ergeben")
+
+
+## Gebiete eines Typs (Gelände oder Vorkommen), auch schräg verbunden.
+func _groups(tiles: Array[Vector2i]) -> Array[Array]:
+	var unvisited: Dictionary[Vector2i, bool] = {}
+	for tile in tiles:
+		unvisited[tile] = true
+	var groups: Array[Array] = []
+	for first in tiles:
+		if not unvisited.has(first):
+			continue
+		unvisited.erase(first)
+		var group: Array[Vector2i] = [first]
+		var i := 0
+		while i < group.size():
+			for offset in MapGenerator.ALL_NEIGHBOURS:
+				var next := group[i] + offset
+				if unvisited.has(next):
+					unvisited.erase(next)
+					group.append(next)
+			i += 1
+		groups.append(group)
+	return groups
+
+
+func _deposit_tiles(map: MapData, type: String) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	for tile: Vector2i in map.deposits:
+		if map.deposits[tile].type == type:
+			tiles.append(tile)
+	return tiles
+
+
+func _terrain_tiles(map: MapData, terrain_id: String) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	for y in map.height:
+		for x in map.width:
+			if map.get_terrain(Vector2i(x, y)) == terrain_id:
+				tiles.append(Vector2i(x, y))
+	return tiles
+
+
+func test_no_small_lakes() -> void:
+	for map_seed in range(1, 11):
+		var map := MapGenerator.generate(map_seed, 100, 100)
+		for lake in _groups(_terrain_tiles(map, "water")):
+			# Schräg verbunden zählt hier mit; der Generator verbindet nur über Kanten, ein See ist
+			# also mindestens so groß wie jeder seiner kantenverbundenen Teile.
+			assert_true(lake.size() >= MapGenerator.MIN_LAKE_SIZE,
+					"Seed %d: See bei %s mit %d Kacheln" % [map_seed, lake[0], lake.size()])
+
+
+func test_shore_only_at_water() -> void:
+	for map_seed in range(1, 11):
+		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
+		for tile in _terrain_tiles(map, "sand"):
+			var near_water := false
+			for dy in range(-MapGenerator.SHORE_WIDTH, MapGenerator.SHORE_WIDTH + 1):
+				for dx in range(-MapGenerator.SHORE_WIDTH, MapGenerator.SHORE_WIDTH + 1):
+					var other := tile + Vector2i(dx, dy)
+					if map.in_bounds(other) and map.get_terrain(other) == "water":
+						near_water = true
+			assert_true(near_water, "Seed %d: Ufer ohne Wasser bei %s" % [map_seed, tile])
+
+
+## Stein und Eisen liegen in Feldern statt verstreut.
+func test_rock_comes_in_fields() -> void:
+	for map_seed in range(1, 11):
+		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
+		for type: String in ["stone", "iron"]:
+			for field in _groups(_deposit_tiles(map, type)):
+				assert_true(field.size() >= 3, "Seed %d: %s bei %s mit %d Kacheln" % [map_seed, type, field[0], field.size()])
+
+
+## Wald statt Streubäume: kaum ein Baum steht allein.
+func test_few_lone_trees() -> void:
+	for map_seed in range(1, 6):
+		var map := MapGenerator.generate(map_seed, 100, 100)
+		var trees := _deposit_tiles(map, "tree")
+		var lone := _groups(trees).filter(func(group: Array) -> bool: return group.size() == 1).size()
+		assert_true(lone * 100 <= trees.size(), "Seed %d: %d von %d Bäumen allein" % [map_seed, lone, trees.size()])
+
+
+func test_forest_near_start() -> void:
+	for map_seed in range(1, 21):
+		var map := MapGenerator.generate(map_seed, SIZE, SIZE)
+		var near := _deposit_tiles(map, "tree").filter(func(tile: Vector2i) -> bool:
+			return Vector2(tile - map.center()).length() <= MapGenerator.START_DEPOSIT_RADIUS)
+		assert_true(near.size() >= MapGenerator.START_TREES / 2,
+				"Seed %d: nur %d Bäume in Startnähe" % [map_seed, near.size()])

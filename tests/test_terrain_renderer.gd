@@ -52,3 +52,30 @@ func test_transition_is_drawn_only_on_lower_priority_terrain() -> void:
 	var map := MapData.new(2, 1)
 	map.set_terrain(Vector2i(1, 0), "sand")
 	assert_eq(TerrainRenderer.transition_layers(map, Vector2i(1, 0)), {}, "Keine doppelte Naht:")
+
+
+## Der Boden ist in Blöcke geteilt, die jede Kachel genau einmal abdecken (auch am Rand, wenn die
+## Karte kein Vielfaches der Blockgröße ist).
+func test_chunks_cover_every_tile_once() -> void:
+	var map := MapData.new(TerrainRenderer.CHUNK_SIZE * 2 + 3, TerrainRenderer.CHUNK_SIZE + 1)
+	var terrain := TerrainRenderer.new()
+	terrain.show_map(map)
+	var covered: Dictionary[Vector2i, int] = {}
+	for chunk: TerrainRenderer.Chunk in terrain.get_children():
+		for y in range(chunk.tiles.position.y, chunk.tiles.end.y):
+			for x in range(chunk.tiles.position.x, chunk.tiles.end.x):
+				covered[Vector2i(x, y)] = covered.get(Vector2i(x, y), 0) + 1
+	assert_eq(terrain.get_child_count(), 6, "Blöcke:")
+	assert_eq(covered.size(), map.width * map.height, "Abgedeckte Kacheln:")
+	assert_true(covered.values().all(func(count: int) -> bool: return count == 1), "Jede genau einmal")
+	terrain.free()
+
+
+## Die Zeichenschichten bleiben getrennt: alle Böden unter allen Übergängen, alles unter der Kartenkante.
+func test_terrain_priorities_fit_between_the_layers() -> void:
+	var terrain_defs := GameDefs.get_instance().terrain
+	for terrain_id: String in terrain_defs:
+		var priority := int(terrain_defs[terrain_id].get("sprite_priority", 0))
+		assert_true(priority >= 0 and priority < -TerrainRenderer.BASE_LAYER,
+				"%s: Rang %d unter %d" % [terrain_id, priority, -TerrainRenderer.BASE_LAYER])
+		assert_true(priority < TerrainRenderer.EDGE_LAYER, "%s unter der Kartenkante" % terrain_id)

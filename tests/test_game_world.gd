@@ -92,6 +92,37 @@ func test_deposit_removed_is_reported_by_world() -> void:
 	assert_eq(removed, [tile] as Array[Vector2i], "Entfernte Vorkommen:")
 
 
+## Ein Ziel in einer kleinen abgeschlossenen Tasche hat keinen Weg, ohne dass die Suche die ganze
+## Karte absucht; öffnet sich die Tasche, gibt es sofort wieder einen.
+func test_goal_in_closed_pocket_has_no_path() -> void:
+	var world := empty_world()
+	var start := Figure.ground(Vector2i(2, 2))
+	var goal := Vector2i(10, 8)
+	var walker := GameWorld.Walker.GROUND_ONLY
+	var rng := RandomNumberGenerator.new()
+	for offset in MapGenerator.ALL_NEIGHBOURS:
+		world.map.add_deposit(goal + offset, Deposit.create("tree", rng))
+	Pathfinder.reset_profile()
+	assert_true(world._find_path(start, Figure.ground(goal), walker).is_empty(), "Eingeschlossen")
+	assert_eq(Pathfinder.path_calls, 0, "Ohne Suche:")
+	assert_true(world._find_path(Figure.ground(goal), start, walker).is_empty(), "Auch hinaus nicht")
+	world.map.remove_deposit(goal + Vector2i.LEFT)
+	assert_true(not world._find_path(start, Figure.ground(goal), walker).is_empty(), "Tasche offen")
+
+
+## Ist das abgeschlossene Gebiet größer als eine Tasche, findet die Suche selbst keinen Weg.
+func test_goal_in_large_closed_area_has_no_path() -> void:
+	var world := empty_world()
+	var rng := RandomNumberGenerator.new()
+	# Eine Baumreihe trennt die Karte (20 × 16) in zwei Hälften mit je über POCKET_SIZE Kacheln.
+	for y in world.map.height:
+		world.map.add_deposit(Vector2i(10, y), Deposit.create("tree", rng))
+	var start := Figure.ground(Vector2i(2, 2))
+	var goal := Figure.ground(Vector2i(15, 8))
+	assert_true(not world._in_pocket(goal, start), "Keine kleine Tasche")
+	assert_true(world._find_path(start, goal, GameWorld.Walker.GROUND_ONLY).is_empty(), "Kein Weg")
+
+
 ## Die Wegfindung merkt sich die Begehbarkeit; neue und entfernte Vorkommen, geändertes Gelände
 ## und neue Gebäude gelten trotzdem sofort.
 func test_paths_see_changed_deposits_terrain_and_buildings_at_once() -> void:

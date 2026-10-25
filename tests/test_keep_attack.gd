@@ -221,3 +221,18 @@ func test_reaches_keep_follows_terrain_changes() -> void:
 	assert_true(combat.reaches_keep(Vector2i(0, 8)), "Linker Rand weiter verbunden")
 	world.map.set_terrain(Vector2i(15, 8), "grass")
 	assert_true(combat.reaches_keep(Vector2i(19, 8)), "Durch die Lücke wieder verbunden")
+
+
+func test_ranged_keep_route_with_estimate_is_still_shortest() -> void:
+	var world := _founded()
+	assert_eq(world.execute(Command.build_line("wall", Vector2i(12, 0), Vector2i(12, 12))), "", "Mauerlinie:")
+	var poacher := add_enemy(world, "poacher", Vector2i(19, 6))
+	var combat := world._combat()
+	var route := combat._keep_route(poacher)
+	var keep := world._keep()
+	var is_goal := func(position: Vector3i) -> bool: return combat._in_reach_at("poacher", position, keep)
+	var map := Combat._EnemyMap.new(combat, "poacher")
+	var unestimated := Pathfinder.find_path_to_any(poacher.plan_start(), is_goal, world._enemy_plan_graph(),
+			map.extra_cost)
+	assert_true(not route.is_empty() and is_goal.call(route[-1]), "Endet in Reichweite: %s" % str(route))
+	assert_eq(route.size(), unestimated.size(), "So kurz wie ohne Schätzung:")

@@ -324,13 +324,14 @@ func _keep_route(enemy: Enemy) -> Array[Vector3i]:
 	var keep := _world._keep()
 	var type := enemy.type
 	var is_goal := func(position: Vector3i) -> bool: return _in_reach_at(type, position, keep)
-	# Nahkämpfer: Eine Kachel in Reichweite liegt weniger als MELEE_REACH von der Grundfläche
-	# entfernt, also fehlen von position aus mindestens so viele Kacheln weniger MELEE_REACH.
-	# Fernkämpfer suchen ohne Schätzung.
-	var estimate := Callable()
-	if FighterType.is_melee(type):
-		estimate = func(position: Vector3i) -> float:
-			return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - MELEE_REACH, 0.0)
+	# Eine Kachel in Reichweite liegt höchstens reach von der Grundfläche entfernt (Nahkämpfer weniger
+	# als MELEE_REACH, Fernkämpfer ihre Reichweite; Feinde haben keinen Zuschlag), also fehlen von
+	# position aus mindestens so viele Kacheln weniger reach. Ohne Schätzung suchte ein Fernkämpfer
+	# gleichmäßig nach allen Seiten, auf großen Karten über Zehntausende Kacheln.
+	var reach := MELEE_REACH if FighterType.is_melee(type) \
+			else float(FighterType.range_of(type)) + Figure.DISTANCE_SLACK
+	var estimate := func(position: Vector3i) -> float:
+		return maxf(_distance_to_building(Vector2i(position.x, position.y), keep) - reach, 0.0)
 	var map := _EnemyMap.new(self, type)
 	return Pathfinder.find_path_to_any(enemy.plan_start(), is_goal, _world._enemy_plan_graph(), map.extra_cost,
 			estimate)

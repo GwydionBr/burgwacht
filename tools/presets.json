@@ -53,7 +53,7 @@
 	},
 	"workers": {
 		"name": "Holzfäller bei der Arbeit, Markt offen",
-		"args": ["--seed=1", "--days=3", "--place=woodcutter@46,41", "--ticks=25", "--market"]
+		"args": ["--seed=1", "--days=3", "--place=woodcutter@75,84", "--ticks=25", "--market"]
 	},
 	"clearing": {
 		"name": "Roden: Axtmarkierungen und Werkzeug mit Auswahlrahmen",
