@@ -124,6 +124,8 @@ const CACHED_YES := 1
 const CACHED_NO := 2
 ## Höchstens so viele gemerkte Weglängen, danach fängt der Zwischenspeicher neu an.
 const MAX_CACHED_DISTANCES := 64
+## Bis zu so vielen Positionen sucht _find_path() vom Ziel aus nach einer abgeschlossenen Tasche.
+const POCKET_SIZE := 128
 
 var map: MapData
 
@@ -155,6 +157,9 @@ var _enemy_graph: Pathfinder.Graph
 var _open_ground_graph: Pathfinder.Graph
 ## Ebenso die Suche für Combat.reaches_keep() (_keep_reach()); null, wenn noch nicht begonnen.
 var _keep_reach_search: Pathfinder.Reach
+## Ebenso je Ziel am Boden die Positionen seiner abgeschlossenen Tasche, leer, wenn mehr als
+## POCKET_SIZE Positionen erreichbar sind (_in_pocket()).
+var _pockets: Dictionary[Vector3i, Dictionary] = {}
 ## Nach ID aufsteigend eingefügt, wie die Gebäude.
 var _residents: Dictionary[int, Resident] = {}
 var _next_resident_id := 1
@@ -2090,7 +2095,30 @@ func _can_stand_uncached(position: Vector3i, walker: Walker) -> bool:
 ## Kürzester Weg für walker (Pathfinder.find_path()); Soldaten und Feinde nehmen dabei Treppen und
 ## Soldaten Turmeingänge.
 func _find_path(start: Vector3i, goal: Vector3i, walker: Walker) -> Array[Vector3i]:
+	if walker == Walker.GROUND_ONLY and _in_pocket(goal, start):
+		var none: Array[Vector3i] = []
+		return none
 	return Pathfinder.find_path(start, goal, _graph(walker))
+
+
+## Liegt goal am Boden in einer kleinen abgeschlossenen Tasche (höchstens POCKET_SIZE Positionen,
+## etwa ein zugebauter Eingang), die den begehbaren start nicht enthält? Dann gibt es keinen Weg:
+## Am Boden erlaubt der Graph jeden Schritt auch zurück, was start erreicht, erreicht also auch
+## start. Ohne diese Prüfung durchsuchte jeder vergebliche Weg alles, was vom Start aus erreichbar
+## ist – auf großen Karten viele Tausend Kacheln, für jeden Bewohner, der es versucht.
+func _in_pocket(goal: Vector3i, start: Vector3i) -> bool:
+	var graph := _graph(Walker.GROUND_ONLY)
+	if start == goal or not graph.is_walkable(start) or not graph.is_walkable(goal):
+		return false
+	if not _pockets.has(goal):
+		var starts: Array[Vector3i] = [goal]
+		var reach := Pathfinder.Reach.new(starts, graph)
+		var pocket: Dictionary[Vector3i, bool] = {}
+		if reach.advance_within(POCKET_SIZE):
+			for position in reach.positions():
+				pocket[position] = true
+		_pockets[goal] = pocket
+	return not _pockets[goal].is_empty() and not _pockets[goal].has(start)
 
 
 ## Weglängen für walker (Pathfinder.distances()); Ebenenwechsel wie bei _find_path().
@@ -2208,6 +2236,7 @@ func _forget_paths() -> void:
 	_enemy_graph = null
 	_open_ground_graph = null
 	_keep_reach_search = null
+	_pockets.clear()
 
 
 ## Die Begehbarkeit hat sich nur auf diesen Kacheln geändert (Bau, Abriss, Vorkommen, Gelände):
@@ -2215,6 +2244,7 @@ func _forget_paths() -> void:
 func _forget_tiles(tiles: Array[Vector2i]) -> void:
 	_distance_cache.clear()
 	_keep_reach_search = null
+	_pockets.clear()
 	for tile in tiles:
 		for walker: Walker in Walker.values():
 			for level in Figure.Level.WALL_WALK + 1:

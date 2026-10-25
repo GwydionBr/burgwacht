@@ -540,6 +540,32 @@ class Reach:
 		while not advance(Time.get_ticks_usec() + 1000000):
 			pass
 
+	## Rechnet weiter, bis die Suche fertig ist oder limit Positionen erreicht hat; true, wenn fertig.
+	func advance_within(limit: int) -> bool:
+		var no_extra := Callable()
+		while _next_in_queue < _queue.size():
+			if _queue.size() >= limit:
+				return false
+			var current := _queue[_next_in_queue]
+			_next_in_queue += 1
+			for code: int in _graph.steps_of(current, no_extra):
+				var next := code >> 1
+				if _reached[next] == 0:
+					_reached[next] = 1
+					_queue.append(next)
+		return true
+
+	## Ist die Suche fertig (has() gültig)?
+	func is_finished() -> bool:
+		return _next_in_queue >= _queue.size()
+
+	## Alle bisher erreichten Positionen.
+	func positions() -> Array[Vector3i]:
+		var result: Array[Vector3i] = []
+		for index in _queue:
+			result.append(_graph.position_of(index))
+		return result
+
 	## Erreicht? Erst gültig, wenn die Suche fertig ist (advance(), finish()).
 	func has(position: Vector3i) -> bool:
 		return _graph.contains(position) and _reached[_graph.index_of(position)] != 0

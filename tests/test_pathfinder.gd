@@ -411,6 +411,20 @@ func test_reach_in_stages_gives_the_same_result() -> void:
 			assert_eq(staged.has(position), whole.has(position), "Erreichbar %s:" % str(position))
 
 
+func test_reach_within_a_limit_finishes_only_small_areas() -> void:
+	# Eine Tasche aus zwei Kacheln oben links.
+	_block([Vector2i(2, 0), Vector2i(2, 1), Vector2i(0, 1), Vector2i(1, 1)])
+	var graph := _graph(_walkable)
+	var pocket := Pathfinder.Reach.new([Vector3i(0, 0, GROUND)], graph)
+	assert_true(pocket.advance_within(4), "Tasche fertig")
+	assert_true(pocket.is_finished(), "Gilt als fertig")
+	assert_true(pocket.has(Vector3i(1, 0, GROUND)), "Nachbar in der Tasche")
+	assert_false(pocket.has(Vector3i(5, 5, GROUND)), "Draußen nicht")
+	var open := Pathfinder.Reach.new([Vector3i(5, 5, GROUND)], graph)
+	assert_false(open.advance_within(4), "Offenes Feld nicht fertig")
+	assert_false(open.is_finished(), "Gilt nicht als fertig")
+
+
 func test_costly_only_asks_extra_cost_where_it_can_cost() -> void:
 	# Mauer mit Lücke, zwei Kacheln teuer, eine davon schräg neben dem Weg (Eckregel).
 	_costly_wall(2.0)
