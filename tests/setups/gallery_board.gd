@@ -2,6 +2,8 @@ extends Node2D
 ## Kamerunabhängige, datengetriebene Grafikübersicht; Animationen folgen der Spieluhr.
 
 const INK := Color("#eadfcb")
+## Größe der Übersicht; gallery.gd skaliert sie auf die sichtbare Fläche.
+const SIZE := Vector2(1600, 900)
 const BACKGROUND := Color("#252b25")
 const WALL_CASES: Array[Array] = [
 	[Vector2i(1, 0)], [Vector2i(-1, 0), Vector2i(1, 0)],
@@ -173,7 +175,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, 1600, 900), BACKGROUND)
+	draw_rect(Rect2(Vector2.ZERO, SIZE), BACKGROUND)
 	for label: Dictionary in _labels:
 		draw_string(ThemeDB.fallback_font, label["point"], label["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, int(label["size"]), INK)
 	for picture: Dictionary in _pictures:

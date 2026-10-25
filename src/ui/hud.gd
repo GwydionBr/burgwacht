@@ -1,14 +1,14 @@
 class_name Hud
 extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Tempo, Belegung je Lagerart (mit Füllbalken), Bewohnern,
-## Soldaten, Beliebtheit und Gold, jeweils mit Symbol, Meldungen oben
+## Soldaten, Beliebtheit und Gold, jeweils mit Symbol, darunter der Bestand jeder Ware, Meldungen oben
 ## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, unten rechts
 ## über der Bauleiste die Minikarte (`minimap`) und links daneben die Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und unten mittig die Bauleiste: Reiter je Kategorie, darunter je Gebäude der Kategorie eine Karte
 ## mit Symbol, Name, Taste und Kosten (rot, wenn sie nicht reichen) und daneben das Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
-## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln;
-## sie ist zugleich die Bestandsübersicht. Die Kasernenansicht (Linksklick auf eine Kaserne) zeigt
+## Die Marktansicht (Taste M) zeigt je Ware Bestand, Kauf- und Verkaufspreis und Knöpfe zum Handeln.
+## Die Kasernenansicht (Linksklick auf eine Kaserne) zeigt
 ## Untätige und Waffen und je Soldatentyp einen Knopf zum Anwerben. Verwaltung, Marktansicht und
 ## Kasernenansicht schließen sich gegenseitig. Nach der Niederlage liegt die Niederlage-Ansicht
 ## über allem: „Der Bergfried ist gefallen“, der erreichte Tag, der Seed der Karte und die Knöpfe
@@ -57,6 +57,11 @@ const POPULARITY_GOOD := 50
 const POPULARITY_LOW := 25
 ## Steigende Beliebtheit (fallende in BLOCKED_COLOR).
 const UP_COLOR := Color("#9fd88a")
+## Höhe der Warenbilder in der Vorratszeile und Mindestbreite ihrer Bestände (für drei Ziffern).
+const GOODS_ROW_HEIGHT := 26
+const GOODS_AMOUNT_WIDTH := 30
+## Warenbild in der Vorratszeile, solange nichts davon im Lager liegt.
+const EMPTY_GOOD_MODULATE := Color(1, 1, 1, 0.35)
 ## Abstand der Felder vom Bildschirmrand und zwischen Feldern übereinander.
 const MARGIN := 12
 
@@ -76,6 +81,9 @@ var _info_panel: PanelContainer
 var _storage_values: Dictionary[String, Label] = {}
 var _storage_meters: Dictionary[String, ProgressBar] = {}
 var _storage_stats: Dictionary[String, HBoxContainer] = {}
+## Ware → Bild und Bestand in der Vorratszeile unter der Titelleiste.
+var _goods_icons: Dictionary[String, TextureRect] = {}
+var _goods_labels: Dictionary[String, Label] = {}
 var _residents_label: Label
 var _idle_label: Label
 var _soldiers_label: Label
@@ -177,7 +185,7 @@ func _ready() -> void:
 		+ "WASD/Pfeile, zwei Finger, Rechtsziehen: Kamera  ·  Pinch/Mausrad: zoomen\n"
 		+ "Leertaste: Pause  ·  1/2/3: Tempo" + ("  ·  N: neue Karte" if OS.is_debug_build() else "") + "\n"
 		+ "V: Verwaltung  ·  M: Markt  ·  F5/F9: speichern/laden  ·  F: Vollbild",
-		HINT_COLOR, 13))
+		HINT_COLOR, 14))
 	add_child(help_panel)
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
 	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -460,10 +468,14 @@ func show_barracks(idle: int, weapons: Dictionary[String, int], gold: int,
 	_barracks_panel.reset_size()
 
 
-## Bestand je Ware in der Marktansicht.
-func show_market_stock(stock: Dictionary[String, int]) -> void:
+## Bestand je Ware in der Vorratszeile der Titelleiste und in der Marktansicht.
+func show_stock(stock: Dictionary[String, int]) -> void:
 	for good: String in stock:
+		var stored := stock[good] > 0
 		_market_stock_labels[good].text = str(stock[good])
+		_goods_labels[good].text = str(stock[good])
+		_goods_labels[good].add_theme_color_override("font_color", TEXT_COLOR if stored else HINT_COLOR)
+		_goods_icons[good].modulate = Color.WHITE if stored else EMPTY_GOOD_MODULATE
 
 
 ## Handelsknöpfe der Marktansicht: Grund je Ware für Kauf bzw. Verkauf (leer = möglich);
@@ -543,17 +555,22 @@ func show_tool(build_type: String, demolishing: bool, clearing: bool = false) ->
 
 ## Die Titelleiste über die ganze Breite: links Name und Karte, dann Tag und Tempo, die Lager mit
 ## Füllbalken, Bewohner und Soldaten und rechts Beliebtheit und Gold; Gruppen durch Striche getrennt.
+## Darunter die Vorratszeile mit dem Bestand jeder Ware (_make_goods_row()).
 func _make_title_bar() -> PanelContainer:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", UiStyle.title_bar_style())
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	bar.add_child(column)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
-	bar.add_child(row)
+	column.add_child(row)
+	column.add_child(_make_goods_row())
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", -4)
 	title.alignment = BoxContainer.ALIGNMENT_CENTER
-	title.add_child(_make_label("Burgwacht", UiStyle.GOLD_COLOR, 22))
-	_seed_label = _make_label("", HINT_COLOR, 12)
+	title.add_child(_make_label("Burgwacht", UiStyle.GOLD_COLOR, 26))
+	_seed_label = _make_label("", HINT_COLOR, 14)
 	title.add_child(_seed_label)
 	row.add_child(title)
 	row.add_child(_make_divider())
@@ -577,7 +594,7 @@ func _make_title_bar() -> PanelContainer:
 	var residents := _make_stat(StatIcon.new(StatIcon.RESIDENTS), "Bewohner",
 			"Bewohner / Wohnraum\nUntätige warten auf Arbeit oder Anwerbung")
 	_residents_label = _stat_value(residents)
-	_idle_label = _make_label("", HINT_COLOR, 13)
+	_idle_label = _make_label("", HINT_COLOR, 15)
 	_stat_value(residents).get_parent().add_child(_idle_label)
 	row.add_child(residents)
 	var soldiers := _make_stat(StatIcon.new(StatIcon.SOLDIERS), "Soldaten", "Angeworbene Soldaten")
@@ -592,7 +609,7 @@ func _make_title_bar() -> PanelContainer:
 	var popularity := _make_stat(StatIcon.new(StatIcon.POPULARITY), "Beliebtheit",
 			"Beliebtheit und Tendenz pro Tag\nV: Verwaltung")
 	_popularity_label = _stat_value(popularity)
-	_trend_label = _make_label("", HINT_COLOR, 14)
+	_trend_label = _make_label("", HINT_COLOR, 16)
 	_popularity_label.get_parent().add_child(_trend_label)
 	_popularity_meter = _make_meter(popularity, 100.0)
 	row.add_child(popularity)
@@ -600,7 +617,7 @@ func _make_title_bar() -> PanelContainer:
 	var gold := _make_stat(StatIcon.new(StatIcon.GOLD), "Gold", "Gold im Schatz\nM: Markt")
 	_gold_label = _stat_value(gold)
 	_gold_label.add_theme_color_override("font_color", UiStyle.GOLD_COLOR)
-	_gold_label.add_theme_font_size_override("font_size", 20)
+	_gold_label.add_theme_font_size_override("font_size", 24)
 	(gold.get_node("Text") as Control).custom_minimum_size = Vector2(56, 0)
 	row.add_child(gold)
 	return bar
@@ -621,13 +638,13 @@ func _make_stat(icon: Control, caption: String, tooltip: String) -> HBoxContaine
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat.add_child(text)
-	text.add_child(_make_label(caption, HINT_COLOR, 12))
+	text.add_child(_make_label(caption, HINT_COLOR, 14))
 	var line := HBoxContainer.new()
 	line.name = "Line"
 	line.add_theme_constant_override("separation", 6)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_child(line)
-	var value := _make_label("", TEXT_COLOR, 18)
+	var value := _make_label("", TEXT_COLOR, 21)
 	value.name = "Value"
 	line.add_child(value)
 	return stat
@@ -662,6 +679,49 @@ func _set_meter_color(meter: ProgressBar, color: Color) -> void:
 	(meter.get_theme_stylebox("fill") as StyleBoxFlat).bg_color = color
 
 
+## Vorratszeile unter der Titelleiste: je Lagerart deren Waren mit Bild, Name und Bestand, Lagerarten
+## durch Striche getrennt; show_stock() füllt sie, leere Waren stehen blass.
+func _make_goods_row() -> HBoxContainer:
+	var defs := GameDefs.get_instance()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	for storage_type: String in Building.storage_types():
+		if row.get_child_count() > 0:
+			row.add_child(_make_divider(GOODS_ROW_HEIGHT))
+		for good: String in Building.goods_in(storage_type):
+			var good_name := str(defs.goods[good]["name"])
+			var entry := HBoxContainer.new()
+			entry.add_theme_constant_override("separation", 5)
+			entry.mouse_filter = Control.MOUSE_FILTER_PASS
+			entry.tooltip_text = "%s (%s)" % [good_name, Building.storage_name(storage_type)]
+			var icon := TextureRect.new()
+			icon.texture = _trimmed(load(GameDefs.sprite_path(defs.goods[good])))
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.custom_minimum_size = Vector2(GOODS_ROW_HEIGHT, GOODS_ROW_HEIGHT)
+			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			entry.add_child(icon)
+			var name_label := _make_label(good_name, HINT_COLOR, 15)
+			name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			entry.add_child(name_label)
+			var amount := _make_label("0", HINT_COLOR, 19)
+			amount.custom_minimum_size = Vector2(GOODS_AMOUNT_WIDTH, 0)
+			amount.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			entry.add_child(amount)
+			row.add_child(entry)
+			_goods_icons[good] = icon
+			_goods_labels[good] = amount
+	return row
+
+
+## Das Bild ohne seinen durchsichtigen Rand, damit kleine Warenbilder das Feld füllen.
+static func _trimmed(texture: Texture2D) -> Texture2D:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	atlas.region = Rect2(texture.get_image().get_used_rect())
+	return atlas
+
+
 ## Tempoanzeige: Segmente „Pause“ und je Tempo aus GameClock.SPEEDS („1×“, „2×“, „4×“);
 ## show_speed() hebt das laufende hervor.
 func _make_speed_display() -> HBoxContainer:
@@ -675,7 +735,7 @@ func _make_speed_display() -> HBoxContainer:
 	for speed in speeds:
 		var segment := PanelContainer.new()
 		segment.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		segment.add_child(_make_label("Pause" if speed == 0 else "%d×" % speed, HINT_COLOR, 14))
+		segment.add_child(_make_label("Pause" if speed == 0 else "%d×" % speed, HINT_COLOR, 16))
 		segments.add_child(segment)
 		_speed_segments[speed] = segment
 	show_speed(1, true)
@@ -683,10 +743,10 @@ func _make_speed_display() -> HBoxContainer:
 
 
 ## Senkrechter Messingstrich zwischen Gruppen der Titelleiste.
-func _make_divider() -> ColorRect:
+func _make_divider(height: int = 32) -> ColorRect:
 	var line := ColorRect.new()
 	line.color = UiStyle.PANEL_BORDER_COLOR
-	line.custom_minimum_size = Vector2(1, 32)
+	line.custom_minimum_size = Vector2(1, height)
 	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return line
@@ -912,12 +972,12 @@ func _make_barracks_panel() -> PanelContainer:
 				_cost_text(SoldierType.goods_cost_of(type_id), SoldierType.gold_cost_of(type_id))]
 		button.focus_mode = Control.FOCUS_NONE
 		button.disabled = true
-		button.add_theme_font_size_override("font_size", 14)
+		button.add_theme_font_size_override("font_size", 16)
 		button.pressed.connect(func() -> void: recruit_requested.emit(type_id))
 		type_column.add_child(button)
 		_recruit_buttons[type_id] = button
-		_recruit_reason_labels[type_id] = _make_wrapped_label(type_column, BLOCKED_COLOR, 14)
-		_recruit_supply_labels[type_id] = _make_wrapped_label(type_column, HINT_COLOR, 13)
+		_recruit_reason_labels[type_id] = _make_wrapped_label(type_column, BLOCKED_COLOR, 15)
+		_recruit_supply_labels[type_id] = _make_wrapped_label(type_column, HINT_COLOR, 14)
 	column.add_child(_make_label("Esc: schließen", HINT_COLOR, 13))
 	return panel
 

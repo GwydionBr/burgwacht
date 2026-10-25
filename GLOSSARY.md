@@ -144,6 +144,10 @@ _Avoid_: Speicher (allein), Inventar, Bestand
 **Lagerart**:
 Die Sorte Lager, in die eine Ware gehört (Warenlager, Kornspeicher, Waffenkammer); jede Ware hat genau eine.
 
+**Vorratszeile**:
+Die Zeile unter der Titelleiste mit Bild, Name und Bestand jeder Ware, nach Lagerart gruppiert; die Bestandsübersicht während des Spiels.
+_Avoid_: Ressourcenleiste, Inventar
+
 **Warenlager**:
 Das Lager für alle Waren, die weder Nahrung noch Waffen sind, also auch für die meisten Rohstoffe.
 _Avoid_: Lager (für dieses konkrete Gebäude), Stockpile
@@ -177,7 +181,7 @@ Ein Kauf oder Verkauf einer festen Menge einer Ware am Markt zu den festen Preis
 _Avoid_: Tausch, Transaktion
 
 **Marktansicht**:
-Die Übersicht (Taste M) mit Bestand, Kauf- und Verkaufspreis jeder Ware; zugleich die Bestandsübersicht, auch ohne Markt (dann ohne Handel).
+Die Übersicht (Taste M) mit Bestand, Kauf- und Verkaufspreis jeder Ware und dem Handel; auch ohne Markt offen (dann ohne Handel).
 _Avoid_: Inventar, Handelsfenster
 
 **Minikarte**:

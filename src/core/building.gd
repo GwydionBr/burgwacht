@@ -279,6 +279,16 @@ static func storage_types() -> Array[String]:
 	return result
 
 
+## Die Waren dieser Lagerart in der Reihenfolge der Daten, z. B. „apples“, „meat“, „bread“.
+static func goods_in(storage_type: String) -> Array[String]:
+	var result: Array[String] = []
+	var goods := GameDefs.get_instance().goods
+	for good: String in goods:
+		if str(goods[good]["storage"]) == storage_type:
+			result.append(good)
+	return result
+
+
 ## Breite × Tiefe der Grundfläche eines Gebäudetyps.
 static func size_of(type_id: String) -> Vector2i:
 	return _vec(GameDefs.get_instance().buildings[type_id]["size"])
