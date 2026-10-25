@@ -119,3 +119,9 @@ func test_save_and_load_keeps_granary_and_food() -> void:
 func test_storage_name_comes_from_storage_building() -> void:
 	assert_eq(Building.storage_name("granary"), "Kornspeicher", "Kornspeicher:")
 	assert_eq(Building.storage_name("warehouse"), "Warenlager", "Warenlager:")
+
+
+func test_goods_in_lists_goods_of_storage_type_in_data_order() -> void:
+	assert_eq(Building.goods_in("granary"), ["apples", "meat", "bread"] as Array[String], "Kornspeicher:")
+	assert_eq(Building.goods_in("armory"), ["sword", "bow"] as Array[String], "Waffenkammer:")
+	assert_eq(Building.goods_in("nothing"), [] as Array[String], "Unbekannte Lagerart:")

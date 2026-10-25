@@ -1143,7 +1143,8 @@ func _update_demolish_preview() -> void:
 		_hud.show_build_hint("Abriss: %s" % reason, false)
 
 
-## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher, Waffenkammer); Marktansicht: Bestand je Ware.
+## Titelleiste: Belegung je Lagerart (Warenlager, Kornspeicher, Waffenkammer) und Bestand je Ware,
+## den auch die Marktansicht zeigt.
 func _update_stock() -> void:
 	for storage_type: String in Building.storage_types():
 		_hud.show_storage(storage_type, world.get_storage_used(storage_type),
@@ -1151,7 +1152,7 @@ func _update_stock() -> void:
 	var stock: Dictionary[String, int] = {}
 	for good: String in GameDefs.get_instance().goods:
 		stock[good] = world.get_stock(good)
-	_hud.show_market_stock(stock)
+	_hud.show_stock(stock)
 	_update_market()
 	_update_barracks()
 	_update_build_costs()
