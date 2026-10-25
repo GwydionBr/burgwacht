@@ -138,8 +138,10 @@ func apply_to_window(window: Window) -> void:
 func follow_window(window: Window) -> void:
 	if _window == null:
 		changed.connect(_apply_to_followed_window)
+		ScreenFit.apply(window)
 	_window = window
 	apply_to_window(window)
+
 
 
 ## Stellt die Lautstärken der Audio-Busse sofort und nach jeder Änderung ein (shared() ruft es).
