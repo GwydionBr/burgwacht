@@ -16,11 +16,17 @@ static func point_to_world(point: Vector2) -> Vector2:
 	return Vector2((point.x - point.y) * TILE_W * 0.5, (point.x + point.y) * TILE_H * 0.5)
 
 
-## Kachel, auf der ein Weltpunkt liegt.
-static func world_to_tile(pos: Vector2) -> Vector2i:
+## Umkehrung von point_to_world(): Kachelpunkt (auch zwischen Kacheln) zu einem Weltpunkt.
+static func world_to_point(pos: Vector2) -> Vector2:
 	var a := pos.x / (TILE_W * 0.5)
 	var b := pos.y / (TILE_H * 0.5)
-	return Vector2i(floori((a + b) * 0.5 + 0.5), floori((b - a) * 0.5 + 0.5))
+	return Vector2((a + b) * 0.5, (b - a) * 0.5)
+
+
+## Kachel, auf der ein Weltpunkt liegt.
+static func world_to_tile(pos: Vector2) -> Vector2i:
+	var point := world_to_point(pos)
+	return Vector2i(floori(point.x + 0.5), floori(point.y + 0.5))
 
 
 ## Die vier Eckpunkte der Kachel-Raute: oben, rechts, unten, links.

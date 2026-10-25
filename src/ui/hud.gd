@@ -2,7 +2,8 @@ class_name Hud
 extends CanvasLayer
 ## Bedienoberfläche: Titelleiste mit Tag, Tempo, Belegung je Lagerart (mit Füllbalken), Bewohnern,
 ## Soldaten, Beliebtheit und Gold, jeweils mit Symbol, Meldungen oben
-## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
+## rechts darunter, die Ankündigung der nächsten Welle samt Countdown oben links darunter, unten rechts
+## über der Bauleiste die Minikarte (`minimap`) und links daneben die Steuerungshinweise, Info zur Kachel unter der Maus, ein Hinweis zum Bauen (z. B. Grund für rote Vorschau)
 ## und unten mittig die Bauleiste: Reiter je Kategorie, darunter je Gebäude der Kategorie eine Karte
 ## mit Symbol, Name, Taste und Kosten (rot, wenn sie nicht reichen) und daneben das Abriss-Werkzeug.
 ## Die Verwaltung (Taste V) zeigt Ration und Steuersatz zum Umstellen und die Faktoren der Beliebtheit.
@@ -127,6 +128,9 @@ var _defeat_day_label: Label
 ## Seed der Karte in der Niederlage-Ansicht.
 var _defeat_seed_label: Label
 
+## Die Minikarte unten rechts; zeigt die Spielwelt erst nach Minimap.show_world().
+var minimap: Minimap
+
 
 func _ready() -> void:
 	var bar := _make_title_bar()
@@ -179,6 +183,16 @@ func _ready() -> void:
 	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	help_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
+	var minimap_panel := _make_panel()
+	minimap = Minimap.new()
+	minimap_panel.add_child(minimap)
+	add_child(minimap_panel)
+	minimap_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, MARGIN)
+	minimap_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	minimap_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# Die Hinweise stehen links neben der Minikarte.
+	help_panel.offset_right = -(MARGIN + minimap_panel.get_combined_minimum_size().x + MARGIN)
+
 	_info_panel = _make_panel()
 	_info_label = _make_label("", TEXT_COLOR, 15)
 	_info_panel.add_child(_info_label)
@@ -204,6 +218,7 @@ func _ready() -> void:
 	# Hinweise und Kachel-Info über der Bauleiste, die bei vielen Gebäuden fast die ganze Breite braucht.
 	var above_bar := -(MARGIN + _build_bar.get_combined_minimum_size().y + MARGIN)
 	help_panel.offset_bottom = above_bar
+	minimap_panel.offset_bottom = above_bar
 	_info_panel.offset_bottom = above_bar
 
 	_admin_panel = _make_admin_panel()

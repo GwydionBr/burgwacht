@@ -180,6 +180,10 @@ _Avoid_: Tausch, Transaktion
 Die Übersicht (Taste M) mit Bestand, Kauf- und Verkaufspreis jeder Ware; zugleich die Bestandsübersicht, auch ohne Markt (dann ohne Handel).
 _Avoid_: Inventar, Handelsfenster
 
+**Minikarte**:
+Die verkleinerte ganze Karte unten rechts mit Gelände, Vorkommen, Gebäuden, Feinden und dem Bildausschnitt; ein Klick darauf verschiebt die Ansicht dorthin.
+_Avoid_: Übersichtskarte, Radar
+
 **Wild**:
 Ein Vorkommen aus Tieren, das Fleisch liefert und wie Bäume nachwächst; es bewegt sich nicht.
 _Avoid_: Tiere, Hirsche, Beute
