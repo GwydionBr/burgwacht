@@ -2,8 +2,8 @@
 # Speichert ein Bild des Spiels. Aufruf: tools/screenshot.sh [ausgabe.png] [seed] [szenario] [tage] [weitere Parameter]
 # Mit Testzustand aus tools/presets.json statt Seed: tools/screenshot.sh bild.png barracks [weitere Parameter]
 # Mit Tagen > 0 wird die Burg vorher gegründet; sonst zeigt das Bild die Gründung (oder --found angeben).
-# Baumodus im Bild: --build=woodcutter --hover=46,44 (Kachel unter der Maus); Abriss: --demolish --hover=40,40.
-# Laufende Arbeiter: --place=woodcutter@46,41 --ticks=25 (bauen, dann Takte laufen lassen).
+# Baumodus im Bild: --build=woodcutter --hover=75,87 (Kachel unter der Maus); Abriss: --demolish --hover=79,79.
+# Laufende Arbeiter: --place=woodcutter@75,84 --ticks=25 (bauen, dann Takte laufen lassen).
 # Ohne Ton: Screenshots laufen mit dem Dummy-Audiotreiber.
 cd "$(dirname "$0")/.." || exit 1
 # Klassen-Cache auffrischen, sonst fehlen nach einem Pull neue class_name-Typen
