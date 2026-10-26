@@ -1,6 +1,6 @@
 {
   "name": "Hungerwinter",
-  "description": "Die Vorräte reichen nur noch wenige Tage, und die Leute murren. Sichere die Nahrung, lass die Burg auf 24 Bewohner wachsen und lege einen Wintervorrat von 30 Brot an. Es kommen keine Feinde. Alle Zielbedingungen müssen gleichzeitig erfüllt sein.",
+  "description": "Die Vorräte reichen nur noch wenige Tage, und die Leute murren. Sichere die Nahrung, lass die Burg auf 32 Bewohner wachsen und lege einen Wintervorrat von 80 Brot an. Es kommen keine Feinde. Alle Zielbedingungen müssen gleichzeitig erfüllt sein.",
   "map": { "width": 80, "height": 80 },
   "seed": 7,
   "start_goods": { "wood": 140, "stone": 20, "apples": 20 },
@@ -10,14 +10,14 @@
   "goals": [
     {
       "kind": "population",
-      "amount": 24,
+      "amount": 32,
       "text": "Die Burg wachsen lassen",
       "hint": "Wohnhäuser bauen und die Beliebtheit über 50 halten (Taste V)."
     },
     {
       "kind": "goods",
       "type": "bread",
-      "amount": 30,
+      "amount": 80,
       "text": "Wintervorrat: Brot im Kornspeicher",
       "hint": "Weizenfarm, Mühle und Bäcker bauen. Damit Brot übrig bleibt: mehr backen oder die Ration senken (Taste V)."
     }

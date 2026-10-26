@@ -54,14 +54,14 @@ func test_flour_and_bread_are_goods() -> void:
 			"Brot:")
 	for good: String in ["flour", "bread"]:
 		assert_true(goods[good].has("color"), "Farbe für getragenes %s" % good)
-	assert_eq([Market.buy_price("flour"), Market.sell_price("flour")], [16, 8], "Preise Mehl:")
+	assert_eq([Market.buy_price("flour"), Market.sell_price("flour")], [10, 5], "Preise Mehl:")
 	assert_eq([Market.buy_price("bread"), Market.sell_price("bread")], [8, 4], "Preise Brot:")
 
 
 func test_mill_and_bakery_data() -> void:
 	var expected := {
-		"mill": ["Mühle", "Müller", "U", Vector2i(3, 3), "wheat", 3, "flour", 3, 120, "mahlt Weizen", 20, 20],
-		"bakery": ["Bäcker", "Bäcker", "K", Vector2i(2, 2), "flour", 2, "bread", 4, 150, "backt Brot", 10, 10],
+		"mill": ["Mühle", "Müller", "U", Vector2i(3, 3), "wheat", 3, "flour", 6, 120, "mahlt Weizen", 20, 20],
+		"bakery": ["Bäcker", "Bäcker", "K", Vector2i(2, 2), "flour", 2, "bread", 8, 150, "backt Brot", 10, 10],
 	}
 	for type_id: String in expected:
 		var def: Dictionary = GameDefs.get_instance().buildings[type_id]
@@ -97,7 +97,7 @@ func test_waits_inside_without_enough_wheat_then_fetches() -> void:
 	assert_eq(world.activity_of(worker), "Müller – holt Weizen", "Tätigkeit beim Holen:")
 
 
-func test_mill_turns_three_wheat_into_three_flour() -> void:
+func test_mill_turns_three_wheat_into_six_flour() -> void:
 	var world := _founded()
 	var mill := world.get_building(build(world, "mill", MILL_SITE))
 	put_goods(world, WAREHOUSE, "wheat", 5)
@@ -118,10 +118,10 @@ func test_mill_turns_three_wheat_into_three_flour() -> void:
 		world.step()
 		ticks_inside += 1
 	assert_eq(ticks_inside, 120, "Arbeitsdauer:")
-	assert_eq([worker.task, worker.carried_good, worker.carried_amount], [Resident.Task.TO_STORAGE, "flour", 3],
+	assert_eq([worker.task, worker.carried_good, worker.carried_amount], [Resident.Task.TO_STORAGE, "flour", 6],
 			"Kommt mit dem Mehl heraus:")
 	assert_eq(worker.storage_id, WAREHOUSE, "Ins Warenlager:")
-	_until(world, func() -> bool: return world.get_stock("flour") == 3, "Lieferung des Mehls")
+	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Lieferung des Mehls")
 	assert_eq(world.get_stock("wheat"), 2, "Genau die Eingangsmenge verbraucht:")
 	assert_eq(worker.carried_amount, 0, "Trägt danach nichts mehr:")
 	# Für den nächsten Arbeitsgang reichen 2 Weizen nicht: Er wartet.
@@ -167,7 +167,7 @@ func test_two_mills_racing_for_the_last_wheat_neither_lose_nor_stall() -> void:
 	assert_eq(world.activity_of(late), "Müller – wartet: kein Weizen", "Tätigkeit:")
 	# Neuer Vorrat für den Rest: Er holt weiter und mahlt.
 	put_goods(world, WAREHOUSE, "wheat", 2)
-	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Beide Arbeitsgänge geliefert")
+	_until(world, func() -> bool: return world.get_stock("flour") == 12, "Beide Arbeitsgänge geliefert")
 	assert_eq(world.get_stock("wheat"), 0, "Ohne Verlust verbraucht:")
 
 
@@ -179,8 +179,8 @@ func test_bakery_delivers_bread_to_granary() -> void:
 	_until(world, func() -> bool: return worker.is_inside_building() and worker.task == Resident.Task.PRODUCING,
 			"Backen")
 	assert_eq(world.activity_of(worker), "Bäcker – backt Brot", "Tätigkeit:")
-	_until(world, func() -> bool: return world.get_stock("bread") == 4, "Brot im Kornspeicher")
-	assert_eq(world.get_building(GRANARY).contents, {"bread": 4} as Dictionary[String, int], "Kornspeicher:")
+	_until(world, func() -> bool: return world.get_stock("bread") == 8, "Brot im Kornspeicher")
+	assert_eq(world.get_building(GRANARY).contents, {"bread": 8} as Dictionary[String, int], "Kornspeicher:")
 	assert_eq(world.get_stock("flour"), 0, "Mehl verbraucht:")
 
 
@@ -206,10 +206,10 @@ func test_full_warehouses_wait_with_flour() -> void:
 	var worker := world.get_resident(1)
 	_until(world, func() -> bool: return _standing_in(worker, Resident.Task.WAITING_FOR_STORAGE), "Warten mit Mehl")
 	assert_eq(worker.tile, mill.entrance(), "An der Mühle:")
-	assert_eq([worker.carried_good, worker.carried_amount], ["flour", 3], "Behält das Mehl:")
+	assert_eq([worker.carried_good, worker.carried_amount], ["flour", 6], "Behält das Mehl:")
 	assert_eq(world.activity_of(worker), "Müller – wartet: Lager voll", "Tätigkeit:")
 	put_goods(world, WAREHOUSE, "stone", 100)
-	_until(world, func() -> bool: return world.get_stock("flour") == 3, "Lieferung nach dem Warten")
+	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Lieferung nach dem Warten")
 
 
 func test_demolished_mill_drops_carried_goods() -> void:
@@ -242,7 +242,7 @@ func test_demolished_storage_while_fetching_seeks_another() -> void:
 	put_goods(world, second, "wheat", 0)
 	assert_eq(world.execute(Command.demolish(second)), "", "Abriss:")
 	assert_eq([worker.task, worker.storage_id], [Resident.Task.FETCHING, WAREHOUSE], "Sofort zum anderen Lager:")
-	_until(world, func() -> bool: return world.get_stock("flour") == 3, "Mehl trotzdem geliefert")
+	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Mehl trotzdem geliefert")
 
 
 func test_demolished_storage_while_delivering_seeks_another() -> void:
@@ -255,7 +255,7 @@ func test_demolished_storage_while_delivering_seeks_another() -> void:
 	assert_eq(worker.storage_id, second, "Zum nächsten Lager:")
 	assert_eq(world.execute(Command.demolish(second)), "", "Abriss:")
 	assert_eq([worker.task, worker.storage_id], [Resident.Task.TO_STORAGE, WAREHOUSE], "Sofort zum anderen Lager:")
-	_until(world, func() -> bool: return world.get_stock("flour") == 3, "Mehl geliefert")
+	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Mehl geliefert")
 
 
 func test_unreachable_storage_with_wheat_waits_until_way_is_free() -> void:
@@ -268,7 +268,7 @@ func test_unreachable_storage_with_wheat_waits_until_way_is_free() -> void:
 	_until(world, func() -> bool: return _standing_in(worker, Resident.Task.WAITING_FOR_INPUT), "Warten")
 	assert_eq(world.activity_of(worker), "Müller – wartet: kein Weizen erreichbar", "Tätigkeit:")
 	world.map.remove_deposit(front)
-	_until(world, func() -> bool: return world.get_stock("flour") == 3, "Mehl nach freiem Weg")
+	_until(world, func() -> bool: return world.get_stock("flour") == 6, "Mehl nach freiem Weg")
 
 
 func test_save_mid_production_gives_same_course() -> void:
@@ -291,5 +291,5 @@ func test_save_mid_production_gives_same_course() -> void:
 			if task == Resident.Task.WAITING_FOR_INPUT:
 				put_goods(each, WAREHOUSE, "wheat", 2)
 			_steps(each, 800)
-		assert_eq(world.get_stock("flour"), 3, "Mehl kommt an (%d):" % task)
+		assert_eq(world.get_stock("flour"), 6, "Mehl kommt an (%d):" % task)
 		assert_eq(loaded.to_data(), world.to_data(), "Daten nach weiteren Takten (%d):" % task)

@@ -35,8 +35,8 @@
     "name": "Mehl",
     "storage": "warehouse",
     "color": "#ece3cf",
-    "buy": 16,
-    "sell": 8,
+    "buy": 10,
+    "sell": 5,
     "sprite": "goods/flour"
   },
   "apples": {
