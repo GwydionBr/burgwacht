@@ -227,7 +227,7 @@ Neues Zustandsstück:
 
 ## Spielmodus
 
-Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Das Einstiegsszenario „Die erste Bewährungsprobe“ hat einen festen Seed, eine einzelne Welle und ein Szenarioziel. „Hungerwinter“ ist ein reines Wirtschaftsszenario ohne Feinde (32 Bewohner und 80 Brot; der Szenario-Bot gewinnt es mit halber Ration), „Die Grenzfeste“ verlangt, mit Wellen nach Formel bis Tag 21 durchzuhalten und dabei 300 Gold zu sammeln.
+Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Das Einstiegsszenario „Die erste Bewährungsprobe“ hat einen festen Seed, eine einzelne Welle und ein Szenarioziel. „Hungerwinter“ ist ein reines Wirtschaftsszenario ohne Feinde (32 Bewohner und 80 Brot; der Szenario-Bot gewinnt es mit halber Ration), „Die Grenzfeste“ verlangt, mit Wellen nach Formel bis Tag 21 durchzuhalten und dabei 700 Gold zu sammeln.
 
 ### Szenarioziel
 
