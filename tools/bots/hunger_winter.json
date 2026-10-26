@@ -1,0 +1,11 @@
+{
+  "steps": [
+    { "build": "orchard", "until": 2 },
+    { "build": "wheat_farm", "until": 2 },
+    { "build": "mill", "until": 2 },
+    { "build": "bakery", "until": 2 },
+    { "build": "granary", "until": 2 },
+    { "build": "house", "until": 3 },
+    { "ration": "half", "population": 32 }
+  ]
+}

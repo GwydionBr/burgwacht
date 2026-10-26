@@ -1,0 +1,15 @@
+{
+  "steps": [
+    { "build": "woodcutter" },
+    { "build": "orchard" },
+    { "build": "house" },
+    { "build": "market" },
+    { "build": "armory" },
+    { "build": "barracks" },
+    { "buy": "bow", "until": 4 },
+    { "recruit": "archer", "until": 4 }
+  ],
+  "rules": [
+    { "post": "keep" }
+  ]
+}
