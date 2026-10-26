@@ -24,6 +24,11 @@ static func consumption(ration_id: String) -> float:
 	return float(_ration(ration_id)["consumption"])
 
 
+## Ist die Ware Nahrung ("food" in goods.json), also etwas, das die Bewohner essen?
+static func is_food(good: String) -> bool:
+	return bool(GameDefs.get_instance().goods[good].get("food", false))
+
+
 ## Faktor der Beliebtheit, wenn diese Ration gegessen wurde.
 static func ration_factor(ration_id: String) -> int:
 	return int(_ration(ration_id)["factor"])
