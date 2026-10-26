@@ -143,6 +143,10 @@
 		"name": "Einstiegsszenario mit Zielanzeige",
 		"args": ["--scenario=first_castle", "--seed=42", "--found"]
 	},
+	"scenario_day_and_gold": {
+		"name": "Grenzfeste: Zielanzeige mit Tag und Gold",
+		"args": ["--scenario=border_fort", "--found"]
+	},
 	"victory": {
 		"name": "Szenarioziel erfüllt: Siegansicht",
 		"args": ["--setup=victory"]

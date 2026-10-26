@@ -18,6 +18,8 @@ func _world(goals: Array) -> GameWorld:
 func test_invalid_goals_are_rejected() -> void:
 	for invalid: Variant in [null, {}, [false], [{"kind": "unknown", "amount": 1, "text": "Ziel"}],
 			[{"kind": "building", "type": "missing", "amount": 1, "text": "Ziel"}],
+			[{"kind": "goods", "type": "missing", "amount": 1, "text": "Ziel"}],
+			[{"kind": "goods", "amount": 1, "text": "Ziel"}],
 			[{"kind": "population", "amount": 0, "text": "Ziel"}],
 			[{"kind": "population", "amount": 1.5, "text": "Ziel"}],
 			[{"kind": "population", "amount": 1, "text": false}],
@@ -58,6 +60,29 @@ func test_conditions_must_be_met_together_and_survive_reload() -> void:
 		build(each, "house", find_site(each, "house"))
 		assert_true(each.is_victorious(), "Alle Bedingungen erfüllt")
 	assert_eq(loaded.to_data(), world.to_data(), "Gleicher weiterer Verlauf")
+
+
+func test_gold_goods_and_day_are_read_from_the_world() -> void:
+	var world := found_castle(_world([
+		{"kind": "gold", "amount": 1, "text": "Gold"},
+		{"kind": "goods", "type": "wood", "amount": 100, "text": "Holz"},
+		{"kind": "day", "amount": 2, "text": "Tag 2"}]))
+	assert_eq(world.goal_status(), PackedStringArray(["○ Gold (0/1)", "✓ Holz (100/100)", "○ Tag 2 (1/2)"]), "Nach der Gründung")
+	assert_eq(world.execute(Command.set_tax_rate("low")), "", "Steuern erheben")
+	for i in GameWorld.TICKS_PER_DAY - 1:
+		world.step()
+	assert_false(world.is_victorious(), "Noch Tag 1 ohne Steuern")
+	world.step()
+	assert_true(world.is_victorious(), "Tag 2 mit Steuern und unverbrauchtem Holz")
+
+
+func test_spent_goods_no_longer_count() -> void:
+	var world := found_castle(_world([
+		{"kind": "goods", "type": "wood", "amount": 100, "text": "Holz"},
+		{"kind": "building", "type": "house", "amount": 1, "text": "Wohnraum"}]))
+	build(world, "house", find_site(world, "house"))
+	assert_false(world.is_victorious(), "Das Wohnhaus hat Holz gekostet")
+	assert_eq(world.goal_status()[0], "○ Holz (94/100)", "Fortschritt nach dem Bau")
 
 
 func test_last_wave_is_checked_at_the_end_of_the_tick() -> void:
@@ -141,3 +166,40 @@ func test_victory_queries_and_commands_share_the_same_rejection() -> void:
 	assert_eq(world.spawn_enemy_error("bandit"), reason, "Feind erscheinen lassen")
 	assert_eq(world._waves().spawn_next_error(), reason, "Nächste Welle")
 	assert_eq(world.to_data(), before, "Alle Abfragen verändern nichts")
+
+
+## Freier Bauplatz für type_id, der dem Bergfried am nächsten liegt (Abstand der Ursprünge)
+## und keinen Eingang eines bestehenden Gebäudes zubaut.
+func _site_near_keep(world: GameWorld, type_id: String) -> Vector2i:
+	var keep := Vector2i.ZERO
+	var fronts: Array[Vector2i] = []
+	for building in world.get_buildings():
+		if building.type == GameWorld.FOUNDING_TYPE:
+			keep = building.origin
+		if GameDefs.get_instance().buildings[building.type].has("entrance"):
+			fronts.append(building.entrance_front())
+	var best := GameWorld.NO_SITE
+	for y in world.map.height:
+		for x in world.map.width:
+			var site := Vector2i(x, y)
+			if (best == GameWorld.NO_SITE or (site - keep).length_squared() < (best - keep).length_squared()) \
+					and world.build_error(type_id, site) == "" \
+					and not Building.footprint(type_id, site).any(func(tile: Vector2i) -> bool: return fronts.has(tile)):
+				best = site
+	return best
+
+
+func test_hunger_winter_can_be_won_with_its_start_goods() -> void:
+	var scenario := Scenario.load_named("hunger_winter")
+	assert_eq(scenario.error, "", "Hungerwinter:")
+	var world := found_castle(GameWorld.create(scenario, scenario.fixed_seed))
+	for type_id: String in ["orchard", "orchard", "wheat_farm", "wheat_farm", "mill", "mill", "bakery", "bakery", "granary", "house", "house"]:
+		build(world, type_id, _site_near_keep(world, type_id))
+	for i in 40 * GameWorld.TICKS_PER_DAY:
+		if world.is_finished():
+			break
+		# Ist die Burg voll, bleibt mit halber Ration Brot für den Vorrat übrig.
+		if world.get_population() >= 24 and world.get_ration() == "normal":
+			assert_eq(world.execute(Command.set_ration("half")), "", "Ration senken")
+		world.step()
+	assert_true(world.is_victorious(), "Hungerwinter gewonnen: Tag %d, Beliebtheit %d, Ziele %s" % [world.get_day(), world.get_popularity(), str(world.goal_status())])
