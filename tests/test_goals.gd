@@ -72,8 +72,11 @@ func test_gold_goods_and_day_are_read_from_the_world() -> void:
 	for i in GameWorld.TICKS_PER_DAY - 1:
 		world.step()
 	assert_false(world.is_victorious(), "Noch Tag 1 ohne Steuern")
-	world.step()
-	assert_true(world.is_victorious(), "Tag 2 mit Steuern und unverbrauchtem Holz")
+	var loaded := GameWorld.from_data(world.to_data())
+	assert_eq(loaded.goal_status(), world.goal_status(), "Neue Zielarten geladen")
+	for each: GameWorld in [world, loaded]:
+		each.step()
+		assert_true(each.is_victorious(), "Tag 2 mit Steuern und unverbrauchtem Holz")
 
 
 func test_spent_goods_no_longer_count() -> void:
@@ -168,38 +171,17 @@ func test_victory_queries_and_commands_share_the_same_rejection() -> void:
 	assert_eq(world.to_data(), before, "Alle Abfragen verändern nichts")
 
 
-## Freier Bauplatz für type_id, der dem Bergfried am nächsten liegt (Abstand der Ursprünge)
-## und keinen Eingang eines bestehenden Gebäudes zubaut.
-func _site_near_keep(world: GameWorld, type_id: String) -> Vector2i:
-	var keep := Vector2i.ZERO
-	var fronts: Array[Vector2i] = []
-	for building in world.get_buildings():
-		if building.type == GameWorld.FOUNDING_TYPE:
-			keep = building.origin
-		if GameDefs.get_instance().buildings[building.type].has("entrance"):
-			fronts.append(building.entrance_front())
-	var best := GameWorld.NO_SITE
-	for y in world.map.height:
-		for x in world.map.width:
-			var site := Vector2i(x, y)
-			if (best == GameWorld.NO_SITE or (site - keep).length_squared() < (best - keep).length_squared()) \
-					and world.build_error(type_id, site) == "" \
-					and not Building.footprint(type_id, site).any(func(tile: Vector2i) -> bool: return fronts.has(tile)):
-				best = site
-	return best
-
-
 func test_hunger_winter_can_be_won_with_its_start_goods() -> void:
 	var scenario := Scenario.load_named("hunger_winter")
 	assert_eq(scenario.error, "", "Hungerwinter:")
 	var world := found_castle(GameWorld.create(scenario, scenario.fixed_seed))
 	for type_id: String in ["orchard", "orchard", "wheat_farm", "wheat_farm", "mill", "mill", "bakery", "bakery", "granary", "house", "house"]:
-		build(world, type_id, _site_near_keep(world, type_id))
+		build(world, type_id, site_near_keep(world, type_id))
 	for i in 40 * GameWorld.TICKS_PER_DAY:
 		if world.is_finished():
 			break
 		# Ist die Burg voll, bleibt mit halber Ration Brot für den Vorrat übrig.
-		if world.get_population() >= 24 and world.get_ration() == "normal":
+		if world.get_population() >= scenario.goals[0].amount and world.get_ration() == "normal":
 			assert_eq(world.execute(Command.set_ration("half")), "", "Ration senken")
 		world.step()
 	assert_true(world.is_victorious(), "Hungerwinter gewonnen: Tag %d, Beliebtheit %d, Ziele %s" % [world.get_day(), world.get_popularity(), str(world.goal_status())])
