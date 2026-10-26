@@ -175,7 +175,7 @@ func test_hunger_winter_can_be_won_with_its_start_goods() -> void:
 	var scenario := Scenario.load_named("hunger_winter")
 	assert_eq(scenario.error, "", "Hungerwinter:")
 	var world := found_castle(GameWorld.create(scenario, scenario.fixed_seed))
-	for type_id: String in ["orchard", "orchard", "wheat_farm", "wheat_farm", "mill", "mill", "bakery", "bakery", "granary", "house", "house"]:
+	for type_id: String in ["orchard", "orchard", "wheat_farm", "wheat_farm", "mill", "mill", "bakery", "bakery", "granary", "house", "house", "house"]:
 		build(world, type_id, site_near_keep(world, type_id))
 	for i in 40 * GameWorld.TICKS_PER_DAY:
 		if world.is_finished():

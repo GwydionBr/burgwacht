@@ -65,7 +65,7 @@ func test_armory_data() -> void:
 
 func test_smith_and_bowyer_data() -> void:
 	var expected := {
-		"smith": ["Schmied", "Schmied", "S", Vector2i(2, 2), "iron", 2, "sword", 1, 300, "schmiedet ein Schwert", 20, 40],
+		"smith": ["Schmied", "Schmied", "S", Vector2i(2, 2), "iron", 1, "sword", 1, 300, "schmiedet ein Schwert", 20, 40],
 		"bowyer": ["Bogner", "Bogner", "R", Vector2i(2, 2), "wood", 2, "bow", 1, 250, "baut einen Bogen", 10, 20],
 	}
 	for type_id: String in expected:
@@ -101,14 +101,14 @@ func test_smith_forges_a_sword_into_the_armory() -> void:
 	var world := _founded()
 	var armory := build(world, "armory", ARMORY_SITE)
 	build(world, "smith", SMITH_SITE)
-	put_goods(world, WAREHOUSE, "iron", 3)
+	put_goods(world, WAREHOUSE, "iron", 1)
 	var worker := world.get_resident(1)
 	_until(world, func() -> bool: return worker.task == Resident.Task.PRODUCING and worker.is_inside_building(),
 			"Schmieden")
 	assert_eq(world.activity_of(worker), "Schmied – schmiedet ein Schwert", "Tätigkeit:")
 	_until(world, func() -> bool: return world.get_stock("sword") == 1, "Schwert in der Waffenkammer")
 	assert_eq(world.get_building(armory).contents, {"sword": 1} as Dictionary[String, int], "Waffenkammer:")
-	assert_eq(world.get_stock("iron"), 1, "Genau 2 Eisen verbraucht:")
+	assert_eq(world.get_stock("iron"), 0, "Genau 1 Eisen verbraucht:")
 
 
 func test_bowyer_makes_a_bow_into_the_armory() -> void:
