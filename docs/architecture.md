@@ -225,11 +225,11 @@ Neues Zustandsstück:
 
 ## Spielmodus
 
-Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Das Einstiegsszenario „Die erste Bewährungsprobe“ hat einen festen Seed, eine einzelne Welle und ein Szenarioziel.
+Freies Spiel (Szenario ohne Ziel) mit endlos immer stärkeren Wellen, mittlere Wirtschaft (Holz, Stein, Eisen, Nahrung, Gold, einige Produktionsketten). Das Einstiegsszenario „Die erste Bewährungsprobe“ hat einen festen Seed, eine einzelne Welle und ein Szenarioziel. „Hungerwinter“ ist ein reines Wirtschaftsszenario ohne Feinde (24 Bewohner und 30 Brot; ein Test spielt es mit halber Ration zum Sieg), „Die Grenzfeste“ verlangt, mit Wellen nach Formel bis Tag 21 durchzuhalten und dabei 300 Gold zu sammeln.
 
 ### Szenarioziel
 
-Das optionale Szenariofeld `goals` enthält Bedingungen mit `kind` (`building`, `population` oder `repelled_waves`), positivem ganzzahligem `amount`, `text` und optionalem `hint`; Gebäudebedingungen nennen außerdem `type`. `ScenarioGoal` prüft die Daten und liest den Fortschritt aus der Spielwelt. Alle Bedingungen müssen gleichzeitig erfüllt sein: Abgerissene oder zerstörte Gebäude zählen nicht mehr. Es werden keine Waren verbraucht und keine Belohnungen vergeben.
+Das optionale Szenariofeld `goals` enthält Bedingungen mit `kind`, positivem ganzzahligem `amount`, `text` und optionalem `hint`. Arten: `building` (Gebäude des Typs `type`), `population` (Bewohner), `repelled_waves` (abgewehrte Wellen), `gold` (Gold im Schatz), `goods` (Bestand der Ware `type` in allen Lagern) und `day` (erreichter Tag). `ScenarioGoal` prüft die Daten und liest den Fortschritt aus der Spielwelt. Alle Bedingungen müssen gleichzeitig erfüllt sein: Abgerissene oder zerstörte Gebäude zählen nicht mehr, ausgegebenes Gold und verbrauchte oder verkaufte Waren ebenso wenig. Es werden keine Waren verbraucht und keine Belohnungen vergeben.
 
 `GameWorld` prüft das Ziel nach jedem erfolgreichen Befehl und am Ende jedes Takts vor `day_started`. In der Gründung und nach der Niederlage gibt es keinen Sieg. Beim Sieg kommt einmal `victorious`; `is_finished()` gilt bei Sieg und Niederlage, Zeit und Befehle stehen dann still. `goal_status()` liefert die Fortschrittstexte für das HUD. Bedingungen und Siegzustand gehören zum Spielstand, sodass er unabhängig von späteren Änderungen an der Szenariodatei weiterläuft. Ältere Spielstände ohne diese Felder bleiben ohne Ziel. Gewonnene Partien lassen sich weiter speichern und laden; die Ergebnisansicht bietet neue Partie, Laden, Hauptmenü und Beenden.
 

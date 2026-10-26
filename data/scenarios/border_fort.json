@@ -1,0 +1,35 @@
+{
+  "name": "Die Grenzfeste",
+  "description": "Eine Burg an der Grenze, die der König bezahlt sehen will. Halte bis Tag 21 gegen Räuber und Wilderer durch und fülle dabei den Schatz auf 300 Gold. Ab Tag 7 kommt alle drei Tage eine Welle, jede stärker als die vorige. Alle Zielbedingungen müssen gleichzeitig erfüllt sein.",
+  "map": { "width": 100, "height": 100 },
+  "seed": 1207,
+  "start_goods": { "wood": 120, "stone": 80, "apples": 80 },
+  "start_residents": 8,
+  "start_popularity": 55,
+  "start_gold": 150,
+  "waves": {
+    "grace_days": 6,
+    "warning_days": 1,
+    "formula": {
+      "every_days": 3,
+      "enemies": {
+        "bandit": { "base": 2, "growth": 1 },
+        "poacher": { "base": 0, "growth": 0.5 }
+      }
+    }
+  },
+  "goals": [
+    {
+      "kind": "day",
+      "amount": 21,
+      "text": "Bis Tag 21 durchhalten",
+      "hint": "Mauern, Türme und Soldaten schützen den Bergfried."
+    },
+    {
+      "kind": "gold",
+      "amount": 300,
+      "text": "Den Schatz füllen",
+      "hint": "Steuern erheben (Taste V) oder Waren am Markt verkaufen (Taste M)."
+    }
+  ]
+}

@@ -3,9 +3,10 @@ extends RefCounted
 ## Eine Bedingung des Szenarioziels. Alle Bedingungen müssen gleichzeitig erfüllt sein.
 ## Beschreibung und Hilfetext kommen aus den Szenariodaten; Fortschritt aus der Spielwelt.
 
-## Art der Bedingung: Gebäudezahl, Bewohnerzahl oder abgewehrte Wellen.
+## Art der Bedingung: Gebäudezahl, Bewohnerzahl, abgewehrte Wellen, Gold im Schatz,
+## Warenbestand oder erreichter Tag.
 var kind: String
-## Gebäudetyp, nur für Gebäudebedingungen verwendet.
+## Gebäudetyp bei Gebäudebedingungen, Ware bei Warenbedingungen, sonst nicht verwendet.
 var type: String
 ## Benötigte Anzahl; muss positiv und ganzzahlig sein.
 var amount: int
@@ -34,10 +35,12 @@ static func parse(value: Variant, problems: PackedStringArray) -> Array[Scenario
 		goal.type = str(data.get("type", ""))
 		goal.text = str(data.get("text", ""))
 		goal.hint = str(data.get("hint", ""))
-		if goal.kind not in ["building", "population", "repelled_waves"]:
+		if goal.kind not in ["building", "population", "repelled_waves", "gold", "goods", "day"]:
 			problems.append("Unbekannte Zielbedingung „%s“" % goal.kind)
 		if goal.kind == "building" and not GameDefs.get_instance().buildings.has(goal.type):
 			problems.append("Unbekannter Gebäudetyp im Ziel „%s“" % goal.type)
+		if goal.kind == "goods" and not GameDefs.get_instance().goods.has(goal.type):
+			problems.append("Unbekannte Ware im Ziel „%s“" % goal.type)
 		if not Scenario.is_whole_number_from(data.get("amount"), 1):
 			problems.append("Zielbedingung braucht „amount“ als ganze Zahl größer als 0")
 		else:
@@ -51,13 +54,20 @@ static func parse(value: Variant, problems: PackedStringArray) -> Array[Scenario
 
 
 ## Aktuelle Anzahl in der Spielwelt, auch oberhalb des geforderten amount;
-## abgerissene oder zerstörte Gebäude zählen nicht mehr.
+## abgerissene oder zerstörte Gebäude zählen nicht mehr, ausgegebenes Gold und
+## verbrauchte oder verkaufte Waren ebenso wenig.
 func progress(world: GameWorld) -> int:
 	match kind:
 		"population":
 			return world.get_population()
 		"repelled_waves":
 			return world.get_repelled_waves()
+		"gold":
+			return world.get_treasury()
+		"goods":
+			return world.get_stock(type)
+		"day":
+			return world.get_day()
 		"building":
 			var count := 0
 			for building in world.get_buildings():

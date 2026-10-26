@@ -92,6 +92,27 @@ func find_site(world: GameWorld, type_id: String, reason := "") -> Vector2i:
 	return GameWorld.NO_SITE
 
 
+## Freier Bauplatz für type_id, der dem Bergfried am nächsten liegt (Abstand der Ursprünge)
+## und keinen Eingang eines bestehenden Gebäudes zubaut.
+func site_near_keep(world: GameWorld, type_id: String) -> Vector2i:
+	var keep := Vector2i.ZERO
+	var fronts: Array[Vector2i] = []
+	for building in world.get_buildings():
+		if building.type == GameWorld.FOUNDING_TYPE:
+			keep = building.origin
+		if GameDefs.get_instance().buildings[building.type].has("entrance"):
+			fronts.append(building.entrance_front())
+	var best := GameWorld.NO_SITE
+	for y in world.map.height:
+		for x in world.map.width:
+			var site := Vector2i(x, y)
+			if (best == GameWorld.NO_SITE or (site - keep).length_squared() < (best - keep).length_squared()) \
+					and world.build_error(type_id, site) == "" \
+					and not Building.footprint(type_id, site).any(func(tile: Vector2i) -> bool: return fronts.has(tile)):
+				best = site
+	return best
+
+
 ## Baut ein Gebäude per Befehl (muss gelingen) und liefert seine ID.
 func build(world: GameWorld, type_id: String, origin: Vector2i) -> int:
 	var reason := world.execute(Command.build(type_id, origin))
