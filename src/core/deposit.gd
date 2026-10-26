@@ -35,7 +35,12 @@ func is_clearable() -> bool:
 
 ## Die Ware, die es liefert ("yields").
 func good() -> String:
-	return str(GameDefs.get_instance().deposits[type]["yields"])
+	return good_of(type)
+
+
+## Die Ware, die der Abbau eines Vorkommens dieses Typs liefert ("yields").
+static func good_of(type_id: String) -> String:
+	return str(GameDefs.get_instance().deposits[type_id]["yields"])
 
 
 ## Der Name eines Vorkommenstyps, z. B. „Baum“.

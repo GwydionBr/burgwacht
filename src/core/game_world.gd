@@ -1302,9 +1302,8 @@ func _factors_of(meal: Meal) -> Array[Factor]:
 ## Die Waren mit "food" in den Daten, in deren Reihenfolge.
 func _food_goods() -> Array[String]:
 	var result: Array[String] = []
-	var goods := GameDefs.get_instance().goods
-	for good: String in goods:
-		if bool(goods[good].get("food", false)):
+	for good: String in GameDefs.get_instance().goods:
+		if Population.is_food(good):
 			result.append(good)
 	return result
 
