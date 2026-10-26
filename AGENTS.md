@@ -9,6 +9,7 @@ Burgenbau-Strategiespiel im Stil von Stronghold für macOS. Godot 4.7, GDScript,
 - `tools/screenshot.sh /tmp/bild.png [seed|preset]` – Screenshot, um Grafikänderungen zu prüfen
 - `tools/profile.sh [Tage]` – Taktzeiten und Wegsuchen headless messen (bei Rucklern; siehe „Leistung“ in `docs/architecture.md`)
 - `tools/economy.sh [--storage=10] [--deposit=5]` – Wirtschaftsrechner fürs Balancing: Leistung der Arbeitsstätten, Nahrung, Ketten und Steuern allein aus den Daten (Weglängen in Kacheln)
+- `tools/bot.sh <szenario> [--seeds=6] [--days=40] [--quiet]` – Szenario-Bot: spielt ein Szenario nach seiner Bauordnung in `tools/bots/` und zeigt Tagesverlauf und Ergebnis; neues Szenario mit Ziel → dort eine Bauordnung ergänzen (ein Test prüft, dass sie gewinnt)
 - `tools/export.sh` – macOS-App nach `export/Burgwacht.app` exportieren und einmal headless starten (braucht die Export-Templates der installierten Godot-Version, nicht in der CI)
 - `tools/render.sh [buildings/house]` – Sprites mit Blender 5.2 aus ihren Rezepten neu rendern (sonst nie nötig, die PNGs sind eingecheckt; siehe „Grafik“ in `docs/architecture.md`)
 - Testzustände (Presets) stehen in `tools/presets.json`; neue Ansicht oder neuer Startparameter → dort ein Preset ergänzen (der Rauchtest prüft alle)

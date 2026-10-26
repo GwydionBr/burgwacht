@@ -1,0 +1,19 @@
+{
+  "steps": [
+    { "build": "woodcutter", "until": 2 },
+    { "build": "orchard", "until": 3 },
+    { "build": "house", "until": 2 },
+    { "build": "armory" },
+    { "build": "barracks" },
+    { "build": "bowyer" },
+    { "build": "market" },
+    { "build": "house", "until": 3 },
+    { "build": "orchard", "until": 4 }
+  ],
+  "rules": [
+    { "recruit": "archer", "until": 12 },
+    { "post": "keep" },
+    { "sell": "wood", "keep": 60 },
+    { "sell": "apples", "keep": 80 }
+  ]
+}

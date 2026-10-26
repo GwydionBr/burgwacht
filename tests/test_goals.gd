@@ -169,19 +169,3 @@ func test_victory_queries_and_commands_share_the_same_rejection() -> void:
 	assert_eq(world.spawn_enemy_error("bandit"), reason, "Feind erscheinen lassen")
 	assert_eq(world._waves().spawn_next_error(), reason, "Nächste Welle")
 	assert_eq(world.to_data(), before, "Alle Abfragen verändern nichts")
-
-
-func test_hunger_winter_can_be_won_with_its_start_goods() -> void:
-	var scenario := Scenario.load_named("hunger_winter")
-	assert_eq(scenario.error, "", "Hungerwinter:")
-	var world := found_castle(GameWorld.create(scenario, scenario.fixed_seed))
-	for type_id: String in ["orchard", "orchard", "wheat_farm", "wheat_farm", "mill", "mill", "bakery", "bakery", "granary", "house", "house", "house"]:
-		build(world, type_id, site_near_keep(world, type_id))
-	for i in 40 * GameWorld.TICKS_PER_DAY:
-		if world.is_finished():
-			break
-		# Ist die Burg voll, bleibt mit halber Ration Brot für den Vorrat übrig.
-		if world.get_population() >= scenario.goals[0].amount and world.get_ration() == "normal":
-			assert_eq(world.execute(Command.set_ration("half")), "", "Ration senken")
-		world.step()
-	assert_true(world.is_victorious(), "Hungerwinter gewonnen: Tag %d, Beliebtheit %d, Ziele %s" % [world.get_day(), world.get_popularity(), str(world.goal_status())])
